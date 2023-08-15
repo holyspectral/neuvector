@@ -6,6 +6,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -26,7 +27,7 @@ import (
 
 const DefIdleTimeoutInternal uint32 = 300
 const DefaultAdminUser string = "admin"
-const DefaultAdminPass string = "admin"
+const defaultAdminPass string = "admin"
 const ReservedFedUser string = "~fedOperator" // user name with prefix "~" cannot be created thru configmap/rest api
 const ReservedUserNameIBMSA string = "~nv.reserved.ibmsa"
 
@@ -35,6 +36,31 @@ const ScanPlatformID = "platform"
 type LocalDevice struct {
 	Host   *share.CLUSHost
 	Ctrler *share.CLUSController
+}
+
+func GetDefaultAdminPass() string {
+	if pass := os.Getenv("DEFAULT_PASSWORD"); pass != "" {
+		return pass
+	} else {
+		return defaultAdminPass
+	}
+}
+
+func IsDefaultAdminPassHash(hash string) bool {
+	if h := utils.HashPassword(defaultAdminPass); h == hash {
+		return true
+	}
+	if h := utils.HashPassword(GetDefaultAdminPass()); h == hash {
+		return true
+	}
+	return false
+}
+
+func IsDefaultAdminPass(pass string) bool {
+	if pass == defaultAdminPass || pass == GetDefaultAdminPass() {
+		return true
+	}
+	return false
 }
 
 type WorkloadRisk struct {
