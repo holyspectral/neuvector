@@ -537,7 +537,7 @@ func admissionConfigUpdate(nType cluster.ClusterNotifyType, key string, value []
 			for _, rh := range heads {
 				ids.Add(rh.ID)
 			}
-			for id, _ := range admPolicyCache.RuleMap {
+			for id := range admPolicyCache.RuleMap {
 				if !ids.Contains(id) {
 					delete(admPolicyCache.RuleMap, id)
 					opa.DeletePolicy(id)
@@ -1843,7 +1843,7 @@ func (m CacheMethod) MatchK8sAdmissionRules(admType string, admResObject *nvsysa
 		// the environment variables set using the env or envFrom field will override any environment variables specified in the container image.
 		// So environment variables set in yaml will override any environment variables specified in the scanned result.
 		for _, scannedImage := range scannedImages {
-			for k, _ := range c.EnvVars {
+			for k := range c.EnvVars {
 				if _, exist := scannedImage.EnvVars[k]; exist {
 					delete(scannedImage.EnvVars, k)
 				}
