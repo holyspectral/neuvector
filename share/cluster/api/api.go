@@ -431,7 +431,8 @@ func SetupTLSConfig(tlsConfig *TLSConfig) (*tls.Config, error) {
 				return nil, err
 			}
 		}
-		tlsClientConfig.ServerName = server
+		tlsClientConfig.InsecureSkipVerify = true
+		//tlsClientConfig.ServerName = server
 	}
 
 	if tlsConfig.CertFile != "" && tlsConfig.KeyFile != "" {
@@ -904,12 +905,12 @@ func parseQueryMeta(resp *http.Response, q *QueryMeta) error {
 func decodeBody(resp *http.Response, out interface{}) error {
 	// Neuvector: improve memory usage which incurs from manipulating buffering data
 	data, err := ioutil.ReadAll(resp.Body)
-	if err==nil && data != nil {
+	if err == nil && data != nil {
 		return json.Unmarshal(data, out)
 	}
 	return err
-//	dec := json.NewDecoder(resp.Body)
-//	return dec.Decode(out)
+	// dec := json.NewDecoder(resp.Body)
+	// return dec.Decode(out)
 }
 
 // encodeBody is used to encode a request body

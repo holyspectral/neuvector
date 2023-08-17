@@ -1,9 +1,12 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -20,6 +23,27 @@ import (
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/utils"
 )
+
+const legacyInternalCert = `-----BEGIN CERTIFICATE-----
+MIIDDjCCAfagAwIBAgIBCjANBgkqhkiG9w0BAQUFADBPMQswCQYDVQQGEwJVUzET
+MBEGA1UECAwKQ2FsaWZvcm5pYTEXMBUGA1UECgwOTmV1VmVjdG9yIEluYy4xEjAQ
+BgNVBAMMCU5ldVZlY3RvcjAeFw0xNjA1MTkwNTIzNTFaFw0yNjA1MTcwNTIzNTFa
+ME8xEjAQBgNVBAMMCU5ldVZlY3RvcjETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkG
+A1UEBhMCVVMxFzAVBgNVBAoMDk5ldVZlY3RvciBJbmMuMIGfMA0GCSqGSIb3DQEB
+AQUAA4GNADCBiQKBgQDCBCP7TMP85N8Rtx9jEe185Efzx0h1TEJSB7lLmYQfnhH1
+IAEuOKGkTEguRRQ1s6ye8x0TIAo1z82kd22jqFJfp0qWpiIgH9hHuhqK/qVEh91+
+CoxDVxWL7xMRZ8QO0ojDsL4aqApN3iAiBKwrZH4Vu/9yHV4Te54cPZcVRiogWQID
+AQABo3kwdzAJBgNVHRMEAjAAMB0GA1UdDgQWBBSJEAj2YIUG6oJB7lEq/ERnO9nW
+PTAfBgNVHSMEGDAWgBSulkDMGbtLm/vz34w1ofRKW2A8FjALBgNVHQ8EBAMCBaAw
+HQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMA0GCSqGSIb3DQEBBQUAA4IB
+AQCAv9XTCoubduFh/7zu8X/el0XVWfwGtt59ReGnjAZYPivz6E9W1PeaqgImbwV+
+z+ams2R1AJMx4MbgW3Adg3z7YTRD7AvPJGZmJhoL8ye9F5zssbuJAw+FzVB+5Y3f
+2eBWh6drESP4JjIkjoHJH5RcVXs1CcV72Sm+TigCTwCHVXKrsEV82v+SEIQnynYU
+xrLiZCUPEBvhkRCq729hmj6gKItBRoNXFOpluNODHcKMLMO/HyszzaZJ26/+IPwp
+oCBdIm4QPUEvQEp0hbJTd6jyVvFXyVurdnAFxruPKzxuHous3cnTN1hQdbloQmCd
+54MQkihsy8aHFAnbBN8WLGUf
+-----END CERTIFICATE-----
+`
 
 const GRPCMaxMsgSize = 1024 * 1024 * 32
 
@@ -192,7 +216,61 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 	}
 }
 
+func getTLSConfig(ctx context.Context, config *tls.Config, endpoint string) error {
+	// TODO: remove hardcode
+	c, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+	creds := credentials.NewTLS(config)
+
+	// This compress check is to be compatible with pre-3.2 grpc server that doesn't install decompressor.
+	// Here we specify WithBlock() because we want to know if the connection is established before API calls, so we can fallback as early as possible.
+	var opts []grpc.DialOption
+	opts = []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
+		grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
+		grpc.WithCompressor(grpc.NewGZIPCompressor()),
+		grpc.WithDefaultCallOptions(grpc.FailFast(true)),
+		grpc.WithBlock(),
+	}
+
+	conn, err := grpc.DialContext(c, endpoint, opts...)
+	if err != nil {
+		return nil
+	}
+	conn.Close()
+	return nil
+}
+
+func dialWithTLSConfig(ctx context.Context, config *tls.Config, endpoint string, compress bool) (*grpc.ClientConn, error) {
+	creds := credentials.NewTLS(config)
+
+	// This compress check is to be compatible with pre-3.2 grpc server that doesn't install decompressor.
+	// Here we specify WithBlock() because we want to know if the connection is established before API calls, so we can fallback as early as possible.
+	var opts []grpc.DialOption
+	if compress {
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(creds),
+			grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
+			grpc.WithCompressor(grpc.NewGZIPCompressor()),
+			grpc.WithDefaultCallOptions(grpc.FailFast(true)),
+		}
+	} else {
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(creds),
+			grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
+			grpc.WithDefaultCallOptions(grpc.FailFast(true)),
+		}
+	}
+
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
+	var conn *grpc.ClientConn
 	// CA cert
 	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
 	if err != nil {
@@ -226,34 +304,45 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 		log.WithFields(log.Fields{"cn": subjectCN}).Info("Expected server name")
 	}
 
-	config := &tls.Config{
+	tlsconfig := &tls.Config{
 		RootCAs:      caCertPool,
 		Certificates: []tls.Certificate{cert},
 		ServerName:   subjectCN,
 	}
-	creds := credentials.NewTLS(config)
 
-	// This is to be compatible with pre-3.2 grpc server that doesn't install decompressor.
-	var opts []grpc.DialOption
-	if compress {
-		opts = []grpc.DialOption{
-			grpc.WithTransportCredentials(creds),
-			grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
-			grpc.WithCompressor(grpc.NewGZIPCompressor()),
-			grpc.WithDefaultCallOptions(grpc.FailFast(true)),
+	if err = checkTLSConfig(ctx, tlsconfig, endpoint); err != nil && strings.Contains(err.Error(), "x509: certificate relies on legacy Common Name field, use SANs instead") {
+		log.WithError(err).Info("Failed to establish grpc connection...attempt to migrate")
+
+		fallbackcfg := &tls.Config{
+			RootCAs:            caCertPool,
+			Certificates:       []tls.Certificate{cert},
+			ServerName:         subjectCN,
+			InsecureSkipVerify: true,
+			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+				// Certificate pinning.
+				p, _ := pem.Decode([]byte(legacyInternalCert))
+				if p == nil {
+					return errors.New("failed to decode legacy certificate")
+				}
+				if len(rawCerts) != 1 {
+					return errors.New("unrecognized certificate.  Give up.")
+				}
+				log.Warn("A: ", p.Bytes)
+				log.Warn("B: ", rawCerts[0])
+				if !bytes.Equal(p.Bytes, rawCerts[0]) {
+					return errors.New("unrecognized certificate.  Give up.")
+				}
+				return nil
+			},
 		}
-	} else {
-		opts = []grpc.DialOption{
-			grpc.WithTransportCredentials(creds),
-			grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
-			grpc.WithDefaultCallOptions(grpc.FailFast(true)),
+
+		// TODO: Disable this behavior when necessary.
+		if err = checkTLSConfig(ctx, fallbackcfg, endpoint); err == nil {
+			tlsconfig = fallbackcfg
 		}
 	}
 
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
-	if err != nil {
-		return nil, err
-	}
+	// There should be a valid conn now.
 
 	c := &GRPCClient{conn: conn, key: key, server: endpoint, cb: cb}
 
@@ -472,6 +561,7 @@ func newClient(s *grpcClient, cb GRPCCallback, compress bool) error {
 	return nil
 }
 
+// TODO: reduce lock time
 func GetGRPCClient(key string, isCompressed IsCompressedFunc, cb GRPCCallback) (interface{}, error) {
 	mtx.Lock()
 	defer mtx.Unlock()

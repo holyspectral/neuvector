@@ -362,8 +362,6 @@ func deriveWorkloadState(cache *workloadCache) string {
 	default:
 		return api.WorkloadStateDiscover
 	}
-
-	return api.WorkloadStateDiscover
 }
 
 func initHostCache(id string) *hostCache {
@@ -1582,7 +1580,7 @@ func (m CacheMethod) GetIP2WorkloadMap(hostID string) []*api.RESTDebugIP2Workloa
 			l = append(l, &api.RESTDebugIP2Workload{IP: key, Workload: fakeWorkloadBrief(svc.group.Name)})
 		}
 
-		for key, _ := range tunnelHostMap {
+		for key := range tunnelHostMap {
 			l = append(l, &api.RESTDebugIP2Workload{IP: key, Workload: &api.RESTWorkloadBrief{
 				ID: api.EndpointIngress, Name: api.EndpointIngress, DisplayName: api.EndpointIngress,
 			}})
@@ -2056,7 +2054,8 @@ func startWorkerThread(ctx *Context) {
 
 // handler of K8s resource watcher calls cbResourceWatcher() which sends to orchObjChan/objChan
 // [2021-02-15] CRD-related resource changes do not call this function.
-//              If they need to in the future, re-work the calling of SyncAdmCtrlStateToK8s()
+//
+//	If they need to in the future, re-work the calling of SyncAdmCtrlStateToK8s()
 func refreshK8sAdminWebhookStateCache(oldConfig, newConfig *resource.AdmissionWebhookConfiguration) {
 	config := newConfig
 	if oldConfig != nil && newConfig == nil {
@@ -2164,7 +2163,7 @@ func QueryK8sVersion() {
 	}
 }
 
-////// event handlers for enforcer's kv dispatcher
+// //// event handlers for enforcer's kv dispatcher
 // node: HostID
 func nodeLeaveDispatcher(node string, param interface{}) {
 	dispatchHelper.NodeLeave(node, isLeader())
@@ -2222,7 +2221,7 @@ func pruneWorkloadKV(suspected utils.Set) {
 	updated := utils.NewSet() // allow one update per round
 
 	cacheMutexRLock()
-	for id, _ := range wlCacheMap {
+	for id := range wlCacheMap {
 		ids.Add(id)
 		suspected.Remove(id) // remove the missing id
 	}
