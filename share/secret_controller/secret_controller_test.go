@@ -97,6 +97,7 @@ func RetryOnConflict(backoff wait.Backoff, fn func() error) error {
 }
 
 const (
+	InternalCertStatusFailed      = "failed"
 	InternalCertStatusOk          = "ok"
 	InternalCertStatusMergedCA    = "merged-ca"
 	InternalCertStatusMergedCAKey = "merged-ca-new-key"
@@ -104,6 +105,7 @@ const (
 )
 
 var InternalCertMap = map[string]int{
+	InternalCertStatusFailed:      -1, // TODO: need extra handling
 	InternalCertStatusOk:          0,
 	InternalCertStatusMergedCA:    1,
 	InternalCertStatusMergedCAKey: 2,
@@ -145,11 +147,8 @@ func TestUpgrade(t *testing.T) {
 
 	watcher.Init(nil)
 
-	// stage1: "start" => (newca) => "mergedca"
-	// stage2: "mergedca" => (newkey_deployed) => "mergedca_newkey"
-	// stage3: "mergedca_newkey" => (oldca_removed) => "start"
-
 	// TODO: How to get the current CA/key?
+	// TODO: How to deal with restart and after failure?  Race condition?
 	consul_node_reconcile := func(name string) {
 		// TODO: When joining, we have to register myself as one node inside CRD.
 		// Use case: New node joining when doing certificate update.
@@ -164,12 +163,16 @@ func TestUpgrade(t *testing.T) {
 				continue
 			}
 
+			// Note: If RetryOnConflict returns error, we should mark this node as failure.
+			// TODO: If we see a node in failure mode, roll back.
 			err = RetryOnConflict(DefaultBackOff, func() error {
 				crd, err := watcher.GetCRD(context.TODO(), nil)
 				if err != nil {
 					return err
 				}
 
+				// Check if this node goes faster than others.
+				// This function will make sure that all nodes are in the same state until they start next stage of migration.
 				shouldWait, err := ShouldWaitForOtherNodes(crd.Status[name], crd.Status)
 				if err != nil {
 					return errors.Wrap(err, "something is wrong in the state machine. Give up and rollback.")
@@ -179,6 +182,11 @@ func TestUpgrade(t *testing.T) {
 					return nil
 				}
 
+				var nextstage string
+				var cacert string
+				var cert string
+				var key string
+
 				// InternalCertStatusOk          = "ok"
 				// InternalCertStatusMergedCA    = "merged-ca"
 				// InternalCertStatusMergedCAKey = "merged-ca-new-key"
@@ -186,42 +194,49 @@ func TestUpgrade(t *testing.T) {
 				switch crd.Status[name] {
 				case InternalCertStatusOk:
 					// Check CRD and if there is new, use merged CA.
+					caname, ok := crd.Spec["newca"]
+					if !ok {
+						log.Debug("No new certificate is specified.  Nothing to do.")
+						return nil
+					}
+					secret, err := watcher.GetSecret(context.TODO(), caname)
+					if err != nil {
+						return errors.Wrap(err, "failed to get new cacert.  Nothing to do.")
+					}
+
+					cacert, cert, key, err = internalca.GetInternalCerts()
+					if err != nil {
+						return errors.Wrap(err, "failed to get the current internal certs.  Nothing to do.")
+					}
+
+					if secret["cacert"] == "" || secret["cert"] == "" || secret["key"] == "" {
+						return fmt.Errorf("Invalid certs: %v", secret)
+					}
+
+					h := sha256.New()
+					data := fmt.Sprintf("%s_%s_%s", secret["cacert"], secret["cert"], secret["key"])
+					h.Write([]byte(data))
+					if fmt.Sprintf("%x\n", h.Sum(nil)) != secret["sha256sum"] {
+						return errors.New("Invalid certs.  Secrets are updated afterwards?")
+					}
+					// TODO: Verify cacert, cert and key are okay.
+					// TODO: Merge CA.
+					nextstage = InternalCertStatusMergedCA
+
 				case InternalCertStatusMergedCA:
 					// Once everyone is in this stage, use merged CA + new key.
+					nextstage = InternalCertStatusMergedCAKey
 				case InternalCertStatusMergedCAKey:
 					// Once everyone is in this stage, use new CA + new key.
+					nextstage = InternalCertStatusNewCAKey
 				case InternalCertStatusNewCAKey:
 					// Once everyone is in this stage, move to ok.
+					nextstage = InternalCertStatusOk
+				case InternalCertStatusFailed:
+					nextstage = InternalCertStatusFailed
+					// Should rollback to the original certs
 				}
 
-				caname, ok := crd.Spec["newca"]
-				if !ok {
-					log.Debug("No new certificate is specified.  Nothing to do.")
-					return nil
-				}
-				secret, err := watcher.GetSecret(context.TODO(), caname)
-				if err != nil {
-					return errors.Wrap(err, "failed to get new cacert.  Nothing to do.")
-				}
-
-				cacert, cert, key, err := internalca.GetInternalCerts()
-				if err != nil {
-					return errors.Wrap(err, "failed to get the current internal certs.  Nothing to do.")
-				}
-
-				if secret["cacert"] == "" || secret["cert"] == "" || secret["key"] == "" {
-					return fmt.Errorf("Invalid certs: %v", secret)
-				}
-
-				h := sha256.New()
-				data := fmt.Sprintf("%s_%s_%s", secret["cacert"], secret["cert"], secret["key"])
-				h.Write([]byte(data))
-				if fmt.Sprintf("%x\n", h.Sum(nil)) != secret["sha256sum"] {
-					return errors.New("Invalid certs.  Secrets are updated afterwards?")
-				}
-
-				// TODO: Verify cacert, cert and key are okay.
-				// TODO: Merge CA.
 				if err := internalca.ApplyInternalCerts(cacert, cert, key); err != nil {
 					return err
 				}
@@ -229,14 +244,14 @@ func TestUpgrade(t *testing.T) {
 				// TODO: Verify all nodes are in the same state.
 
 				// Nothing changed. See you next round.
-				crd.Status[name] = "mergedca"
+				crd.Status[name] = nextstage
 				if err := watcher.SetState(context.TODO(), &crd); err != nil {
 					return err
 				}
 				return nil
 			})
 			if err != nil {
-				log.WithError(err).Error("Failed to handle events. Ignore.")
+				log.WithError(err).Error("Failed to handle events. Mark this node as failed.")
 				if err := RetryOnConflict(DefaultBackOff, func() error {
 					crd, err := watcher.GetCRD(context.TODO(), nil)
 					if err != nil {
