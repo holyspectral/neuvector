@@ -2,7 +2,6 @@ package secretcontroller
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"math"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,8 +31,10 @@ func TestLocalMemoryWatcher(t *testing.T) {
 	writer := func() {
 		for i := 0; i < 5; i++ {
 			watcher.SetState(context.TODO(), &ClusterDataCRD{
-				Status: map[string]string{
-					"number": strconv.Itoa(i),
+				Status: ClusterDataCRDStatus{
+					Status: map[string]string{
+						"number": strconv.Itoa(i),
+					},
 				},
 			})
 			time.Sleep(time.Second)
@@ -68,6 +70,8 @@ func (i *TestInternalCAProvider) GetInternalCerts() (string, string, string, err
 
 func (i *TestInternalCAProvider) ApplyInternalCerts(cacert string, cert string, key string) error {
 	// Should apply new certs, reload and wait until it's back to normal.
+	// TODO: Make sure that cacert can accept cert and key.
+	// TODO: Make sure cacert, cert and key are valid.
 	i.cacert = cacert
 	i.cert = cert
 	i.key = key
@@ -79,7 +83,7 @@ func NewTestInternalCAProvider() InternalCA {
 }
 
 var DefaultBackOff = wait.Backoff{
-	Steps:    5,
+	Steps:    10,
 	Duration: 10 * time.Millisecond,
 	Factor:   1.0,
 	Jitter:   0.1,
@@ -90,7 +94,10 @@ func RetryOnConflict(backoff wait.Backoff, fn func() error) error {
 	return wait.ExponentialBackoff(backoff, func() (bool, error) {
 		err := fn()
 		if err != nil {
-			return false, err
+			// TODO: Fix this
+			log.WithError(err).Warn("failed to handle event")
+			//return false, err
+			return false, nil
 		}
 		return true, nil
 	})
@@ -98,7 +105,7 @@ func RetryOnConflict(backoff wait.Backoff, fn func() error) error {
 
 const (
 	InternalCertStatusFailed      = "failed"
-	InternalCertStatusOk          = "ok"
+	InternalCertStatusUndefined   = ""
 	InternalCertStatusMergedCA    = "merged-ca"
 	InternalCertStatusMergedCAKey = "merged-ca-new-key"
 	InternalCertStatusNewCAKey    = "new-ca-new-key"
@@ -106,24 +113,35 @@ const (
 
 var InternalCertMap = map[string]int{
 	InternalCertStatusFailed:      -1, // TODO: need extra handling
-	InternalCertStatusOk:          0,
+	InternalCertStatusUndefined:   0,
 	InternalCertStatusMergedCA:    1,
 	InternalCertStatusMergedCAKey: 2,
 	InternalCertStatusNewCAKey:    3,
 }
 
-func ShouldWaitForOtherNodes(currentStatus string, nodeStatus map[string]string) (bool, error) {
+const InternalCertStatusMaxState = 4
+
+// TODO: Need more testing.
+func ShouldWaitForOtherNodes(nodeNum int, currentStatus string, nodeStatus map[string]ClusterConsulNodeStatus) (bool, error) {
+	if len(nodeStatus) < nodeNum && currentStatus != InternalCertStatusUndefined {
+		// Some nodes didn't report yet.  Do not move to next stage that soon.
+		return true, nil
+	}
 	currentStatusID := InternalCertMap[currentStatus]
 	faster := false
 	for _, v := range nodeStatus {
-		nodeStatusID := InternalCertMap[v]
+		if v.Stage == InternalCertStatusFailed {
+			return false, errors.New("Other node has failed.  This node should not continue.")
+		}
+		nodeStatusID := InternalCertMap[v.Stage]
 		if currentStatusID > nodeStatusID {
 			// This node is faster than others.  Don't have to do anything for now.
 			faster = true
 		}
-		if nodeStatusID != 0 && currentStatusID != 0 && math.Abs(float64(nodeStatusID-currentStatusID)) > 1 {
+		diff := (InternalCertStatusMaxState + nodeStatusID - currentStatusID) % InternalCertStatusMaxState
+		if nodeStatusID != 0 && currentStatusID != 0 && math.Abs(float64(diff)) > 1 {
 			// Something is wrong. One node moves too fast.
-			return false, fmt.Errorf("invalid status: current: %v, node: %v", currentStatusID, nodeStatusID)
+			return false, fmt.Errorf("invalid status: current: %v, node: %v, diff: %v", currentStatusID, nodeStatusID, diff)
 		}
 	}
 	return faster, nil
@@ -132,23 +150,17 @@ func ShouldWaitForOtherNodes(currentStatus string, nodeStatus map[string]string)
 func TestUpgrade(t *testing.T) {
 	// Setup test provider
 	watcher := NewLocalMemoryWatcher()
-
-	watcher.SetSecret(context.TODO(), "oldca", map[string]string{
-		"cacert": "oldcacert",
-		"cert":   "oldcert",
-		"key":    "oldkey",
-	})
-
-	watcher.SetState(context.TODO(), &ClusterDataCRD{
-		Spec: map[string]string{},
-	})
+	watcher.Init(nil)
 
 	internalca := NewTestInternalCAProvider()
 
-	watcher.Init(nil)
-
-	// TODO: How to get the current CA/key?
-	// TODO: How to deal with restart and after failure?  Race condition?
+	// TODO: How to deal with restart and after failure?
+	//       The point is that we don't know how many nodes will be there.  Race condition?
+	//       The one triggered the flow should specify "how many nodes are expected".
+	//       TODO: What if the number is changed?
+	//             If #node decreases, it should time out.
+	//             If #node increases, it should detect that and fail the migration.
+	// TODO: Figure out what would happen when consul nodes++ without changing node number in command line argument.
 	consul_node_reconcile := func(name string) {
 		// TODO: When joining, we have to register myself as one node inside CRD.
 		// Use case: New node joining when doing certificate update.
@@ -157,11 +169,19 @@ func TestUpgrade(t *testing.T) {
 		//       When it registers itself, new node should know that all nodes are already successful.
 		//       When old pods writing status, it should notice that too.
 		for {
+			// 1. Get notification.  The watcher should return when:
+			//   a. Change happens in the resource.
+			//   b. Resync period reached
+			//   c. Context timed out.
 			_, err := watcher.Watch(context.TODO(), nil)
 			if err != nil {
 				log.WithError(err).Error(err)
 				continue
 			}
+
+			var oldcacert, oldcert, oldkey string
+			var newcacert, newcert, newkey string
+			//var oldchecksum, newchecksum string
 
 			// Note: If RetryOnConflict returns error, we should mark this node as failure.
 			// TODO: If we see a node in failure mode, roll back.
@@ -171,81 +191,112 @@ func TestUpgrade(t *testing.T) {
 					return err
 				}
 
-				// Check if this node goes faster than others.
-				// This function will make sure that all nodes are in the same state until they start next stage of migration.
-				shouldWait, err := ShouldWaitForOtherNodes(crd.Status[name], crd.Status)
+				//
+				// 1. Check if this node goes faster than others.
+				//    This function will make sure that all nodes are in the same state until they start next stage of migration.
+				//    This function should also report error when other nodes failed.
+				shouldWait, err := ShouldWaitForOtherNodes(crd.NodeNumber, crd.Status.Nodes[name].Stage, crd.Status.Nodes)
 				if err != nil {
-					return errors.Wrap(err, "something is wrong in the state machine. Give up and rollback.")
+					return errors.Wrap(err, "something is wrong in the state machine. Give up and rollback")
 				}
 
 				if shouldWait {
 					return nil
 				}
 
+				//
+				// 2. Get old secrets and new secrets.
+				//
+				if crd.Spec.NewCA == "" {
+					log.Debug("No new certificate is specified.  Nothing to do.")
+					return nil
+				}
+
+				if crd.Spec.OldCA == "" {
+					// TODO: Mirgrate from built-in certs.
+					log.Debug("No new certificate is specified.  Nothing to do.")
+					return nil
+				}
+
+				oldsecret, err := watcher.GetSecret(context.TODO(), crd.Spec.OldCA)
+				if err != nil {
+					return errors.Wrap(err, "failed to get new cacert.  Nothing to do.")
+				}
+				oldcacert = oldsecret["cacert"]
+				oldcert = oldsecret["cert"]
+				oldkey = oldsecret["key"]
+				//oldchecksum = oldsecret["sha256sum"]
+
+				newsecret, err := watcher.GetSecret(context.TODO(), crd.Spec.NewCA)
+				if err != nil {
+					return errors.Wrap(err, "failed to get new cacert.  Nothing to do.")
+				}
+				newcacert = newsecret["cacert"]
+				newcert = newsecret["cert"]
+				newkey = newsecret["key"]
+				//newchecksum = newsecret["sha256sum"]
+
+				// 3. Generate expected certs for the given stage.
 				var nextstage string
-				var cacert string
-				var cert string
-				var key string
+				var expectedCAcert string
+				var expectedCert string
+				var expectedKey string
 
 				// InternalCertStatusOk          = "ok"
 				// InternalCertStatusMergedCA    = "merged-ca"
 				// InternalCertStatusMergedCAKey = "merged-ca-new-key"
 				// InternalCertStatusNewCAKey    = "new-ca-new-key"
-				switch crd.Status[name] {
-				case InternalCertStatusOk:
+				switch crd.Status.Nodes[name].Stage {
+				case InternalCertStatusUndefined:
 					// Check CRD and if there is new, use merged CA.
-					caname, ok := crd.Spec["newca"]
-					if !ok {
-						log.Debug("No new certificate is specified.  Nothing to do.")
-						return nil
-					}
-					secret, err := watcher.GetSecret(context.TODO(), caname)
-					if err != nil {
-						return errors.Wrap(err, "failed to get new cacert.  Nothing to do.")
-					}
-
-					cacert, cert, key, err = internalca.GetInternalCerts()
-					if err != nil {
-						return errors.Wrap(err, "failed to get the current internal certs.  Nothing to do.")
-					}
-
-					if secret["cacert"] == "" || secret["cert"] == "" || secret["key"] == "" {
-						return fmt.Errorf("Invalid certs: %v", secret)
-					}
-
-					h := sha256.New()
-					data := fmt.Sprintf("%s_%s_%s", secret["cacert"], secret["cert"], secret["key"])
-					h.Write([]byte(data))
-					if fmt.Sprintf("%x\n", h.Sum(nil)) != secret["sha256sum"] {
-						return errors.New("Invalid certs.  Secrets are updated afterwards?")
-					}
-					// TODO: Verify cacert, cert and key are okay.
-					// TODO: Merge CA.
+					// TODO: Move the checking logic to apply().
+					/*
+						h := sha256.New()
+						data := fmt.Sprintf("%s_%s_%s", newsecret["cacert"], newsecret["cert"], newsecret["key"])
+						h.Write([]byte(data))
+						if fmt.Sprintf("%x\n", h.Sum(nil)) != newsecret["sha256sum"] {
+							return errors.New("Invalid certs.  Secrets are updated afterwards?")
+						}
+					*/
+					// TODO: Revisit to see if mergedCA is cross platform.
+					expectedCAcert = oldcacert + "\n" + newcacert
+					expectedCert = oldcert
+					expectedKey = oldkey
 					nextstage = InternalCertStatusMergedCA
 
 				case InternalCertStatusMergedCA:
 					// Once everyone is in this stage, use merged CA + new key.
+					expectedCAcert = oldcacert + "\n" + newcacert
+					expectedCert = newcert
+					expectedKey = newkey
 					nextstage = InternalCertStatusMergedCAKey
 				case InternalCertStatusMergedCAKey:
 					// Once everyone is in this stage, use new CA + new key.
+					expectedCAcert = newcacert
+					expectedCert = newcert
+					expectedKey = newkey
 					nextstage = InternalCertStatusNewCAKey
 				case InternalCertStatusNewCAKey:
-					// Once everyone is in this stage, move to ok.
-					nextstage = InternalCertStatusOk
+					// Keep in this state.
+					expectedCAcert = newcacert
+					expectedCert = newcert
+					expectedKey = newkey
+					nextstage = InternalCertStatusNewCAKey
 				case InternalCertStatusFailed:
 					nextstage = InternalCertStatusFailed
 					// Should rollback to the original certs
 				}
 
-				if err := internalca.ApplyInternalCerts(cacert, cert, key); err != nil {
+				if err := internalca.ApplyInternalCerts(expectedCAcert, expectedCert, expectedKey); err != nil {
 					return err
 				}
 
-				// TODO: Verify all nodes are in the same state.
-
 				// Nothing changed. See you next round.
-				crd.Status[name] = nextstage
-				if err := watcher.SetState(context.TODO(), &crd); err != nil {
+				crd.Status.Nodes[name] = ClusterConsulNodeStatus{
+					Stage:       nextstage,
+					LastChanged: time.Now().Format(time.RFC3339),
+				}
+				if err := watcher.SetState(context.TODO(), crd); err != nil {
 					return err
 				}
 				return nil
@@ -253,12 +304,19 @@ func TestUpgrade(t *testing.T) {
 			if err != nil {
 				log.WithError(err).Error("Failed to handle events. Mark this node as failed.")
 				if err := RetryOnConflict(DefaultBackOff, func() error {
+					// TODO: Should it be kept in retry logic?
+					if err := internalca.ApplyInternalCerts(oldcacert, oldcert, oldkey); err != nil {
+						return err
+					}
 					crd, err := watcher.GetCRD(context.TODO(), nil)
 					if err != nil {
 						return err
 					}
-					crd.Status[name] = "failed"
-					if err := watcher.SetState(context.TODO(), &crd); err != nil {
+					crd.Status.Nodes[name] = ClusterConsulNodeStatus{
+						Stage:       InternalCertStatusFailed,
+						LastChanged: time.Now().Format(time.RFC3339),
+					}
+					if err := watcher.SetState(context.TODO(), crd); err != nil {
 						return err
 					}
 					return nil
@@ -267,10 +325,10 @@ func TestUpgrade(t *testing.T) {
 					log.WithError(err).Error("failed to update CRD.")
 				}
 			}
-
 		}
 	}
 
+	// Only newca is specified.
 	modifyca := func() {
 		watcher.SetSecret(context.TODO(), "newca", map[string]string{
 			"cacert":    "newcacert",
@@ -280,21 +338,30 @@ func TestUpgrade(t *testing.T) {
 		})
 		//internalca.ApplyInternalCerts("oldca")
 		watcher.SetState(context.TODO(), &ClusterDataCRD{
-			Spec: map[string]string{
-				"oldca": "oldca",
-				"newca": "newca",
+			Spec: ClusterDataCRDSpec{NewCA: "newca", OldCA: "oldca"},
+			Status: ClusterDataCRDStatus{
+				Nodes:  map[string]ClusterConsulNodeStatus{},
+				Status: map[string]string{},
 			},
+			Revision:   0,
+			NodeNumber: 3,
 		})
 	}
 
-	go consul_node_reconcile("A")
-	go consul_node_reconcile("B")
-	go consul_node_reconcile("C")
 	modifyca()
-	time.Sleep(time.Second * 10)
+	go consul_node_reconcile("NodeA")
+	go consul_node_reconcile("NodeB")
+	go consul_node_reconcile("NodeC")
+	time.Sleep(time.Second * 5)
+
+	crd, err := watcher.GetCRD(context.TODO(), nil)
+
+	assert.Nil(t, err)
+	for _, v := range crd.Status.Nodes {
+		assert.Equal(t, InternalCertStatusNewCAKey, v.Stage)
+	}
 
 	watcher.Exit()
-	t.Log("completed")
 
 	return
 }

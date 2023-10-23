@@ -5,19 +5,57 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
-// nodeid => status + global status
+type ClusterDataCRDSpec struct {
+	OldCA string `json:"oldca"`
+	NewCA string `json:"newca"`
+
+	ExpectedNodeNum int `json:"expected_node_num"`
+}
+
+type ClusterConsulNodeStatus struct {
+	Stage       string
+	LastChanged string
+}
+
+type ClusterDataCRDStatus struct {
+	Nodes  map[string]ClusterConsulNodeStatus
+	Status map[string]string
+}
+
 type ClusterDataCRD struct {
-	Spec     map[string]string
-	Status   map[string]string
-	Revision int
+	Spec       ClusterDataCRDSpec
+	Status     ClusterDataCRDStatus
+	Revision   int
+	NodeNumber int // How many nodes are there in the consul cluster.
+}
+
+func (c *ClusterDataCRD) DeepCopy() *ClusterDataCRD {
+	ret := ClusterDataCRD{
+		Spec: c.Spec,
+		Status: ClusterDataCRDStatus{
+			Nodes:  map[string]ClusterConsulNodeStatus{},
+			Status: map[string]string{},
+		},
+		Revision:   c.Revision,
+		NodeNumber: c.NodeNumber,
+	}
+	for k, v := range c.Status.Nodes {
+		ret.Status.Nodes[k] = v
+	}
+	for k, v := range c.Status.Status {
+		ret.Status.Status[k] = v
+	}
+	return &ret
 }
 
 type CentralDatabaseAccess interface {
 	Init(args map[string]string) error
 	Watch(ctx context.Context, args map[string]string) (ClusterDataCRD, error)
-	GetCRD(ctx context.Context, args map[string]string) (ClusterDataCRD, error)
+	GetCRD(ctx context.Context, args map[string]string) (*ClusterDataCRD, error)
 	SetState(ctx context.Context, crd *ClusterDataCRD) error
 	GetSecret(ctx context.Context, key string) (map[string]string, error)
 	SetSecret(ctx context.Context, key string, data map[string]string) error
@@ -100,8 +138,11 @@ func NewLocalMemoryWatcher() CentralDatabaseAccess {
 
 func NewClusterDataCRD() *ClusterDataCRD {
 	return &ClusterDataCRD{
-		Spec:     map[string]string{},
-		Status:   map[string]string{},
+		Spec: ClusterDataCRDSpec{},
+		Status: ClusterDataCRDStatus{
+			Nodes:  map[string]ClusterConsulNodeStatus{},
+			Status: map[string]string{},
+		},
 		Revision: 0,
 	}
 }
@@ -129,10 +170,10 @@ func (l *LocalMemory) Watch(ctx context.Context, args map[string]string) (Cluste
 	return ret, nil
 }
 
-func (l *LocalMemory) GetCRD(ctx context.Context, args map[string]string) (ClusterDataCRD, error) {
-	var ret ClusterDataCRD
+func (l *LocalMemory) GetCRD(ctx context.Context, args map[string]string) (*ClusterDataCRD, error) {
+	var ret *ClusterDataCRD
 	l.mutex.RLock()
-	ret = *l.crd
+	ret = l.crd.DeepCopy()
 	l.mutex.RUnlock()
 	return ret, nil
 }
@@ -141,11 +182,15 @@ func (l *LocalMemory) SetState(ctx context.Context, crd *ClusterDataCRD) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
-	if l.crd.Revision != *&crd.Revision {
+	if l.crd.Revision != crd.Revision {
 		return errors.New("conflict")
 	}
+	log.WithFields(log.Fields{
+		"revision": l.crd.Revision,
+		"nodes":    l.crd.Status.Nodes,
+	}).Info("setting up state")
+	l.crd = crd.DeepCopy()
 
-	l.crd = crd
 	l.crd.Revision++
 	l.cond.Broadcast()
 
@@ -159,6 +204,9 @@ func (l *LocalMemory) GetSecret(ctx context.Context, key string) (map[string]str
 
 func (l *LocalMemory) SetSecret(ctx context.Context, key string, data map[string]string) error {
 	// Not thread safe.
+	if l.secrets == nil {
+		l.secrets = make(map[string]map[string]string)
+	}
 	l.secrets[key] = data
 	return nil
 }
