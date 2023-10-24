@@ -1,10 +1,9 @@
-package secretcontroller
+package syncutils
 
 import (
 	"context"
-	"fmt"
-	"math"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,8 +11,112 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
+
+// For testing
+type LocalMemorySynchronizedStorage struct {
+	cond    *sync.Cond
+	crd     *ClusterDataCRD
+	mutex   sync.RWMutex
+	exit    bool
+	secrets map[string]map[string]string
+
+	// For testing
+	callback func(string, interface{}) error
+}
+
+func NewLocalMemoryWatcher() SynchronizedStorageAccess {
+	return &LocalMemorySynchronizedStorage{}
+}
+
+func NewClusterDataCRD() *ClusterDataCRD {
+	return &ClusterDataCRD{
+		Spec: ClusterDataCRDSpec{},
+		Status: ClusterDataCRDStatus{
+			Nodes:  map[string]ClusterConsulNodeStatus{},
+			Status: map[string]string{},
+		},
+		Revision: 0,
+	}
+}
+
+func (l *LocalMemorySynchronizedStorage) Init(args map[string]string) error {
+	l.cond = sync.NewCond(&sync.Mutex{})
+	l.crd = NewClusterDataCRD()
+	go func() {
+		for !l.exit {
+			time.Sleep(time.Second * 5)
+			l.cond.Broadcast()
+		}
+	}()
+	return nil
+}
+
+func (l *LocalMemorySynchronizedStorage) Watch(ctx context.Context, args map[string]string) (ClusterDataCRD, error) {
+	var ret ClusterDataCRD
+	l.cond.L.Lock()
+	l.cond.Wait()
+	l.mutex.RLock()
+	ret = *l.crd
+	l.mutex.RUnlock()
+	l.cond.L.Unlock()
+	return ret, nil
+}
+
+func (l *LocalMemorySynchronizedStorage) GetSynchronizedState(ctx context.Context, args map[string]string) (*ClusterDataCRD, error) {
+	var ret *ClusterDataCRD
+	l.mutex.RLock()
+	ret = l.crd.DeepCopy()
+	l.mutex.RUnlock()
+	return ret, nil
+}
+
+func (l *LocalMemorySynchronizedStorage) SetSynchronizedState(ctx context.Context, crd *ClusterDataCRD) error {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	if l.crd.Revision != crd.Revision {
+		return ConflictError
+	}
+	log.WithFields(log.Fields{
+		"revision": l.crd.Revision,
+		"nodes":    l.crd.Status.Nodes,
+	}).Info("setting up state")
+	l.crd = crd.DeepCopy()
+
+	l.crd.Revision++
+	if l.callback != nil {
+		l.callback("NEW_STATE", l)
+	}
+	l.cond.Broadcast()
+
+	return nil
+}
+
+func (l *LocalMemorySynchronizedStorage) GetSecret(ctx context.Context, key string) (map[string]string, error) {
+	// Not thread safe.
+	return l.secrets[key], nil
+}
+
+func (l *LocalMemorySynchronizedStorage) SetSecret(ctx context.Context, key string, data map[string]string) error {
+	// Not thread safe.
+	if l.secrets == nil {
+		l.secrets = make(map[string]map[string]string)
+	}
+	l.secrets[key] = data
+	return nil
+}
+
+func (l *LocalMemorySynchronizedStorage) RegisterCallback(ctx context.Context, callback func(string, interface{}) error) error {
+	l.callback = callback
+	return nil
+}
+
+func (l *LocalMemorySynchronizedStorage) Exit() error {
+	l.exit = true
+	l.cond.Broadcast()
+	return nil
+}
 
 func TestLocalMemoryWatcher(t *testing.T) {
 	watcher := NewLocalMemoryWatcher()
@@ -52,12 +155,6 @@ func TestLocalMemoryWatcher(t *testing.T) {
 	return
 }
 
-type InternalCertProvider interface {
-	// Return cacert, cert, key.
-	GetInternalCerts() (string, string, string, error)
-	ApplyInternalCerts(cacert string, cert string, key string) error
-}
-
 type TestInternalCAProvider struct {
 	cacert string
 	cert   string
@@ -80,75 +177,6 @@ func (i *TestInternalCAProvider) ApplyInternalCerts(cacert string, cert string, 
 
 func NewTestInternalCAProvider() InternalCertProvider {
 	return &TestInternalCAProvider{}
-}
-
-var DefaultBackOff = wait.Backoff{
-	Steps:    10,
-	Duration: 10 * time.Millisecond,
-	Factor:   1.0,
-	Jitter:   0.1,
-}
-
-func RetryOnConflict(backoff wait.Backoff, fn func() error) error {
-	return wait.ExponentialBackoff(backoff, func() (bool, error) {
-		err := fn()
-		if err != nil {
-			log.WithError(err).Debug("failed to handle event")
-			if err == ConflictError {
-				return false, nil
-			} else {
-				return false, err
-			}
-		}
-		return true, nil
-	})
-}
-
-const (
-	InternalCertStatusFailed      = "failed"
-	InternalCertStatusUndefined   = ""
-	InternalCertStatusMergedCA    = "merged-ca"
-	InternalCertStatusMergedCAKey = "merged-ca-new-key"
-	InternalCertStatusNewCAKey    = "new-ca-new-key"
-	InternalCertStatusSuccess     = "success"
-)
-
-var InternalCertMap = map[string]int{
-	InternalCertStatusFailed:      -1, // TODO: need extra handling
-	InternalCertStatusUndefined:   0,
-	InternalCertStatusMergedCA:    1,
-	InternalCertStatusMergedCAKey: 2,
-	InternalCertStatusNewCAKey:    3,
-	InternalCertStatusSuccess:     4,
-}
-
-// TODO: Need more testing.
-func ShouldWaitForOtherNodes(nodeNum int, currentStatus string, nodeStatus map[string]ClusterConsulNodeStatus) (bool, error) {
-	if len(nodeStatus) < nodeNum && currentStatus != InternalCertStatusUndefined {
-		// Some nodes didn't report yet.  Do not move to next stage that soon.
-		return true, nil
-	}
-	if currentStatus == InternalCertStatusSuccess {
-		return true, nil
-	}
-	currentStatusID := InternalCertMap[currentStatus]
-	faster := false
-	for _, v := range nodeStatus {
-		if v.Stage == InternalCertStatusFailed {
-			return false, errors.New("Other node has failed.  This node should not continue.")
-		}
-		nodeStatusID := InternalCertMap[v.Stage]
-		if currentStatusID > nodeStatusID {
-			// This node is faster than others.  Don't have to do anything for now.
-			faster = true
-		}
-		diff := nodeStatusID - currentStatusID
-		if nodeStatusID != 0 && currentStatusID != 0 && math.Abs(float64(diff)) > 1 {
-			// Something is wrong. One node moves too fast.
-			return false, fmt.Errorf("invalid status: current: %v, node: %v, diff: %v", currentStatusID, nodeStatusID, diff)
-		}
-	}
-	return faster, nil
 }
 
 func TestUpgrade(t *testing.T) {

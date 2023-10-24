@@ -1,12 +1,13 @@
-package secretcontroller
+package syncutils
 
 import (
 	"context"
-	"errors"
-	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type ClusterDataCRDSpec struct {
@@ -55,6 +56,28 @@ func (c *ClusterDataCRD) DeepCopy() *ClusterDataCRD {
 
 var ConflictError = errors.New("Data conflict.  Make sure you update revision.")
 
+var DefaultBackOff = wait.Backoff{
+	Steps:    10,
+	Duration: 10 * time.Millisecond,
+	Factor:   1.0,
+	Jitter:   0.1,
+}
+
+func RetryOnConflict(backoff wait.Backoff, fn func() error) error {
+	return wait.ExponentialBackoff(backoff, func() (bool, error) {
+		err := fn()
+		if err != nil {
+			log.WithError(err).Debug("failed to handle event")
+			if err == ConflictError {
+				return false, nil
+			} else {
+				return false, err
+			}
+		}
+		return true, nil
+	})
+}
+
 type SynchronizedStorageAccess interface {
 	// Initialize
 	Init(args map[string]string) error
@@ -80,6 +103,12 @@ type SynchronizedStorageAccess interface {
 	RegisterCallback(ctx context.Context, callback func(string, interface{}) error) error
 
 	Exit() error
+}
+
+type InternalCertProvider interface {
+	// Return cacert, cert, key.
+	GetInternalCerts() (string, string, string, error)
+	ApplyInternalCerts(cacert string, cert string, key string) error
 }
 
 /*
@@ -142,108 +171,3 @@ func (k *KubernetesSecret) Watch(ctx context.Context, args map[string]string, ca
 	return nil
 }
 */
-
-// For testing
-type LocalMemorySynchronizedStorage struct {
-	cond    *sync.Cond
-	crd     *ClusterDataCRD
-	mutex   sync.RWMutex
-	exit    bool
-	secrets map[string]map[string]string
-
-	// For testing
-	callback func(string, interface{}) error
-}
-
-func NewLocalMemoryWatcher() SynchronizedStorageAccess {
-	return &LocalMemorySynchronizedStorage{}
-}
-
-func NewClusterDataCRD() *ClusterDataCRD {
-	return &ClusterDataCRD{
-		Spec: ClusterDataCRDSpec{},
-		Status: ClusterDataCRDStatus{
-			Nodes:  map[string]ClusterConsulNodeStatus{},
-			Status: map[string]string{},
-		},
-		Revision: 0,
-	}
-}
-
-func (l *LocalMemorySynchronizedStorage) Init(args map[string]string) error {
-	l.cond = sync.NewCond(&sync.Mutex{})
-	l.crd = NewClusterDataCRD()
-	go func() {
-		for !l.exit {
-			time.Sleep(time.Second * 5)
-			l.cond.Broadcast()
-		}
-	}()
-	return nil
-}
-
-func (l *LocalMemorySynchronizedStorage) Watch(ctx context.Context, args map[string]string) (ClusterDataCRD, error) {
-	var ret ClusterDataCRD
-	l.cond.L.Lock()
-	l.cond.Wait()
-	l.mutex.RLock()
-	ret = *l.crd
-	l.mutex.RUnlock()
-	l.cond.L.Unlock()
-	return ret, nil
-}
-
-func (l *LocalMemorySynchronizedStorage) GetSynchronizedState(ctx context.Context, args map[string]string) (*ClusterDataCRD, error) {
-	var ret *ClusterDataCRD
-	l.mutex.RLock()
-	ret = l.crd.DeepCopy()
-	l.mutex.RUnlock()
-	return ret, nil
-}
-
-func (l *LocalMemorySynchronizedStorage) SetSynchronizedState(ctx context.Context, crd *ClusterDataCRD) error {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if l.crd.Revision != crd.Revision {
-		return ConflictError
-	}
-	log.WithFields(log.Fields{
-		"revision": l.crd.Revision,
-		"nodes":    l.crd.Status.Nodes,
-	}).Info("setting up state")
-	l.crd = crd.DeepCopy()
-
-	l.crd.Revision++
-	if l.callback != nil {
-		l.callback("NEW_STATE", l)
-	}
-	l.cond.Broadcast()
-
-	return nil
-}
-
-func (l *LocalMemorySynchronizedStorage) GetSecret(ctx context.Context, key string) (map[string]string, error) {
-	// Not thread safe.
-	return l.secrets[key], nil
-}
-
-func (l *LocalMemorySynchronizedStorage) SetSecret(ctx context.Context, key string, data map[string]string) error {
-	// Not thread safe.
-	if l.secrets == nil {
-		l.secrets = make(map[string]map[string]string)
-	}
-	l.secrets[key] = data
-	return nil
-}
-
-func (l *LocalMemorySynchronizedStorage) RegisterCallback(ctx context.Context, callback func(string, interface{}) error) error {
-	l.callback = callback
-	return nil
-}
-
-func (l *LocalMemorySynchronizedStorage) Exit() error {
-	l.exit = true
-	l.cond.Broadcast()
-	return nil
-}
