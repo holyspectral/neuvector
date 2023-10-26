@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -616,6 +618,26 @@ func (cs *ControllerService) ReportK8SResToOPA(ctx context.Context, ops *share.C
 	rest.ReportK8SResToOPA(ops)
 	log.WithFields(log.Fields{"ops": ops}).Debug("ReportK8SResToOPA (gprc-server)")
 	return &share.RPCVoid{}, nil
+}
+
+func (cs *ControllerService) UpdateInternalCerts(ctx context.Context, in *share.CLUSInternalCertInfo) (*share.CLUSBoolean, error) {
+	// 1. Write certificate to file.
+	//fmt.Sprintf("%s%s", , internalCert)
+	ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCACert), []byte(in.CaCert), 0600)
+	ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCert), []byte(in.Cert), 0600)
+	ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCertKey), []byte(in.Key), 0600)
+	// 2. Update consul.json: TODO: race condition during kv access.
+
+	// 3. Run consul reload.
+	if err := cluster.Reload(nil); err != nil {
+		log.WithError(err).Error("failed to reload")
+		return &share.CLUSBoolean{Value: false}, nil
+	}
+
+	// 4. Check if service is alright.
+	// 5. Return success.
+	log.Info("Certificate has been updated.")
+	return &share.CLUSBoolean{Value: true}, nil
 }
 
 func startGRPCServer(port uint16) (*cluster.GRPCServer, uint16) {

@@ -13,12 +13,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const internalCertDir = "/etc/neuvector/certs/internal/"
+const InternalCertDir = "/etc/neuvector/certs/internal/"
+const InternalGRPCCertDir = "/etc/neuvector/certs/internal/grpc/"
 
-const internalCACert string = "ca.cert"
-const internalCert string = "cert.pem"
-const internalCertKey string = "cert.key"
-const internalCertCN string = "NeuVector"
+const InternalGRPCCACert string = "ca.cert"
+const InternalGRPCCert string = "cert.pem"
+const InternalGRPCCertKey string = "key.pem"
+
+const InternalCACert string = "ca.cert"
+const InternalCert string = "cert.pem"
+const InternalCertKey string = "cert.key"
+const InternalCertCN string = "NeuVector"
 
 // --
 
@@ -440,6 +445,10 @@ type ClusterDriver interface {
 }
 
 var driver ClusterDriver = &consul
+
+func Reload(cc *ClusterConfig) error {
+	return driver.Reload(nil)
+}
 
 func NewLock(key string, wait time.Duration) (LockInterface, error) {
 	return driver.NewLock(key, wait)

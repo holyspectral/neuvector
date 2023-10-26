@@ -49,7 +49,7 @@ type GRPCServer struct {
 
 func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 	// CA cert
-	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
+	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", InternalGRPCCertDir, InternalGRPCCACert))
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +58,8 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 
 	// public/private keys
 	cert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s%s", internalCertDir, internalCert),
-		fmt.Sprintf("%s%s", internalCertDir, internalCertKey))
+		fmt.Sprintf("%s%s", InternalGRPCCertDir, InternalGRPCCert),
+		fmt.Sprintf("%s%s", InternalGRPCCertDir, InternalGRPCCertKey))
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
 	// CA cert
-	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
+	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", InternalGRPCCertDir, InternalGRPCCACert))
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +203,8 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 
 	// public/private keys
 	cert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s%s", internalCertDir, internalCert),
-		fmt.Sprintf("%s%s", internalCertDir, internalCertKey))
+		fmt.Sprintf("%s%s", InternalGRPCCertDir, InternalGRPCCert),
+		fmt.Sprintf("%s%s", InternalGRPCCertDir, InternalGRPCCertKey))
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 		}
 
 		if subjectCN == "" {
-			subjectCN = internalCertCN
+			subjectCN = InternalCertCN
 		}
 
 		log.WithFields(log.Fields{"cn": subjectCN}).Info("Expected server name")

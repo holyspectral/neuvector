@@ -243,6 +243,12 @@ message CLUSKubernetesResInfo {
     string Data = 2;			
 }
 
+message CLUSInternalCertInfo {
+    string CaCert = 1;
+    string Cert = 2;
+    string Key = 3;
+}
+
 service ControllerCtrlService {
   rpc ReqSync(CLUSSyncRequest) returns (CLUSSyncReply);
   rpc ReqSyncStream(CLUSSyncRequest) returns (stream CLUSSyncReply);
@@ -260,4 +266,5 @@ service ControllerCtrlService {
   rpc GetStats(RPCVoid) returns (CLUSStats);
   rpc ResetLoginTokenTimer(share.CLUSLoginTokenInfo) returns (RPCVoid);
   rpc ReportK8sResToOPA(share.CLUSKubernetesResInfo) returns (RPCVoid);
+  rpc UpdateInternalCerts(share.CLUSInternalCertInfo) returns (CLUSBoolean);
 }
