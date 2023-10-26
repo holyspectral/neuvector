@@ -57,7 +57,21 @@ func ShouldWaitForOtherNodes(nodeNum int, currentStatus string, nodeStatus map[s
 	return faster, nil
 }
 
-func UpgradeInternalCerts(name string, ss SynchronizedStorageAccess, certProvider InternalCertProvider) {
+// NOTE: To deal with restart and after failure?
+//
+//	The point is that we don't know how many nodes will be there.  Race condition?
+//	The one triggered the flow should specify "how many nodes are expected".
+//	TODO: What if the number is changed?
+//	      If #node decreases, it should time out.
+//	      If #node increases, it should detect that and fail the migration.
+//
+// TODO: Figure out what would happen when consul nodes++ without changing node number in command line argument.
+// TODO: This function should revert to the original state if it returns error.
+// TODO: The old cert should be managed by another logic.
+// You can't call this function in parallel.
+func MonitorInternalCertUpdate(name string, ss SynchronizedStorageAccess, certProvider InternalCertProvider) error {
+	var oldcacert, oldcert, oldkey string
+
 	// TODO: When joining, we have to register myself as one node inside CRD.
 	// Use case: New node joining when doing certificate update.
 	// Those nodes will detect one of nodes is in a wrong state should fail the flow.
@@ -75,7 +89,6 @@ func UpgradeInternalCerts(name string, ss SynchronizedStorageAccess, certProvide
 			continue
 		}
 
-		var oldcacert, oldcert, oldkey string
 		var newcacert, newcert, newkey string
 		//var oldchecksum, newchecksum string
 
