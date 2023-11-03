@@ -481,6 +481,7 @@ func (as *ControllerAgentService) ReportConnections(ctx context.Context, rarray 
 const ctrlSyncChunkSize int = 2 * 1024 * 1024
 
 type ControllerService struct {
+	certInfo *share.CLUSInternalCertInfo
 }
 
 func (cs *ControllerService) IsCompressed(ctx context.Context, v *share.RPCVoid) (*share.CLUSBoolean, error) {
@@ -618,6 +619,43 @@ func (cs *ControllerService) ReportK8SResToOPA(ctx context.Context, ops *share.C
 	return &share.RPCVoid{}, nil
 }
 
+<<<<<<< Updated upstream
+=======
+func (cs *ControllerService) UpdateInternalCerts(ctx context.Context, in *share.CLUSInternalCertInfo) (*share.CLUSBoolean, error) {
+	// 1. Write certificate to file.
+	//fmt.Sprintf("%s%s", , internalCert)
+	ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCACert), []byte(in.CaCert), 0600)
+	ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCert), []byte(in.Cert), 0600)
+	ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCertKey), []byte(in.Key), 0600)
+	// 2. Update consul.json: TODO: race condition during kv access.
+
+	// 3. Run consul reload.
+	if err := cluster.Reload(nil); err != nil {
+		log.WithError(err).Error("failed to reload")
+		return &share.CLUSBoolean{Value: false}, nil
+	}
+
+	// 4. Check if service is alright.
+	// 5. Return success.
+	log.Info("Certificate has been updated.")
+	cs.certInfo = &share.CLUSInternalCertInfo{
+		CaCert: in.CaCert,
+		Cert:   in.Cert,
+		Key:    in.Key,
+	}
+	return &share.CLUSBoolean{Value: true}, nil
+}
+
+// TODO: race condition
+func (cs *ControllerService) GetInternalCerts(ctx context.Context, in *share.RPCVoid) (*share.CLUSInternalCertInfo, error) {
+	if cs.certInfo != nil {
+		return cs.certInfo, nil
+	} else {
+		return nil, nil
+	}
+}
+
+>>>>>>> Stashed changes
 func startGRPCServer(port uint16) (*cluster.GRPCServer, uint16) {
 	var grpc *cluster.GRPCServer
 	var err error

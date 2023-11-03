@@ -36,7 +36,13 @@ var ReportRespAction_value = map[string]int32{
 func (x ReportRespAction) String() string {
 	return proto.EnumName(ReportRespAction_name, int32(x))
 }
+<<<<<<< Updated upstream
 func (ReportRespAction) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+=======
+func (ReportRespAction) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{0}
+}
+>>>>>>> Stashed changes
 
 type StoreWatcherAction int32
 
@@ -57,7 +63,13 @@ var StoreWatcherAction_value = map[string]int32{
 func (x StoreWatcherAction) String() string {
 	return proto.EnumName(StoreWatcherAction_name, int32(x))
 }
+<<<<<<< Updated upstream
 func (StoreWatcherAction) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+=======
+func (StoreWatcherAction) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{1}
+}
+>>>>>>> Stashed changes
 
 type KickLoginSessionsType int32
 
@@ -81,7 +93,13 @@ var KickLoginSessionsType_value = map[string]int32{
 func (x KickLoginSessionsType) String() string {
 	return proto.EnumName(KickLoginSessionsType_name, int32(x))
 }
+<<<<<<< Updated upstream
 func (KickLoginSessionsType) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+=======
+func (KickLoginSessionsType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{2}
+}
+>>>>>>> Stashed changes
 
 type AdapterScanImageRequest struct {
 	Registry       string `protobuf:"bytes,1,opt,name=Registry" json:"Registry,omitempty"`
@@ -92,10 +110,36 @@ type AdapterScanImageRequest struct {
 	AdapterVersion string `protobuf:"bytes,6,opt,name=AdapterVersion" json:"AdapterVersion,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *AdapterScanImageRequest) Reset()                    { *m = AdapterScanImageRequest{} }
 func (m *AdapterScanImageRequest) String() string            { return proto.CompactTextString(m) }
 func (*AdapterScanImageRequest) ProtoMessage()               {}
 func (*AdapterScanImageRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+=======
+func (m *AdapterScanImageRequest) Reset()         { *m = AdapterScanImageRequest{} }
+func (m *AdapterScanImageRequest) String() string { return proto.CompactTextString(m) }
+func (*AdapterScanImageRequest) ProtoMessage()    {}
+func (*AdapterScanImageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{0}
+}
+func (m *AdapterScanImageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AdapterScanImageRequest.Unmarshal(m, b)
+}
+func (m *AdapterScanImageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AdapterScanImageRequest.Marshal(b, m, deterministic)
+}
+func (dst *AdapterScanImageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AdapterScanImageRequest.Merge(dst, src)
+}
+func (m *AdapterScanImageRequest) XXX_Size() int {
+	return xxx_messageInfo_AdapterScanImageRequest.Size(m)
+}
+func (m *AdapterScanImageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AdapterScanImageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AdapterScanImageRequest proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *AdapterScanImageRequest) GetRegistry() string {
 	if m != nil {
@@ -140,11 +184,44 @@ func (m *AdapterScanImageRequest) GetAdapterVersion() string {
 }
 
 type GetScannersResponse struct {
+<<<<<<< Updated upstream
 	Scanners       uint32 `protobuf:"varint,1,opt,name=Scanners" json:"Scanners,omitempty"`
 	MaxScanners    uint32 `protobuf:"varint,2,opt,name=MaxScanners" json:"MaxScanners,omitempty"`
 	IdleScanners   uint32 `protobuf:"varint,3,opt,name=IdleScanners" json:"IdleScanners,omitempty"`
 	ScannerVersion string `protobuf:"bytes,4,opt,name=ScannerVersion" json:"ScannerVersion,omitempty"`
 	ScannerDBTime  string `protobuf:"bytes,5,opt,name=ScannerDBTime" json:"ScannerDBTime,omitempty"`
+=======
+	Scanners             uint32   `protobuf:"varint,1,opt,name=Scanners,proto3" json:"Scanners,omitempty"`
+	MaxScanners          uint32   `protobuf:"varint,2,opt,name=MaxScanners,proto3" json:"MaxScanners,omitempty"`
+	IdleScanners         uint32   `protobuf:"varint,3,opt,name=IdleScanners,proto3" json:"IdleScanners,omitempty"`
+	ScannerVersion       string   `protobuf:"bytes,4,opt,name=ScannerVersion,proto3" json:"ScannerVersion,omitempty"`
+	ScannerDBTime        string   `protobuf:"bytes,5,opt,name=ScannerDBTime,proto3" json:"ScannerDBTime,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetScannersResponse) Reset()         { *m = GetScannersResponse{} }
+func (m *GetScannersResponse) String() string { return proto.CompactTextString(m) }
+func (*GetScannersResponse) ProtoMessage()    {}
+func (*GetScannersResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{1}
+}
+func (m *GetScannersResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetScannersResponse.Unmarshal(m, b)
+}
+func (m *GetScannersResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetScannersResponse.Marshal(b, m, deterministic)
+}
+func (dst *GetScannersResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetScannersResponse.Merge(dst, src)
+}
+func (m *GetScannersResponse) XXX_Size() int {
+	return xxx_messageInfo_GetScannersResponse.Size(m)
+}
+func (m *GetScannersResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetScannersResponse.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *GetScannersResponse) Reset()                    { *m = GetScannersResponse{} }
@@ -196,10 +273,36 @@ type ScannerRegisterData struct {
 	ID              string                        `protobuf:"bytes,6,opt,name=ID" json:"ID,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *ScannerRegisterData) Reset()                    { *m = ScannerRegisterData{} }
 func (m *ScannerRegisterData) String() string            { return proto.CompactTextString(m) }
 func (*ScannerRegisterData) ProtoMessage()               {}
 func (*ScannerRegisterData) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+=======
+func (m *ScannerRegisterData) Reset()         { *m = ScannerRegisterData{} }
+func (m *ScannerRegisterData) String() string { return proto.CompactTextString(m) }
+func (*ScannerRegisterData) ProtoMessage()    {}
+func (*ScannerRegisterData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{2}
+}
+func (m *ScannerRegisterData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScannerRegisterData.Unmarshal(m, b)
+}
+func (m *ScannerRegisterData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScannerRegisterData.Marshal(b, m, deterministic)
+}
+func (dst *ScannerRegisterData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScannerRegisterData.Merge(dst, src)
+}
+func (m *ScannerRegisterData) XXX_Size() int {
+	return xxx_messageInfo_ScannerRegisterData.Size(m)
+}
+func (m *ScannerRegisterData) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScannerRegisterData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScannerRegisterData proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *ScannerRegisterData) GetCVEDBVersion() string {
 	if m != nil {
@@ -247,10 +350,36 @@ type ScannerDeregisterData struct {
 	ID string `protobuf:"bytes,1,opt,name=ID" json:"ID,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *ScannerDeregisterData) Reset()                    { *m = ScannerDeregisterData{} }
 func (m *ScannerDeregisterData) String() string            { return proto.CompactTextString(m) }
 func (*ScannerDeregisterData) ProtoMessage()               {}
 func (*ScannerDeregisterData) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+=======
+func (m *ScannerDeregisterData) Reset()         { *m = ScannerDeregisterData{} }
+func (m *ScannerDeregisterData) String() string { return proto.CompactTextString(m) }
+func (*ScannerDeregisterData) ProtoMessage()    {}
+func (*ScannerDeregisterData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{3}
+}
+func (m *ScannerDeregisterData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScannerDeregisterData.Unmarshal(m, b)
+}
+func (m *ScannerDeregisterData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScannerDeregisterData.Marshal(b, m, deterministic)
+}
+func (dst *ScannerDeregisterData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScannerDeregisterData.Merge(dst, src)
+}
+func (m *ScannerDeregisterData) XXX_Size() int {
+	return xxx_messageInfo_ScannerDeregisterData.Size(m)
+}
+func (m *ScannerDeregisterData) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScannerDeregisterData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScannerDeregisterData proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *ScannerDeregisterData) GetID() string {
 	if m != nil {
@@ -265,10 +394,36 @@ type CLUSFilePacket struct {
 	Len  uint32 `protobuf:"varint,3,opt,name=Len" json:"Len,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSFilePacket) Reset()                    { *m = CLUSFilePacket{} }
 func (m *CLUSFilePacket) String() string            { return proto.CompactTextString(m) }
 func (*CLUSFilePacket) ProtoMessage()               {}
 func (*CLUSFilePacket) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+=======
+func (m *CLUSFilePacket) Reset()         { *m = CLUSFilePacket{} }
+func (m *CLUSFilePacket) String() string { return proto.CompactTextString(m) }
+func (*CLUSFilePacket) ProtoMessage()    {}
+func (*CLUSFilePacket) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{4}
+}
+func (m *CLUSFilePacket) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSFilePacket.Unmarshal(m, b)
+}
+func (m *CLUSFilePacket) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSFilePacket.Marshal(b, m, deterministic)
+}
+func (dst *CLUSFilePacket) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSFilePacket.Merge(dst, src)
+}
+func (m *CLUSFilePacket) XXX_Size() int {
+	return xxx_messageInfo_CLUSFilePacket.Size(m)
+}
+func (m *CLUSFilePacket) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSFilePacket.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSFilePacket proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSFilePacket) GetData() []byte {
 	if m != nil {
@@ -298,10 +453,36 @@ type CLUSAdmissionRequest struct {
 	HostMemory int64  `protobuf:"varint,4,opt,name=HostMemory" json:"HostMemory,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSAdmissionRequest) Reset()                    { *m = CLUSAdmissionRequest{} }
 func (m *CLUSAdmissionRequest) String() string            { return proto.CompactTextString(m) }
 func (*CLUSAdmissionRequest) ProtoMessage()               {}
 func (*CLUSAdmissionRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+=======
+func (m *CLUSAdmissionRequest) Reset()         { *m = CLUSAdmissionRequest{} }
+func (m *CLUSAdmissionRequest) String() string { return proto.CompactTextString(m) }
+func (*CLUSAdmissionRequest) ProtoMessage()    {}
+func (*CLUSAdmissionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{5}
+}
+func (m *CLUSAdmissionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSAdmissionRequest.Unmarshal(m, b)
+}
+func (m *CLUSAdmissionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSAdmissionRequest.Marshal(b, m, deterministic)
+}
+func (dst *CLUSAdmissionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSAdmissionRequest.Merge(dst, src)
+}
+func (m *CLUSAdmissionRequest) XXX_Size() int {
+	return xxx_messageInfo_CLUSAdmissionRequest.Size(m)
+}
+func (m *CLUSAdmissionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSAdmissionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSAdmissionRequest proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSAdmissionRequest) GetID() string {
 	if m != nil {
@@ -332,8 +513,38 @@ func (m *CLUSAdmissionRequest) GetHostMemory() int64 {
 }
 
 type CLUSAdmissionResponse struct {
+<<<<<<< Updated upstream
 	Allowed bool   `protobuf:"varint,1,opt,name=Allowed" json:"Allowed,omitempty"`
 	Reason  string `protobuf:"bytes,2,opt,name=Reason" json:"Reason,omitempty"`
+=======
+	Allowed              bool     `protobuf:"varint,1,opt,name=Allowed,proto3" json:"Allowed,omitempty"`
+	Reason               string   `protobuf:"bytes,2,opt,name=Reason,proto3" json:"Reason,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSAdmissionResponse) Reset()         { *m = CLUSAdmissionResponse{} }
+func (m *CLUSAdmissionResponse) String() string { return proto.CompactTextString(m) }
+func (*CLUSAdmissionResponse) ProtoMessage()    {}
+func (*CLUSAdmissionResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{6}
+}
+func (m *CLUSAdmissionResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSAdmissionResponse.Unmarshal(m, b)
+}
+func (m *CLUSAdmissionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSAdmissionResponse.Marshal(b, m, deterministic)
+}
+func (dst *CLUSAdmissionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSAdmissionResponse.Merge(dst, src)
+}
+func (m *CLUSAdmissionResponse) XXX_Size() int {
+	return xxx_messageInfo_CLUSAdmissionResponse.Size(m)
+}
+func (m *CLUSAdmissionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSAdmissionResponse.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSAdmissionResponse) Reset()                    { *m = CLUSAdmissionResponse{} }
@@ -356,6 +567,7 @@ func (m *CLUSAdmissionResponse) GetReason() string {
 }
 
 type CLUSProcProfileReq struct {
+<<<<<<< Updated upstream
 	GroupName string `protobuf:"bytes,1,opt,name=GroupName" json:"GroupName,omitempty"`
 	Name      string `protobuf:"bytes,2,opt,name=Name" json:"Name,omitempty"`
 	Path      string `protobuf:"bytes,3,opt,name=Path" json:"Path,omitempty"`
@@ -363,6 +575,40 @@ type CLUSProcProfileReq struct {
 	Uid       int32  `protobuf:"varint,5,opt,name=Uid" json:"Uid,omitempty"`
 	Hash      []byte `protobuf:"bytes,6,opt,name=Hash,proto3" json:"Hash,omitempty"`
 	Action    string `protobuf:"bytes,7,opt,name=Action" json:"Action,omitempty"`
+=======
+	GroupName            string   `protobuf:"bytes,1,opt,name=GroupName,proto3" json:"GroupName,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=Name,proto3" json:"Name,omitempty"`
+	Path                 string   `protobuf:"bytes,3,opt,name=Path,proto3" json:"Path,omitempty"`
+	User                 string   `protobuf:"bytes,4,opt,name=User,proto3" json:"User,omitempty"`
+	Uid                  int32    `protobuf:"varint,5,opt,name=Uid,proto3" json:"Uid,omitempty"`
+	Hash                 []byte   `protobuf:"bytes,6,opt,name=Hash,proto3" json:"Hash,omitempty"`
+	Action               string   `protobuf:"bytes,7,opt,name=Action,proto3" json:"Action,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSProcProfileReq) Reset()         { *m = CLUSProcProfileReq{} }
+func (m *CLUSProcProfileReq) String() string { return proto.CompactTextString(m) }
+func (*CLUSProcProfileReq) ProtoMessage()    {}
+func (*CLUSProcProfileReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{7}
+}
+func (m *CLUSProcProfileReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSProcProfileReq.Unmarshal(m, b)
+}
+func (m *CLUSProcProfileReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSProcProfileReq.Marshal(b, m, deterministic)
+}
+func (dst *CLUSProcProfileReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSProcProfileReq.Merge(dst, src)
+}
+func (m *CLUSProcProfileReq) XXX_Size() int {
+	return xxx_messageInfo_CLUSProcProfileReq.Size(m)
+}
+func (m *CLUSProcProfileReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSProcProfileReq.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSProcProfileReq) Reset()                    { *m = CLUSProcProfileReq{} }
@@ -423,10 +669,36 @@ type CLUSProcProfileArray struct {
 	Processes []*CLUSProcProfileReq `protobuf:"bytes,1,rep,name=Processes" json:"Processes,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSProcProfileArray) Reset()                    { *m = CLUSProcProfileArray{} }
 func (m *CLUSProcProfileArray) String() string            { return proto.CompactTextString(m) }
 func (*CLUSProcProfileArray) ProtoMessage()               {}
 func (*CLUSProcProfileArray) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
+=======
+func (m *CLUSProcProfileArray) Reset()         { *m = CLUSProcProfileArray{} }
+func (m *CLUSProcProfileArray) String() string { return proto.CompactTextString(m) }
+func (*CLUSProcProfileArray) ProtoMessage()    {}
+func (*CLUSProcProfileArray) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{8}
+}
+func (m *CLUSProcProfileArray) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSProcProfileArray.Unmarshal(m, b)
+}
+func (m *CLUSProcProfileArray) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSProcProfileArray.Marshal(b, m, deterministic)
+}
+func (dst *CLUSProcProfileArray) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSProcProfileArray.Merge(dst, src)
+}
+func (m *CLUSProcProfileArray) XXX_Size() int {
+	return xxx_messageInfo_CLUSProcProfileArray.Size(m)
+}
+func (m *CLUSProcProfileArray) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSProcProfileArray.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSProcProfileArray proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSProcProfileArray) GetProcesses() []*CLUSProcProfileReq {
 	if m != nil {
@@ -436,9 +708,40 @@ func (m *CLUSProcProfileArray) GetProcesses() []*CLUSProcProfileReq {
 }
 
 type CLUSFileAccessRuleReq struct {
+<<<<<<< Updated upstream
 	GroupName string `protobuf:"bytes,1,opt,name=GroupName" json:"GroupName,omitempty"`
 	Filter    string `protobuf:"bytes,2,opt,name=Filter" json:"Filter,omitempty"`
 	Path      string `protobuf:"bytes,3,opt,name=Path" json:"Path,omitempty"`
+=======
+	GroupName            string   `protobuf:"bytes,1,opt,name=GroupName,proto3" json:"GroupName,omitempty"`
+	Filter               string   `protobuf:"bytes,2,opt,name=Filter,proto3" json:"Filter,omitempty"`
+	Path                 string   `protobuf:"bytes,3,opt,name=Path,proto3" json:"Path,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSFileAccessRuleReq) Reset()         { *m = CLUSFileAccessRuleReq{} }
+func (m *CLUSFileAccessRuleReq) String() string { return proto.CompactTextString(m) }
+func (*CLUSFileAccessRuleReq) ProtoMessage()    {}
+func (*CLUSFileAccessRuleReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{9}
+}
+func (m *CLUSFileAccessRuleReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSFileAccessRuleReq.Unmarshal(m, b)
+}
+func (m *CLUSFileAccessRuleReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSFileAccessRuleReq.Marshal(b, m, deterministic)
+}
+func (dst *CLUSFileAccessRuleReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSFileAccessRuleReq.Merge(dst, src)
+}
+func (m *CLUSFileAccessRuleReq) XXX_Size() int {
+	return xxx_messageInfo_CLUSFileAccessRuleReq.Size(m)
+}
+func (m *CLUSFileAccessRuleReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSFileAccessRuleReq.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSFileAccessRuleReq) Reset()                    { *m = CLUSFileAccessRuleReq{} }
@@ -468,7 +771,36 @@ func (m *CLUSFileAccessRuleReq) GetPath() string {
 }
 
 type CLUSFileAccessRuleArray struct {
+<<<<<<< Updated upstream
 	Rules []*CLUSFileAccessRuleReq `protobuf:"bytes,1,rep,name=Rules" json:"Rules,omitempty"`
+=======
+	Rules                []*CLUSFileAccessRuleReq `protobuf:"bytes,1,rep,name=Rules,proto3" json:"Rules,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
+}
+
+func (m *CLUSFileAccessRuleArray) Reset()         { *m = CLUSFileAccessRuleArray{} }
+func (m *CLUSFileAccessRuleArray) String() string { return proto.CompactTextString(m) }
+func (*CLUSFileAccessRuleArray) ProtoMessage()    {}
+func (*CLUSFileAccessRuleArray) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{10}
+}
+func (m *CLUSFileAccessRuleArray) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSFileAccessRuleArray.Unmarshal(m, b)
+}
+func (m *CLUSFileAccessRuleArray) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSFileAccessRuleArray.Marshal(b, m, deterministic)
+}
+func (dst *CLUSFileAccessRuleArray) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSFileAccessRuleArray.Merge(dst, src)
+}
+func (m *CLUSFileAccessRuleArray) XXX_Size() int {
+	return xxx_messageInfo_CLUSFileAccessRuleArray.Size(m)
+}
+func (m *CLUSFileAccessRuleArray) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSFileAccessRuleArray.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSFileAccessRuleArray) Reset()                    { *m = CLUSFileAccessRuleArray{} }
@@ -484,6 +816,7 @@ func (m *CLUSFileAccessRuleArray) GetRules() []*CLUSFileAccessRuleReq {
 }
 
 type CLUSConnection struct {
+<<<<<<< Updated upstream
 	AgentID      string `protobuf:"bytes,1,opt,name=AgentID" json:"AgentID,omitempty"`
 	HostID       string `protobuf:"bytes,2,opt,name=HostID" json:"HostID,omitempty"`
 	ClientWL     string `protobuf:"bytes,3,opt,name=ClientWL" json:"ClientWL,omitempty"`
@@ -523,6 +856,69 @@ func (m *CLUSConnection) Reset()                    { *m = CLUSConnection{} }
 func (m *CLUSConnection) String() string            { return proto.CompactTextString(m) }
 func (*CLUSConnection) ProtoMessage()               {}
 func (*CLUSConnection) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{11} }
+=======
+	AgentID              string   `protobuf:"bytes,1,opt,name=AgentID,proto3" json:"AgentID,omitempty"`
+	HostID               string   `protobuf:"bytes,2,opt,name=HostID,proto3" json:"HostID,omitempty"`
+	ClientWL             string   `protobuf:"bytes,3,opt,name=ClientWL,proto3" json:"ClientWL,omitempty"`
+	ServerWL             string   `protobuf:"bytes,4,opt,name=ServerWL,proto3" json:"ServerWL,omitempty"`
+	ClientIP             []byte   `protobuf:"bytes,5,opt,name=ClientIP,proto3" json:"ClientIP,omitempty"`
+	ServerIP             []byte   `protobuf:"bytes,6,opt,name=ServerIP,proto3" json:"ServerIP,omitempty"`
+	Scope                string   `protobuf:"bytes,7,opt,name=Scope,proto3" json:"Scope,omitempty"`
+	Network              string   `protobuf:"bytes,8,opt,name=Network,proto3" json:"Network,omitempty"`
+	ClientPort           uint32   `protobuf:"varint,9,opt,name=ClientPort,proto3" json:"ClientPort,omitempty"`
+	ServerPort           uint32   `protobuf:"varint,10,opt,name=ServerPort,proto3" json:"ServerPort,omitempty"`
+	IPProto              uint32   `protobuf:"varint,11,opt,name=IPProto,proto3" json:"IPProto,omitempty"`
+	Application          uint32   `protobuf:"varint,12,opt,name=Application,proto3" json:"Application,omitempty"`
+	Bytes                uint64   `protobuf:"varint,13,opt,name=Bytes,proto3" json:"Bytes,omitempty"`
+	Sessions             uint32   `protobuf:"varint,14,opt,name=Sessions,proto3" json:"Sessions,omitempty"`
+	FirstSeenAt          uint32   `protobuf:"varint,15,opt,name=FirstSeenAt,proto3" json:"FirstSeenAt,omitempty"`
+	LastSeenAt           uint32   `protobuf:"varint,16,opt,name=LastSeenAt,proto3" json:"LastSeenAt,omitempty"`
+	ThreatID             uint32   `protobuf:"varint,17,opt,name=ThreatID,proto3" json:"ThreatID,omitempty"`
+	Severity             uint32   `protobuf:"varint,18,opt,name=Severity,proto3" json:"Severity,omitempty"`
+	PolicyAction         uint32   `protobuf:"varint,19,opt,name=PolicyAction,proto3" json:"PolicyAction,omitempty"`
+	Ingress              bool     `protobuf:"varint,20,opt,name=Ingress,proto3" json:"Ingress,omitempty"`
+	ExternalPeer         bool     `protobuf:"varint,21,opt,name=ExternalPeer,proto3" json:"ExternalPeer,omitempty"`
+	LocalPeer            bool     `protobuf:"varint,22,opt,name=LocalPeer,proto3" json:"LocalPeer,omitempty"`
+	PolicyId             uint32   `protobuf:"varint,23,opt,name=PolicyId,proto3" json:"PolicyId,omitempty"`
+	Violates             uint32   `protobuf:"varint,24,opt,name=Violates,proto3" json:"Violates,omitempty"`
+	LogUID               string   `protobuf:"bytes,25,opt,name=LogUID,proto3" json:"LogUID,omitempty"`
+	Xff                  bool     `protobuf:"varint,26,opt,name=Xff,proto3" json:"Xff,omitempty"`
+	SvcExtIP             bool     `protobuf:"varint,27,opt,name=SvcExtIP,proto3" json:"SvcExtIP,omitempty"`
+	ToSidecar            bool     `protobuf:"varint,28,opt,name=ToSidecar,proto3" json:"ToSidecar,omitempty"`
+	MeshToSvr            bool     `protobuf:"varint,29,opt,name=MeshToSvr,proto3" json:"MeshToSvr,omitempty"`
+	LinkLocal            bool     `protobuf:"varint,30,opt,name=LinkLocal,proto3" json:"LinkLocal,omitempty"`
+	TmpOpen              bool     `protobuf:"varint,31,opt,name=TmpOpen,proto3" json:"TmpOpen,omitempty"`
+	UwlIp                bool     `protobuf:"varint,32,opt,name=UwlIp,proto3" json:"UwlIp,omitempty"`
+	FQDN                 string   `protobuf:"bytes,33,opt,name=FQDN,proto3" json:"FQDN,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSConnection) Reset()         { *m = CLUSConnection{} }
+func (m *CLUSConnection) String() string { return proto.CompactTextString(m) }
+func (*CLUSConnection) ProtoMessage()    {}
+func (*CLUSConnection) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{11}
+}
+func (m *CLUSConnection) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSConnection.Unmarshal(m, b)
+}
+func (m *CLUSConnection) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSConnection.Marshal(b, m, deterministic)
+}
+func (dst *CLUSConnection) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSConnection.Merge(dst, src)
+}
+func (m *CLUSConnection) XXX_Size() int {
+	return xxx_messageInfo_CLUSConnection.Size(m)
+}
+func (m *CLUSConnection) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSConnection.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSConnection proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSConnection) GetAgentID() string {
 	if m != nil {
@@ -756,7 +1152,36 @@ func (m *CLUSConnection) GetFQDN() string {
 }
 
 type CLUSConnectionArray struct {
+<<<<<<< Updated upstream
 	Connections []*CLUSConnection `protobuf:"bytes,1,rep,name=Connections" json:"Connections,omitempty"`
+=======
+	Connections          []*CLUSConnection `protobuf:"bytes,1,rep,name=Connections,proto3" json:"Connections,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *CLUSConnectionArray) Reset()         { *m = CLUSConnectionArray{} }
+func (m *CLUSConnectionArray) String() string { return proto.CompactTextString(m) }
+func (*CLUSConnectionArray) ProtoMessage()    {}
+func (*CLUSConnectionArray) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{12}
+}
+func (m *CLUSConnectionArray) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSConnectionArray.Unmarshal(m, b)
+}
+func (m *CLUSConnectionArray) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSConnectionArray.Marshal(b, m, deterministic)
+}
+func (dst *CLUSConnectionArray) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSConnectionArray.Merge(dst, src)
+}
+func (m *CLUSConnectionArray) XXX_Size() int {
+	return xxx_messageInfo_CLUSConnectionArray.Size(m)
+}
+func (m *CLUSConnectionArray) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSConnectionArray.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSConnectionArray) Reset()                    { *m = CLUSConnectionArray{} }
@@ -776,10 +1201,36 @@ type CLUSReportResponse struct {
 	ReportInterval uint32           `protobuf:"varint,2,opt,name=ReportInterval" json:"ReportInterval,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSReportResponse) Reset()                    { *m = CLUSReportResponse{} }
 func (m *CLUSReportResponse) String() string            { return proto.CompactTextString(m) }
 func (*CLUSReportResponse) ProtoMessage()               {}
 func (*CLUSReportResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{13} }
+=======
+func (m *CLUSReportResponse) Reset()         { *m = CLUSReportResponse{} }
+func (m *CLUSReportResponse) String() string { return proto.CompactTextString(m) }
+func (*CLUSReportResponse) ProtoMessage()    {}
+func (*CLUSReportResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{13}
+}
+func (m *CLUSReportResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSReportResponse.Unmarshal(m, b)
+}
+func (m *CLUSReportResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSReportResponse.Marshal(b, m, deterministic)
+}
+func (dst *CLUSReportResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSReportResponse.Merge(dst, src)
+}
+func (m *CLUSReportResponse) XXX_Size() int {
+	return xxx_messageInfo_CLUSReportResponse.Size(m)
+}
+func (m *CLUSReportResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSReportResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSReportResponse proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSReportResponse) GetAction() ReportRespAction {
 	if m != nil {
@@ -800,10 +1251,36 @@ type CLUSSyncRequest struct {
 	From     string `protobuf:"bytes,2,opt,name=From" json:"From,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSSyncRequest) Reset()                    { *m = CLUSSyncRequest{} }
 func (m *CLUSSyncRequest) String() string            { return proto.CompactTextString(m) }
 func (*CLUSSyncRequest) ProtoMessage()               {}
 func (*CLUSSyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{14} }
+=======
+func (m *CLUSSyncRequest) Reset()         { *m = CLUSSyncRequest{} }
+func (m *CLUSSyncRequest) String() string { return proto.CompactTextString(m) }
+func (*CLUSSyncRequest) ProtoMessage()    {}
+func (*CLUSSyncRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{14}
+}
+func (m *CLUSSyncRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSSyncRequest.Unmarshal(m, b)
+}
+func (m *CLUSSyncRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSSyncRequest.Marshal(b, m, deterministic)
+}
+func (dst *CLUSSyncRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSSyncRequest.Merge(dst, src)
+}
+func (m *CLUSSyncRequest) XXX_Size() int {
+	return xxx_messageInfo_CLUSSyncRequest.Size(m)
+}
+func (m *CLUSSyncRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSSyncRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSSyncRequest proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSSyncRequest) GetCategory() string {
 	if m != nil {
@@ -824,10 +1301,36 @@ type CLUSSyncReply struct {
 	Data     []byte `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSSyncReply) Reset()                    { *m = CLUSSyncReply{} }
 func (m *CLUSSyncReply) String() string            { return proto.CompactTextString(m) }
 func (*CLUSSyncReply) ProtoMessage()               {}
 func (*CLUSSyncReply) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{15} }
+=======
+func (m *CLUSSyncReply) Reset()         { *m = CLUSSyncReply{} }
+func (m *CLUSSyncReply) String() string { return proto.CompactTextString(m) }
+func (*CLUSSyncReply) ProtoMessage()    {}
+func (*CLUSSyncReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{15}
+}
+func (m *CLUSSyncReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSSyncReply.Unmarshal(m, b)
+}
+func (m *CLUSSyncReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSSyncReply.Marshal(b, m, deterministic)
+}
+func (dst *CLUSSyncReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSSyncReply.Merge(dst, src)
+}
+func (m *CLUSSyncReply) XXX_Size() int {
+	return xxx_messageInfo_CLUSSyncReply.Size(m)
+}
+func (m *CLUSSyncReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSSyncReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSSyncReply proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSSyncReply) GetCategory() string {
 	if m != nil {
@@ -844,11 +1347,44 @@ func (m *CLUSSyncReply) GetData() []byte {
 }
 
 type CLUSControllerCounter struct {
+<<<<<<< Updated upstream
 	GraphNodes uint32 `protobuf:"varint,1,opt,name=GraphNodes" json:"GraphNodes,omitempty"`
 	GoRoutines uint32 `protobuf:"varint,2,opt,name=GoRoutines" json:"GoRoutines,omitempty"`
 	Lsof       []byte `protobuf:"bytes,3,opt,name=Lsof,proto3" json:"Lsof,omitempty"`
 	PS         []byte `protobuf:"bytes,4,opt,name=PS,proto3" json:"PS,omitempty"`
 	ScanTasks  uint32 `protobuf:"varint,5,opt,name=ScanTasks" json:"ScanTasks,omitempty"`
+=======
+	GraphNodes           uint32   `protobuf:"varint,1,opt,name=GraphNodes,proto3" json:"GraphNodes,omitempty"`
+	GoRoutines           uint32   `protobuf:"varint,2,opt,name=GoRoutines,proto3" json:"GoRoutines,omitempty"`
+	Lsof                 []byte   `protobuf:"bytes,3,opt,name=Lsof,proto3" json:"Lsof,omitempty"`
+	PS                   []byte   `protobuf:"bytes,4,opt,name=PS,proto3" json:"PS,omitempty"`
+	ScanTasks            uint32   `protobuf:"varint,5,opt,name=ScanTasks,proto3" json:"ScanTasks,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSControllerCounter) Reset()         { *m = CLUSControllerCounter{} }
+func (m *CLUSControllerCounter) String() string { return proto.CompactTextString(m) }
+func (*CLUSControllerCounter) ProtoMessage()    {}
+func (*CLUSControllerCounter) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{16}
+}
+func (m *CLUSControllerCounter) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSControllerCounter.Unmarshal(m, b)
+}
+func (m *CLUSControllerCounter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSControllerCounter.Marshal(b, m, deterministic)
+}
+func (dst *CLUSControllerCounter) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSControllerCounter.Merge(dst, src)
+}
+func (m *CLUSControllerCounter) XXX_Size() int {
+	return xxx_messageInfo_CLUSControllerCounter.Size(m)
+}
+func (m *CLUSControllerCounter) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSControllerCounter.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSControllerCounter) Reset()                    { *m = CLUSControllerCounter{} }
@@ -898,10 +1434,36 @@ type CLUSGraphOps struct {
 	Alias    string `protobuf:"bytes,4,opt,name=Alias" json:"Alias,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSGraphOps) Reset()                    { *m = CLUSGraphOps{} }
 func (m *CLUSGraphOps) String() string            { return proto.CompactTextString(m) }
 func (*CLUSGraphOps) ProtoMessage()               {}
 func (*CLUSGraphOps) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{17} }
+=======
+func (m *CLUSGraphOps) Reset()         { *m = CLUSGraphOps{} }
+func (m *CLUSGraphOps) String() string { return proto.CompactTextString(m) }
+func (*CLUSGraphOps) ProtoMessage()    {}
+func (*CLUSGraphOps) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{17}
+}
+func (m *CLUSGraphOps) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSGraphOps.Unmarshal(m, b)
+}
+func (m *CLUSGraphOps) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSGraphOps.Marshal(b, m, deterministic)
+}
+func (dst *CLUSGraphOps) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSGraphOps.Merge(dst, src)
+}
+func (m *CLUSGraphOps) XXX_Size() int {
+	return xxx_messageInfo_CLUSGraphOps.Size(m)
+}
+func (m *CLUSGraphOps) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSGraphOps.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSGraphOps proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSGraphOps) GetFrom() string {
 	if m != nil {
@@ -932,6 +1494,7 @@ func (m *CLUSGraphOps) GetAlias() string {
 }
 
 type CLUSPolicyRuleCheck struct {
+<<<<<<< Updated upstream
 	ID           uint32   `protobuf:"varint,1,opt,name=ID" json:"ID,omitempty"`
 	From         string   `protobuf:"bytes,2,opt,name=From" json:"From,omitempty"`
 	To           string   `protobuf:"bytes,3,opt,name=To" json:"To,omitempty"`
@@ -947,6 +1510,45 @@ func (m *CLUSPolicyRuleCheck) Reset()                    { *m = CLUSPolicyRuleCh
 func (m *CLUSPolicyRuleCheck) String() string            { return proto.CompactTextString(m) }
 func (*CLUSPolicyRuleCheck) ProtoMessage()               {}
 func (*CLUSPolicyRuleCheck) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{18} }
+=======
+	ID                   uint32   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	From                 string   `protobuf:"bytes,2,opt,name=From,proto3" json:"From,omitempty"`
+	To                   string   `protobuf:"bytes,3,opt,name=To,proto3" json:"To,omitempty"`
+	Ports                string   `protobuf:"bytes,4,opt,name=Ports,proto3" json:"Ports,omitempty"`
+	Applications         []uint32 `protobuf:"varint,5,rep,packed,name=Applications,proto3" json:"Applications,omitempty"`
+	Learned              bool     `protobuf:"varint,6,opt,name=Learned,proto3" json:"Learned,omitempty"` // Deprecated: Do not use.
+	Disabled             bool     `protobuf:"varint,7,opt,name=Disabled,proto3" json:"Disabled,omitempty"`
+	CreatedTS            int64    `protobuf:"varint,8,opt,name=CreatedTS,proto3" json:"CreatedTS,omitempty"`
+	LastModTS            int64    `protobuf:"varint,9,opt,name=LastModTS,proto3" json:"LastModTS,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSPolicyRuleCheck) Reset()         { *m = CLUSPolicyRuleCheck{} }
+func (m *CLUSPolicyRuleCheck) String() string { return proto.CompactTextString(m) }
+func (*CLUSPolicyRuleCheck) ProtoMessage()    {}
+func (*CLUSPolicyRuleCheck) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{18}
+}
+func (m *CLUSPolicyRuleCheck) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSPolicyRuleCheck.Unmarshal(m, b)
+}
+func (m *CLUSPolicyRuleCheck) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSPolicyRuleCheck.Marshal(b, m, deterministic)
+}
+func (dst *CLUSPolicyRuleCheck) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSPolicyRuleCheck.Merge(dst, src)
+}
+func (m *CLUSPolicyRuleCheck) XXX_Size() int {
+	return xxx_messageInfo_CLUSPolicyRuleCheck.Size(m)
+}
+func (m *CLUSPolicyRuleCheck) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSPolicyRuleCheck.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSPolicyRuleCheck proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSPolicyRuleCheck) GetID() uint32 {
 	if m != nil {
@@ -1016,10 +1618,36 @@ type CLUSPolicyRuleMismatch struct {
 	LearnedRule *CLUSPolicyRuleCheck `protobuf:"bytes,2,opt,name=LearnedRule" json:"LearnedRule,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSPolicyRuleMismatch) Reset()                    { *m = CLUSPolicyRuleMismatch{} }
 func (m *CLUSPolicyRuleMismatch) String() string            { return proto.CompactTextString(m) }
 func (*CLUSPolicyRuleMismatch) ProtoMessage()               {}
 func (*CLUSPolicyRuleMismatch) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{19} }
+=======
+func (m *CLUSPolicyRuleMismatch) Reset()         { *m = CLUSPolicyRuleMismatch{} }
+func (m *CLUSPolicyRuleMismatch) String() string { return proto.CompactTextString(m) }
+func (*CLUSPolicyRuleMismatch) ProtoMessage()    {}
+func (*CLUSPolicyRuleMismatch) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{19}
+}
+func (m *CLUSPolicyRuleMismatch) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSPolicyRuleMismatch.Unmarshal(m, b)
+}
+func (m *CLUSPolicyRuleMismatch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSPolicyRuleMismatch.Marshal(b, m, deterministic)
+}
+func (dst *CLUSPolicyRuleMismatch) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSPolicyRuleMismatch.Merge(dst, src)
+}
+func (m *CLUSPolicyRuleMismatch) XXX_Size() int {
+	return xxx_messageInfo_CLUSPolicyRuleMismatch.Size(m)
+}
+func (m *CLUSPolicyRuleMismatch) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSPolicyRuleMismatch.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSPolicyRuleMismatch proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSPolicyRuleMismatch) GetClusterRule() *CLUSPolicyRuleCheck {
 	if m != nil {
@@ -1042,10 +1670,36 @@ type CLUSPolicySyncStatus struct {
 	Mismatches     []*CLUSPolicyRuleMismatch `protobuf:"bytes,4,rep,name=Mismatches" json:"Mismatches,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSPolicySyncStatus) Reset()                    { *m = CLUSPolicySyncStatus{} }
 func (m *CLUSPolicySyncStatus) String() string            { return proto.CompactTextString(m) }
 func (*CLUSPolicySyncStatus) ProtoMessage()               {}
 func (*CLUSPolicySyncStatus) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{20} }
+=======
+func (m *CLUSPolicySyncStatus) Reset()         { *m = CLUSPolicySyncStatus{} }
+func (m *CLUSPolicySyncStatus) String() string { return proto.CompactTextString(m) }
+func (*CLUSPolicySyncStatus) ProtoMessage()    {}
+func (*CLUSPolicySyncStatus) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{20}
+}
+func (m *CLUSPolicySyncStatus) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSPolicySyncStatus.Unmarshal(m, b)
+}
+func (m *CLUSPolicySyncStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSPolicySyncStatus.Marshal(b, m, deterministic)
+}
+func (dst *CLUSPolicySyncStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSPolicySyncStatus.Merge(dst, src)
+}
+func (m *CLUSPolicySyncStatus) XXX_Size() int {
+	return xxx_messageInfo_CLUSPolicySyncStatus.Size(m)
+}
+func (m *CLUSPolicySyncStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSPolicySyncStatus.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSPolicySyncStatus proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSPolicySyncStatus) GetLeader() bool {
 	if m != nil {
@@ -1081,10 +1735,36 @@ type CLUSStoreWatcherInfo struct {
 	Action   StoreWatcherAction `protobuf:"varint,3,opt,name=Action,enum=share.StoreWatcherAction" json:"Action,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSStoreWatcherInfo) Reset()                    { *m = CLUSStoreWatcherInfo{} }
 func (m *CLUSStoreWatcherInfo) String() string            { return proto.CompactTextString(m) }
 func (*CLUSStoreWatcherInfo) ProtoMessage()               {}
 func (*CLUSStoreWatcherInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{21} }
+=======
+func (m *CLUSStoreWatcherInfo) Reset()         { *m = CLUSStoreWatcherInfo{} }
+func (m *CLUSStoreWatcherInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSStoreWatcherInfo) ProtoMessage()    {}
+func (*CLUSStoreWatcherInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{21}
+}
+func (m *CLUSStoreWatcherInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSStoreWatcherInfo.Unmarshal(m, b)
+}
+func (m *CLUSStoreWatcherInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSStoreWatcherInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSStoreWatcherInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSStoreWatcherInfo.Merge(dst, src)
+}
+func (m *CLUSStoreWatcherInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSStoreWatcherInfo.Size(m)
+}
+func (m *CLUSStoreWatcherInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSStoreWatcherInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSStoreWatcherInfo proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSStoreWatcherInfo) GetCtrlerID() string {
 	if m != nil {
@@ -1116,10 +1796,36 @@ type CLUSKickLoginSessionsRequest struct {
 	UserName     string                `protobuf:"bytes,6,opt,name=UserName" json:"UserName,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSKickLoginSessionsRequest) Reset()                    { *m = CLUSKickLoginSessionsRequest{} }
 func (m *CLUSKickLoginSessionsRequest) String() string            { return proto.CompactTextString(m) }
 func (*CLUSKickLoginSessionsRequest) ProtoMessage()               {}
 func (*CLUSKickLoginSessionsRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{22} }
+=======
+func (m *CLUSKickLoginSessionsRequest) Reset()         { *m = CLUSKickLoginSessionsRequest{} }
+func (m *CLUSKickLoginSessionsRequest) String() string { return proto.CompactTextString(m) }
+func (*CLUSKickLoginSessionsRequest) ProtoMessage()    {}
+func (*CLUSKickLoginSessionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{22}
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSKickLoginSessionsRequest.Unmarshal(m, b)
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSKickLoginSessionsRequest.Marshal(b, m, deterministic)
+}
+func (dst *CLUSKickLoginSessionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSKickLoginSessionsRequest.Merge(dst, src)
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_Size() int {
+	return xxx_messageInfo_CLUSKickLoginSessionsRequest.Size(m)
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSKickLoginSessionsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSKickLoginSessionsRequest proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSKickLoginSessionsRequest) GetCtrlerID() string {
 	if m != nil {
@@ -1170,10 +1876,36 @@ type CLUSLoginTokenInfo struct {
 	LoginToken   string `protobuf:"bytes,4,opt,name=LoginToken" json:"LoginToken,omitempty"`
 }
 
+<<<<<<< Updated upstream
 func (m *CLUSLoginTokenInfo) Reset()                    { *m = CLUSLoginTokenInfo{} }
 func (m *CLUSLoginTokenInfo) String() string            { return proto.CompactTextString(m) }
 func (*CLUSLoginTokenInfo) ProtoMessage()               {}
 func (*CLUSLoginTokenInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{23} }
+=======
+func (m *CLUSLoginTokenInfo) Reset()         { *m = CLUSLoginTokenInfo{} }
+func (m *CLUSLoginTokenInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSLoginTokenInfo) ProtoMessage()    {}
+func (*CLUSLoginTokenInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{23}
+}
+func (m *CLUSLoginTokenInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSLoginTokenInfo.Unmarshal(m, b)
+}
+func (m *CLUSLoginTokenInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSLoginTokenInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSLoginTokenInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSLoginTokenInfo.Merge(dst, src)
+}
+func (m *CLUSLoginTokenInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSLoginTokenInfo.Size(m)
+}
+func (m *CLUSLoginTokenInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSLoginTokenInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSLoginTokenInfo proto.InternalMessageInfo
+>>>>>>> Stashed changes
 
 func (m *CLUSLoginTokenInfo) GetCtrlerID() string {
 	if m != nil {
@@ -1204,8 +1936,38 @@ func (m *CLUSLoginTokenInfo) GetLoginToken() string {
 }
 
 type CLUSKubernetesResInfo struct {
+<<<<<<< Updated upstream
 	DocKey string `protobuf:"bytes,1,opt,name=DocKey" json:"DocKey,omitempty"`
 	Data   string `protobuf:"bytes,2,opt,name=Data" json:"Data,omitempty"`
+=======
+	DocKey               string   `protobuf:"bytes,1,opt,name=DocKey,proto3" json:"DocKey,omitempty"`
+	Data                 string   `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSKubernetesResInfo) Reset()         { *m = CLUSKubernetesResInfo{} }
+func (m *CLUSKubernetesResInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSKubernetesResInfo) ProtoMessage()    {}
+func (*CLUSKubernetesResInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{24}
+}
+func (m *CLUSKubernetesResInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSKubernetesResInfo.Unmarshal(m, b)
+}
+func (m *CLUSKubernetesResInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSKubernetesResInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSKubernetesResInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSKubernetesResInfo.Merge(dst, src)
+}
+func (m *CLUSKubernetesResInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSKubernetesResInfo.Size(m)
+}
+func (m *CLUSKubernetesResInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSKubernetesResInfo.DiscardUnknown(m)
+>>>>>>> Stashed changes
 }
 
 func (m *CLUSKubernetesResInfo) Reset()                    { *m = CLUSKubernetesResInfo{} }
@@ -1227,6 +1989,63 @@ func (m *CLUSKubernetesResInfo) GetData() string {
 	return ""
 }
 
+<<<<<<< Updated upstream
+=======
+type CLUSInternalCertInfo struct {
+	CaCert               string   `protobuf:"bytes,1,opt,name=CaCert,proto3" json:"CaCert,omitempty"`
+	Cert                 string   `protobuf:"bytes,2,opt,name=Cert,proto3" json:"Cert,omitempty"`
+	Key                  string   `protobuf:"bytes,3,opt,name=Key,proto3" json:"Key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *CLUSInternalCertInfo) Reset()         { *m = CLUSInternalCertInfo{} }
+func (m *CLUSInternalCertInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSInternalCertInfo) ProtoMessage()    {}
+func (*CLUSInternalCertInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_d720b8055991f5d7, []int{25}
+}
+func (m *CLUSInternalCertInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSInternalCertInfo.Unmarshal(m, b)
+}
+func (m *CLUSInternalCertInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSInternalCertInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSInternalCertInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSInternalCertInfo.Merge(dst, src)
+}
+func (m *CLUSInternalCertInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSInternalCertInfo.Size(m)
+}
+func (m *CLUSInternalCertInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSInternalCertInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSInternalCertInfo proto.InternalMessageInfo
+
+func (m *CLUSInternalCertInfo) GetCaCert() string {
+	if m != nil {
+		return m.CaCert
+	}
+	return ""
+}
+
+func (m *CLUSInternalCertInfo) GetCert() string {
+	if m != nil {
+		return m.Cert
+	}
+	return ""
+}
+
+func (m *CLUSInternalCertInfo) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+>>>>>>> Stashed changes
 func init() {
 	proto.RegisterType((*AdapterScanImageRequest)(nil), "share.AdapterScanImageRequest")
 	proto.RegisterType((*GetScannersResponse)(nil), "share.GetScannersResponse")
@@ -1972,6 +2791,11 @@ type ControllerCtrlServiceClient interface {
 	GetStats(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSStats, error)
 	ResetLoginTokenTimer(ctx context.Context, in *CLUSLoginTokenInfo, opts ...grpc.CallOption) (*RPCVoid, error)
 	ReportK8SResToOPA(ctx context.Context, in *CLUSKubernetesResInfo, opts ...grpc.CallOption) (*RPCVoid, error)
+<<<<<<< Updated upstream
+=======
+	UpdateInternalCerts(ctx context.Context, in *CLUSInternalCertInfo, opts ...grpc.CallOption) (*CLUSBoolean, error)
+	GetInternalCerts(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSInternalCertInfo, error)
+>>>>>>> Stashed changes
 }
 
 type controllerCtrlServiceClient struct {
@@ -2151,6 +2975,19 @@ func (c *controllerCtrlServiceClient) ReportK8SResToOPA(ctx context.Context, in 
 
 // Server API for ControllerCtrlService service
 
+<<<<<<< Updated upstream
+=======
+func (c *controllerCtrlServiceClient) GetInternalCerts(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSInternalCertInfo, error) {
+	out := new(CLUSInternalCertInfo)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/GetInternalCerts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ControllerCtrlServiceServer is the server API for ControllerCtrlService service.
+>>>>>>> Stashed changes
 type ControllerCtrlServiceServer interface {
 	ReqSync(context.Context, *CLUSSyncRequest) (*CLUSSyncReply, error)
 	ReqSyncStream(*CLUSSyncRequest, ControllerCtrlService_ReqSyncStreamServer) error
@@ -2168,6 +3005,11 @@ type ControllerCtrlServiceServer interface {
 	GetStats(context.Context, *RPCVoid) (*CLUSStats, error)
 	ResetLoginTokenTimer(context.Context, *CLUSLoginTokenInfo) (*RPCVoid, error)
 	ReportK8SResToOPA(context.Context, *CLUSKubernetesResInfo) (*RPCVoid, error)
+<<<<<<< Updated upstream
+=======
+	UpdateInternalCerts(context.Context, *CLUSInternalCertInfo) (*CLUSBoolean, error)
+	GetInternalCerts(context.Context, *RPCVoid) (*CLUSInternalCertInfo, error)
+>>>>>>> Stashed changes
 }
 
 func RegisterControllerCtrlServiceServer(s *grpc.Server, srv ControllerCtrlServiceServer) {
@@ -2465,6 +3307,45 @@ func _ControllerCtrlService_ReportK8SResToOPA_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+<<<<<<< Updated upstream
+=======
+func _ControllerCtrlService_UpdateInternalCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CLUSInternalCertInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerCtrlServiceServer).UpdateInternalCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/share.ControllerCtrlService/UpdateInternalCerts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerCtrlServiceServer).UpdateInternalCerts(ctx, req.(*CLUSInternalCertInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerCtrlService_GetInternalCerts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RPCVoid)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerCtrlServiceServer).GetInternalCerts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/share.ControllerCtrlService/GetInternalCerts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerCtrlServiceServer).GetInternalCerts(ctx, req.(*RPCVoid))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+>>>>>>> Stashed changes
 var _ControllerCtrlService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "share.ControllerCtrlService",
 	HandlerType: (*ControllerCtrlServiceServer)(nil),
@@ -2529,6 +3410,17 @@ var _ControllerCtrlService_serviceDesc = grpc.ServiceDesc{
 			MethodName: "ReportK8sResToOPA",
 			Handler:    _ControllerCtrlService_ReportK8SResToOPA_Handler,
 		},
+<<<<<<< Updated upstream
+=======
+		{
+			MethodName: "UpdateInternalCerts",
+			Handler:    _ControllerCtrlService_UpdateInternalCerts_Handler,
+		},
+		{
+			MethodName: "GetInternalCerts",
+			Handler:    _ControllerCtrlService_GetInternalCerts_Handler,
+		},
+>>>>>>> Stashed changes
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -2540,6 +3432,7 @@ var _ControllerCtrlService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
+<<<<<<< Updated upstream
 func init() { proto.RegisterFile("controller_service.proto", fileDescriptor1) }
 
 var fileDescriptor1 = []byte{
@@ -2692,4 +3585,164 @@ var fileDescriptor1 = []byte{
 	0x02, 0x1b, 0x36, 0x44, 0x4e, 0xbf, 0xc4, 0x2a, 0xda, 0xe7, 0xcf, 0xba, 0x0d, 0xea, 0xba, 0xf3,
 	0x5c, 0xab, 0x53, 0x64, 0xf1, 0xf2, 0x86, 0xfa, 0x2b, 0xf2, 0xeb, 0xff, 0x07, 0x00, 0x00, 0xff,
 	0xff, 0xfe, 0xc1, 0xfc, 0x73, 0x52, 0x19, 0x00, 0x00,
+=======
+func init() {
+	proto.RegisterFile("controller_service.proto", fileDescriptor_controller_service_d720b8055991f5d7)
+}
+
+var fileDescriptor_controller_service_d720b8055991f5d7 = []byte{
+	// 2420 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x59, 0x4b, 0x73, 0x1b, 0xb9,
+	0x11, 0x5e, 0x92, 0x92, 0x25, 0x41, 0x0f, 0x53, 0xd0, 0xc3, 0xb3, 0x5c, 0xad, 0xa3, 0x4c, 0x5e,
+	0x2a, 0x57, 0xe2, 0x6c, 0x94, 0xca, 0x7a, 0xbd, 0xce, 0xc6, 0x45, 0x91, 0x92, 0xcc, 0x15, 0x25,
+	0x73, 0x87, 0x94, 0x9d, 0x5b, 0x0a, 0x26, 0xdb, 0xd4, 0x94, 0x86, 0x03, 0x1a, 0x03, 0xca, 0x66,
+	0x4e, 0xf9, 0x05, 0x39, 0xa5, 0x2a, 0xb5, 0x7f, 0x20, 0xa7, 0xfc, 0x85, 0x1c, 0x53, 0xc9, 0x3d,
+	0x7f, 0x21, 0x7f, 0x22, 0xb7, 0x54, 0xe3, 0x31, 0x83, 0x19, 0xd2, 0xaf, 0x1b, 0xfa, 0x03, 0xd0,
+	0xdd, 0x68, 0xf4, 0x0b, 0x33, 0xc4, 0xeb, 0xf3, 0x58, 0x0a, 0x1e, 0x45, 0x20, 0xfe, 0x90, 0x80,
+	0xb8, 0x09, 0xfb, 0x70, 0x7f, 0x2c, 0xb8, 0xe4, 0x74, 0x31, 0xb9, 0x62, 0x02, 0x6a, 0x6b, 0x7d,
+	0x3e, 0x1a, 0xf1, 0x58, 0x83, 0x35, 0x92, 0xf4, 0x99, 0x19, 0xfb, 0xff, 0x2c, 0x91, 0x3b, 0xf5,
+	0x01, 0x1b, 0x4b, 0x10, 0xdd, 0x3e, 0x8b, 0x5b, 0x23, 0x36, 0x84, 0x00, 0x5e, 0x4d, 0x20, 0x91,
+	0xb4, 0x46, 0x96, 0x03, 0x18, 0x86, 0x89, 0x14, 0x53, 0xaf, 0xb4, 0x5f, 0x3a, 0x58, 0x09, 0x52,
+	0x9a, 0xde, 0x25, 0x24, 0x80, 0x31, 0x4f, 0x42, 0xc9, 0xc5, 0xd4, 0x2b, 0xab, 0x59, 0x07, 0xa1,
+	0x55, 0x52, 0xe9, 0xb1, 0xa1, 0x57, 0x51, 0x13, 0x38, 0xa4, 0xdb, 0x64, 0xb1, 0xc7, 0xaf, 0x21,
+	0xf6, 0x16, 0x14, 0xa6, 0x09, 0xe4, 0x83, 0x72, 0xdb, 0x6c, 0x0a, 0x22, 0xf1, 0x16, 0xf7, 0x4b,
+	0x07, 0xcb, 0x81, 0x83, 0xd0, 0x9f, 0x92, 0x0d, 0xa3, 0xde, 0x33, 0x10, 0x49, 0xc8, 0x63, 0xef,
+	0x96, 0xda, 0x5e, 0x40, 0xf1, 0x1c, 0x5b, 0xa7, 0x20, 0x71, 0x67, 0x0c, 0x22, 0x09, 0x20, 0x19,
+	0xf3, 0x38, 0x01, 0x3c, 0x83, 0xc5, 0xd4, 0x19, 0xd6, 0x83, 0x94, 0xa6, 0xfb, 0x64, 0xf5, 0x9c,
+	0xbd, 0x49, 0xa7, 0xcb, 0x6a, 0xda, 0x85, 0xa8, 0x4f, 0xd6, 0x5a, 0x83, 0x08, 0xd2, 0x25, 0x15,
+	0xb5, 0x24, 0x87, 0xa1, 0x86, 0x66, 0x6c, 0x35, 0xd4, 0x07, 0x2c, 0xa0, 0xf4, 0xc7, 0x64, 0xdd,
+	0x20, 0xcd, 0xa3, 0x5e, 0x38, 0x02, 0x75, 0xd8, 0x95, 0x20, 0x0f, 0xfa, 0xff, 0x2e, 0x93, 0x2d,
+	0x83, 0x68, 0x5b, 0x83, 0x68, 0x32, 0xc9, 0x50, 0x93, 0xc6, 0xb3, 0xe3, 0xe6, 0x91, 0x95, 0xa1,
+	0xef, 0x23, 0x87, 0xd1, 0x03, 0x72, 0x5b, 0xd1, 0x0d, 0x01, 0x4c, 0x82, 0x92, 0xa1, 0x2f, 0xa6,
+	0x08, 0xd3, 0x47, 0x64, 0x51, 0x41, 0x5e, 0x65, 0xbf, 0x72, 0xb0, 0x7a, 0xf8, 0x93, 0xfb, 0xca,
+	0x4d, 0xee, 0xcf, 0x11, 0x7c, 0x5f, 0xad, 0x3b, 0x8e, 0xa5, 0x98, 0x06, 0x7a, 0x0f, 0xdd, 0x23,
+	0x2b, 0x41, 0xa7, 0xd1, 0x05, 0x71, 0x03, 0xc2, 0x9c, 0x35, 0x03, 0xf0, 0x98, 0x29, 0xd1, 0xe1,
+	0x42, 0xaa, 0x63, 0xae, 0x07, 0x79, 0x90, 0x6e, 0x90, 0x72, 0xab, 0x69, 0xae, 0xb2, 0xdc, 0x6a,
+	0xd6, 0x02, 0x42, 0x32, 0x41, 0xe8, 0x3c, 0xd7, 0x60, 0x7d, 0x0e, 0x87, 0xf4, 0x3e, 0x59, 0xbc,
+	0x61, 0xd1, 0x44, 0x1f, 0x68, 0xf5, 0xd0, 0x73, 0x14, 0x7e, 0x36, 0x89, 0x62, 0x10, 0xec, 0x45,
+	0x18, 0x85, 0x72, 0x1a, 0xe8, 0x65, 0x5f, 0x97, 0xbf, 0x2a, 0xf9, 0x3f, 0x23, 0x3b, 0xd6, 0xb6,
+	0x20, 0x5c, 0x5b, 0x6a, 0xe1, 0x25, 0x2b, 0xdc, 0xff, 0x96, 0x6c, 0x34, 0xda, 0x97, 0xdd, 0x93,
+	0x30, 0x82, 0x0e, 0xeb, 0x5f, 0x83, 0xa4, 0x94, 0x2c, 0xe0, 0x4a, 0xb5, 0x66, 0x2d, 0x50, 0x63,
+	0xc4, 0x2e, 0x58, 0x6a, 0x52, 0x35, 0x46, 0x45, 0xdb, 0x10, 0x1b, 0xb7, 0xc0, 0xa1, 0xff, 0x47,
+	0xb2, 0x8d, 0xbc, 0xea, 0x83, 0x51, 0x98, 0xe0, 0xa5, 0xd8, 0x58, 0x2a, 0xc8, 0xa4, 0xbb, 0xe4,
+	0xd6, 0x13, 0x9e, 0xc8, 0x56, 0xd3, 0xf0, 0x33, 0x14, 0xfa, 0x2b, 0x8e, 0x1a, 0x9d, 0x4b, 0xed,
+	0x6d, 0x95, 0x20, 0xa5, 0x31, 0x56, 0x70, 0x7c, 0x0e, 0x23, 0x8c, 0xb9, 0x05, 0x35, 0xeb, 0x20,
+	0x7e, 0x8b, 0xec, 0x14, 0x64, 0x9b, 0x20, 0xf0, 0xc8, 0x52, 0x3d, 0x8a, 0xf8, 0x6b, 0x18, 0x28,
+	0x0d, 0x96, 0x03, 0x4b, 0xa2, 0x1a, 0x01, 0xb0, 0x84, 0xc7, 0x56, 0x0d, 0x4d, 0xf9, 0x7f, 0x2f,
+	0x11, 0x8a, 0xbc, 0x3a, 0x82, 0xf7, 0x3b, 0x82, 0xbf, 0x0c, 0x23, 0xcc, 0x0a, 0x78, 0xf5, 0xa7,
+	0x82, 0x4f, 0xc6, 0xca, 0x10, 0xfa, 0x30, 0x19, 0x30, 0xd7, 0x42, 0x94, 0x2c, 0x74, 0x98, 0xbc,
+	0x32, 0x89, 0x40, 0x8d, 0x11, 0xbb, 0x4c, 0x52, 0xdf, 0x51, 0x63, 0xb4, 0xe4, 0x65, 0x38, 0x50,
+	0xce, 0xb2, 0x18, 0xe0, 0x10, 0x57, 0x3d, 0x61, 0xc9, 0x95, 0x72, 0x92, 0xb5, 0x40, 0x8d, 0x51,
+	0xdd, 0x7a, 0x5f, 0xa2, 0xff, 0x2f, 0x69, 0x75, 0x35, 0xe5, 0x3f, 0xd5, 0x56, 0x77, 0xb4, 0xad,
+	0x0b, 0xc1, 0xa6, 0xf4, 0x01, 0x59, 0x41, 0x0c, 0x92, 0x04, 0x30, 0xfc, 0xd1, 0xd7, 0x3f, 0x35,
+	0xae, 0x33, 0x7b, 0xba, 0x20, 0x5b, 0xeb, 0x33, 0x6d, 0x4a, 0x74, 0x89, 0x7a, 0x1f, 0xb1, 0x60,
+	0xf2, 0x21, 0x16, 0xd8, 0x25, 0xb7, 0x4e, 0xc2, 0x48, 0x82, 0xb0, 0xe6, 0xd4, 0xd4, 0x3c, 0x2b,
+	0xf8, 0xe7, 0xe4, 0xce, 0xac, 0x08, 0xad, 0xf6, 0x21, 0x59, 0x44, 0xc2, 0xaa, 0xbc, 0xe7, 0xa8,
+	0x3c, 0xa3, 0x51, 0xa0, 0x97, 0xfa, 0x7f, 0x5b, 0xd2, 0x5e, 0xdc, 0xe0, 0x71, 0x0c, 0xca, 0x2a,
+	0xea, 0xda, 0x87, 0x10, 0xcb, 0xd4, 0xf1, 0x2c, 0xf9, 0x2e, 0xef, 0x6b, 0x44, 0x21, 0xc4, 0xf2,
+	0x79, 0xdb, 0xe8, 0x9a, 0xd2, 0x2a, 0x93, 0xaa, 0x00, 0x7e, 0xde, 0x36, 0x37, 0x97, 0xd2, 0xd9,
+	0xbe, 0x56, 0x47, 0x5d, 0xe1, 0x5a, 0x90, 0xd2, 0xd9, 0xbe, 0x56, 0xc7, 0xdc, 0x65, 0x4a, 0x63,
+	0x4d, 0xe8, 0xf6, 0xf9, 0x18, 0xcc, 0x75, 0x6a, 0x02, 0xf5, 0xbe, 0x00, 0xf9, 0x9a, 0x8b, 0x6b,
+	0x6f, 0x59, 0xeb, 0x6d, 0x48, 0x8c, 0x00, 0xcd, 0x57, 0x65, 0x96, 0x15, 0x15, 0x76, 0x0e, 0xa2,
+	0xaa, 0x49, 0x96, 0x79, 0x88, 0x9e, 0x77, 0xd2, 0x8e, 0x47, 0x96, 0x5a, 0x9d, 0x0e, 0x16, 0x3e,
+	0x6f, 0x55, 0x4d, 0x5a, 0x12, 0x6b, 0x41, 0x7d, 0x3c, 0x8e, 0xc2, 0x3e, 0x53, 0xee, 0xb5, 0xa6,
+	0x6b, 0x81, 0x03, 0xa1, 0xae, 0x47, 0x53, 0x09, 0x89, 0xb7, 0xbe, 0x5f, 0x3a, 0x58, 0x08, 0x34,
+	0xa1, 0x4f, 0xa7, 0xa2, 0x2d, 0xf1, 0x36, 0x4c, 0x7d, 0x31, 0x34, 0xf2, 0x3c, 0x09, 0x45, 0x22,
+	0xbb, 0x00, 0x71, 0x5d, 0x7a, 0xb7, 0x35, 0x4f, 0x07, 0x42, 0x7d, 0xdb, 0x2c, 0x5d, 0x50, 0xd5,
+	0xfa, 0x66, 0x08, 0x72, 0xef, 0x5d, 0x61, 0xda, 0x6e, 0x35, 0xbd, 0x4d, 0xcd, 0xdd, 0xd2, 0x5a,
+	0xf2, 0x0d, 0x88, 0x50, 0x4e, 0x3d, 0x6a, 0x25, 0x6b, 0x1a, 0xab, 0x45, 0x87, 0x47, 0x61, 0x7f,
+	0x6a, 0xa2, 0x65, 0x4b, 0xd7, 0x2d, 0x17, 0x53, 0xb6, 0x88, 0x87, 0x02, 0x92, 0xc4, 0xdb, 0xd6,
+	0x49, 0xc1, 0x90, 0xb8, 0xfb, 0xf8, 0x8d, 0x04, 0x11, 0xb3, 0xa8, 0x03, 0x20, 0xbc, 0x1d, 0x35,
+	0x9d, 0xc3, 0x30, 0x0e, 0xda, 0xbc, 0x6f, 0x16, 0xec, 0xaa, 0x05, 0x19, 0x80, 0xba, 0x69, 0x59,
+	0xad, 0x81, 0x77, 0x47, 0xeb, 0x66, 0x69, 0x9c, 0x7b, 0x16, 0xf2, 0x88, 0xa1, 0x29, 0x3d, 0x3d,
+	0x67, 0x69, 0xf4, 0xcb, 0x36, 0x1f, 0x5e, 0xb6, 0x9a, 0xde, 0xa7, 0xda, 0x2f, 0x35, 0x85, 0xd9,
+	0xe1, 0xf7, 0x2f, 0x5f, 0x7a, 0x35, 0x25, 0x07, 0x87, 0xea, 0xf4, 0x37, 0xfd, 0xe3, 0x37, 0xe8,
+	0x71, 0x9f, 0x29, 0x38, 0xa5, 0x51, 0xb7, 0x1e, 0xef, 0x86, 0x03, 0xe8, 0x33, 0xe1, 0xed, 0x69,
+	0xdd, 0x52, 0x00, 0x67, 0xcf, 0x21, 0xb9, 0xea, 0xf1, 0xee, 0x8d, 0xf0, 0x3e, 0xd7, 0xb3, 0x29,
+	0xa0, 0xce, 0x15, 0xc6, 0xd7, 0xea, 0x28, 0xde, 0x5d, 0x73, 0x2e, 0x0b, 0xa0, 0xcd, 0x7a, 0xa3,
+	0xf1, 0xd3, 0x31, 0xc4, 0xde, 0x0f, 0xb4, 0xcd, 0x0c, 0x89, 0xde, 0x71, 0xf9, 0x3a, 0x6a, 0x8d,
+	0xbd, 0x7d, 0x85, 0x6b, 0x02, 0xe3, 0xfe, 0xe4, 0xbb, 0xe6, 0x85, 0xf7, 0x43, 0x1d, 0xf7, 0x38,
+	0xf6, 0x2f, 0xc8, 0x56, 0x3e, 0x4e, 0x6d, 0xaa, 0x5a, 0xcd, 0x20, 0x1b, 0xf9, 0x3b, 0x4e, 0xe4,
+	0x67, 0xb3, 0x81, 0xbb, 0xd2, 0x1f, 0xe9, 0x4c, 0x8d, 0xbd, 0x97, 0x90, 0x69, 0xca, 0xff, 0x65,
+	0x9a, 0x29, 0x31, 0xf4, 0x37, 0x0e, 0xef, 0x18, 0x4e, 0xd9, 0x32, 0x3d, 0x6d, 0x53, 0x28, 0xb6,
+	0x31, 0x7a, 0xae, 0x15, 0x4b, 0x10, 0x37, 0x2c, 0x32, 0xfd, 0x50, 0x01, 0xf5, 0xeb, 0xe4, 0x36,
+	0x8a, 0xeb, 0x4e, 0xe3, 0xbe, 0xd3, 0x27, 0x36, 0x98, 0x84, 0x21, 0xcf, 0xfa, 0x44, 0x4b, 0x2b,
+	0x0b, 0x08, 0x3e, 0xb2, 0x35, 0x01, 0xc7, 0xfe, 0x63, 0xb2, 0x9e, 0xb1, 0x18, 0x47, 0xd3, 0xf7,
+	0x31, 0x50, 0xa5, 0xb8, 0x9c, 0x95, 0x62, 0xff, 0xfb, 0x92, 0x4e, 0xcf, 0x8d, 0xb4, 0xed, 0x6d,
+	0xf0, 0x09, 0x2a, 0x88, 0x01, 0x75, 0x2a, 0xd8, 0xf8, 0xea, 0x82, 0x0f, 0xc0, 0x36, 0x7c, 0x0e,
+	0xa2, 0xe6, 0x79, 0xc0, 0x27, 0x32, 0x8c, 0xc1, 0x76, 0x7c, 0x0e, 0x82, 0xd2, 0xda, 0x09, 0x7f,
+	0xa9, 0x92, 0xdf, 0x5a, 0xa0, 0xc6, 0x58, 0xba, 0x3b, 0x5d, 0x95, 0xf2, 0xd6, 0x82, 0x72, 0xa7,
+	0x8b, 0x2e, 0x82, 0x7d, 0x45, 0x8f, 0x25, 0xd7, 0x89, 0xe9, 0x6e, 0x32, 0xc0, 0x1f, 0x90, 0x35,
+	0x54, 0x4d, 0xc9, 0x7c, 0x3a, 0x4e, 0x52, 0x03, 0x94, 0x32, 0x03, 0x20, 0xc7, 0x1e, 0x37, 0x26,
+	0x29, 0xf7, 0x38, 0x9e, 0xff, 0x38, 0x1e, 0x8c, 0x79, 0x18, 0x4b, 0x9b, 0x76, 0x2d, 0x8d, 0x8e,
+	0x55, 0x8f, 0x42, 0x96, 0xd8, 0xb6, 0x59, 0x11, 0xfe, 0xff, 0x4a, 0xda, 0x8b, 0x74, 0x54, 0x61,
+	0x05, 0x68, 0x5c, 0x41, 0xff, 0xda, 0x69, 0x33, 0xd6, 0x55, 0x9b, 0x31, 0xc7, 0xfc, 0x46, 0x7a,
+	0x25, 0x95, 0xbe, 0x4d, 0x16, 0x31, 0x39, 0xa6, 0x12, 0x14, 0x81, 0x49, 0xc0, 0xc9, 0x7e, 0x78,
+	0xd0, 0x0a, 0xa6, 0x10, 0x17, 0xa3, 0x7b, 0x64, 0xa9, 0x0d, 0x4c, 0xc4, 0x30, 0x50, 0x99, 0x7d,
+	0xf9, 0xa8, 0xec, 0x95, 0x02, 0x0b, 0xe1, 0xa9, 0x9a, 0x61, 0xc2, 0x5e, 0x44, 0x30, 0x50, 0xf9,
+	0x7d, 0x39, 0x48, 0x69, 0xb4, 0xa1, 0x6e, 0x47, 0x07, 0xbd, 0xae, 0x4a, 0xf2, 0x95, 0x20, 0x03,
+	0x54, 0x10, 0xb2, 0x44, 0x9e, 0x73, 0x9c, 0x5d, 0xd1, 0xb3, 0x29, 0xe0, 0xff, 0xa5, 0x44, 0x76,
+	0xf3, 0x67, 0x3f, 0x0f, 0x93, 0x11, 0x93, 0xfd, 0x2b, 0xfa, 0x5b, 0xb2, 0xda, 0x88, 0x26, 0xd8,
+	0xe8, 0x21, 0xac, 0xec, 0xb0, 0x7a, 0x58, 0x73, 0x2b, 0x7e, 0xde, 0x5e, 0x81, 0xbb, 0x1c, 0x77,
+	0x1b, 0xdd, 0xd5, 0xee, 0xf2, 0xfb, 0x77, 0x3b, 0xcb, 0xfd, 0x7f, 0x94, 0x4c, 0x13, 0xa2, 0x16,
+	0xa1, 0x73, 0x77, 0x25, 0x93, 0x13, 0x9d, 0xd4, 0x80, 0x0d, 0x40, 0x98, 0xe6, 0xcb, 0x50, 0x18,
+	0x71, 0xa9, 0x67, 0x2a, 0xff, 0xb5, 0x11, 0x97, 0x47, 0x71, 0x9d, 0x23, 0xe7, 0x9c, 0xbd, 0x31,
+	0xfd, 0x66, 0x01, 0xa5, 0xdf, 0x10, 0x62, 0x0d, 0x01, 0x78, 0x99, 0x98, 0x40, 0x3e, 0x9f, 0xab,
+	0xbd, 0x5d, 0x16, 0x38, 0x1b, 0xfc, 0xd7, 0x5a, 0xfd, 0xae, 0xe4, 0x02, 0x9e, 0x2b, 0x4c, 0xb4,
+	0xe2, 0x97, 0xca, 0x39, 0x1b, 0x52, 0x44, 0x20, 0xd2, 0x36, 0x22, 0xa5, 0x31, 0x2f, 0x9f, 0x81,
+	0x7d, 0xfe, 0xe1, 0x90, 0xfe, 0x2a, 0xcd, 0x3b, 0x15, 0x95, 0x77, 0x6c, 0xbb, 0xe5, 0xb2, 0xcd,
+	0x67, 0x1e, 0xff, 0xbf, 0x25, 0xb2, 0x87, 0x92, 0xcf, 0xc2, 0xfe, 0x75, 0x9b, 0x0f, 0xc3, 0xd8,
+	0x16, 0x50, 0x37, 0xbf, 0xbc, 0x4d, 0x83, 0x2f, 0xc8, 0x42, 0x6f, 0x3a, 0xd6, 0x97, 0xb5, 0x91,
+	0x76, 0x4a, 0x33, 0xac, 0x70, 0x4d, 0xa0, 0x56, 0xe2, 0x75, 0x98, 0xb7, 0x8b, 0x0e, 0x01, 0x43,
+	0xa1, 0xc3, 0x63, 0x27, 0x7a, 0x32, 0x89, 0xa2, 0x18, 0x9b, 0x3b, 0x1d, 0x0d, 0x39, 0x0c, 0xd3,
+	0x07, 0xd2, 0x66, 0xbf, 0x7e, 0xc0, 0x39, 0x08, 0x6a, 0x8a, 0x94, 0x6a, 0x0e, 0xf5, 0xe3, 0x26,
+	0xa5, 0xfd, 0x3f, 0x9b, 0x96, 0x5a, 0xe9, 0xa5, 0x1e, 0xbf, 0xef, 0x35, 0xaf, 0x47, 0x96, 0xd4,
+	0xea, 0xb4, 0x4f, 0xb3, 0xe4, 0x8c, 0xb2, 0x95, 0xf9, 0xca, 0x66, 0xb2, 0xcc, 0x71, 0x1c, 0xc4,
+	0x6f, 0xe8, 0x24, 0x7a, 0x36, 0x79, 0x01, 0x22, 0x06, 0x09, 0xf8, 0x68, 0x56, 0x2a, 0xed, 0x92,
+	0x5b, 0x4d, 0xde, 0x3f, 0x4b, 0x5f, 0x60, 0x86, 0xca, 0xa5, 0xe2, 0x15, 0x93, 0x8a, 0x7b, 0xda,
+	0x6b, 0x54, 0x79, 0x88, 0x59, 0xd4, 0x00, 0x2c, 0x15, 0x9a, 0x47, 0x83, 0x21, 0x65, 0x79, 0x68,
+	0x0a, 0x79, 0x28, 0xd4, 0xf0, 0x50, 0x98, 0xf1, 0xa2, 0x4a, 0xea, 0x45, 0xf7, 0x0e, 0x48, 0xb5,
+	0x58, 0xa8, 0xe8, 0x32, 0x59, 0x68, 0xf2, 0x18, 0xaa, 0x9f, 0x50, 0x82, 0x8f, 0x96, 0x04, 0xe2,
+	0x41, 0xb5, 0x74, 0xef, 0x21, 0xa1, 0xb3, 0xae, 0x45, 0xab, 0x64, 0xad, 0xc3, 0x26, 0x89, 0x45,
+	0xab, 0x9f, 0xd0, 0x4d, 0xb2, 0x1e, 0x40, 0x32, 0x19, 0xa5, 0x50, 0xe9, 0xde, 0x13, 0xb2, 0x33,
+	0xd7, 0x4f, 0x70, 0x37, 0x4e, 0x1c, 0x4d, 0xf5, 0xad, 0x56, 0x3f, 0xa1, 0xeb, 0x64, 0x45, 0x23,
+	0x27, 0x30, 0xa8, 0x96, 0xe8, 0x06, 0x21, 0x9a, 0x44, 0x7b, 0x57, 0xcb, 0x87, 0x17, 0x64, 0xdb,
+	0x29, 0x45, 0x6c, 0xdc, 0xd5, 0xdf, 0x60, 0xe8, 0x97, 0xa4, 0xda, 0x4a, 0x4e, 0x83, 0x4e, 0xa3,
+	0xc1, 0x47, 0x63, 0x6c, 0xad, 0x60, 0x40, 0x37, 0x6c, 0x21, 0xee, 0x34, 0x9e, 0xf1, 0x70, 0x50,
+	0xa3, 0x4e, 0x84, 0x1e, 0x71, 0x1e, 0x01, 0x8b, 0x0f, 0xbf, 0xc7, 0x88, 0x48, 0x19, 0x62, 0x6d,
+	0xb1, 0x9f, 0x68, 0x0c, 0xe3, 0x87, 0x64, 0xd5, 0xf9, 0xd8, 0x31, 0xc3, 0xd3, 0xe6, 0xac, 0x79,
+	0x1f, 0x44, 0x7e, 0xa7, 0xab, 0x97, 0xfa, 0xd0, 0x43, 0xef, 0x9a, 0x85, 0x6f, 0xf9, 0x02, 0x54,
+	0xdb, 0x74, 0xde, 0xd9, 0x68, 0xbe, 0x48, 0x1e, 0xfe, 0xb5, 0x4c, 0x76, 0xf2, 0xba, 0x59, 0xa5,
+	0xbe, 0x21, 0xb7, 0x0b, 0x1f, 0x10, 0x68, 0xed, 0xed, 0x1f, 0x16, 0x6a, 0x05, 0xa5, 0xe9, 0x71,
+	0xfa, 0x5c, 0xb7, 0xcb, 0xba, 0x52, 0x00, 0x1b, 0x7d, 0x0c, 0x93, 0x83, 0x12, 0xad, 0x93, 0xcd,
+	0x99, 0x57, 0x3f, 0xdd, 0xcb, 0xb3, 0xc8, 0x7f, 0x0f, 0x98, 0xd1, 0xe4, 0x37, 0xa4, 0xda, 0x9d,
+	0xbc, 0x18, 0x85, 0x32, 0x3b, 0x36, 0x9d, 0xb5, 0x44, 0x71, 0xdb, 0xe1, 0xbf, 0x4a, 0xc4, 0xcb,
+	0x2c, 0x73, 0x39, 0x1e, 0x0a, 0x36, 0x00, 0x6b, 0x9c, 0x47, 0xa4, 0x6a, 0x11, 0xfb, 0xbd, 0x87,
+	0xee, 0x14, 0xde, 0x75, 0xfa, 0xe3, 0xc3, 0x9c, 0x33, 0x7d, 0x89, 0x0a, 0x8d, 0x75, 0x3c, 0x0c,
+	0x27, 0x11, 0xc3, 0xcd, 0x1f, 0xe0, 0x47, 0xce, 0x3e, 0x23, 0xfb, 0xc3, 0xf6, 0x1d, 0xfe, 0xa7,
+	0x4c, 0x76, 0xb3, 0x93, 0xa8, 0x47, 0xa3, 0x3d, 0xc7, 0x39, 0x46, 0xa6, 0x72, 0x8e, 0xf4, 0x33,
+	0x03, 0xfd, 0xcc, 0x61, 0x51, 0xfc, 0xf0, 0x51, 0xdb, 0x9b, 0x3f, 0x69, 0xbc, 0xf1, 0x8c, 0x6c,
+	0xea, 0x40, 0x77, 0x9e, 0xe2, 0x39, 0x7e, 0xc5, 0x27, 0x7d, 0xcd, 0x7d, 0xbf, 0x17, 0x7a, 0xde,
+	0xef, 0xc8, 0xb6, 0x46, 0xf2, 0x8f, 0xe4, 0xd4, 0xcb, 0xdf, 0xf2, 0xdc, 0x7e, 0x17, 0xcb, 0x6f,
+	0xad, 0x7e, 0x4e, 0xc7, 0x4d, 0x6b, 0x73, 0xbb, 0xf2, 0xf7, 0xf1, 0x3a, 0xfc, 0xd3, 0x8a, 0x1b,
+	0x39, 0x98, 0xe4, 0xad, 0x51, 0x1f, 0x90, 0xa5, 0x00, 0x5e, 0x61, 0xcb, 0x40, 0x77, 0x9d, 0xfd,
+	0x4e, 0x8f, 0x5d, 0xdb, 0x9e, 0xc1, 0xb1, 0x71, 0x7e, 0x8c, 0x59, 0xed, 0x95, 0xee, 0x35, 0x54,
+	0xac, 0x7c, 0xd4, 0xf6, 0x2f, 0x4a, 0xf4, 0xf1, 0xc7, 0x9e, 0xaf, 0x18, 0x2b, 0x4d, 0xb2, 0x7d,
+	0x0a, 0x72, 0xb6, 0x11, 0x2f, 0xba, 0xd9, 0x5e, 0x9e, 0x67, 0x61, 0xf5, 0x43, 0x42, 0x9b, 0x10,
+	0x81, 0x84, 0x06, 0x8f, 0x6f, 0x40, 0x24, 0xfa, 0xc5, 0xbd, 0xe5, 0xec, 0xb1, 0xfd, 0xf4, 0x9c,
+	0x60, 0xdd, 0xd0, 0x5b, 0xd3, 0x8e, 0xf9, 0x83, 0xb6, 0x3d, 0x20, 0xd5, 0x2e, 0x48, 0xbb, 0x47,
+	0x35, 0xd5, 0x1f, 0xb6, 0xb1, 0x49, 0x76, 0x54, 0xf3, 0x37, 0xd3, 0xe6, 0x15, 0x4f, 0xfc, 0xd9,
+	0x4c, 0xeb, 0xe5, 0x2c, 0xfe, 0x05, 0x59, 0xed, 0x89, 0x70, 0x38, 0x04, 0xa1, 0x6e, 0xbd, 0xb8,
+	0xb7, 0x28, 0xf4, 0x11, 0x59, 0xd3, 0x41, 0x10, 0xc6, 0xc3, 0xc6, 0x68, 0x50, 0x8c, 0x10, 0x3d,
+	0x61, 0xef, 0xba, 0xb8, 0xf9, 0x6b, 0xe2, 0x39, 0xb2, 0x4c, 0xd3, 0xa8, 0x35, 0x7a, 0xaf, 0xe0,
+	0x13, 0x72, 0x47, 0x15, 0x52, 0x5d, 0x3b, 0xdd, 0x4a, 0x9b, 0xd3, 0xa1, 0xd8, 0x34, 0xce, 0xf0,
+	0x79, 0x42, 0x36, 0x67, 0x6a, 0x2d, 0xfd, 0x91, 0xc3, 0xe1, 0x6d, 0xcd, 0xdf, 0x0c, 0xa7, 0x9f,
+	0x93, 0x65, 0x2c, 0x6b, 0x92, 0xc9, 0x59, 0x93, 0x57, 0x73, 0x2a, 0xe1, 0x8a, 0x3a, 0xa6, 0x84,
+	0x04, 0x64, 0xd6, 0xf6, 0xf4, 0xc2, 0x11, 0x08, 0xea, 0x86, 0x69, 0xbe, 0x21, 0x9b, 0x11, 0x58,
+	0xb7, 0x21, 0x72, 0xf6, 0x15, 0x56, 0xd1, 0x1e, 0x7f, 0xda, 0xa9, 0x53, 0xd7, 0x9d, 0x67, 0x1a,
+	0xa8, 0x39, 0x56, 0xdc, 0xba, 0x1c, 0x0f, 0x98, 0x04, 0xb7, 0x4d, 0x4a, 0x72, 0x16, 0x2c, 0x36,
+	0x50, 0x73, 0xf3, 0xf9, 0x63, 0x52, 0x3d, 0x05, 0x99, 0x67, 0xf2, 0x2e, 0xb7, 0x2b, 0x32, 0x7d,
+	0x71, 0x4b, 0xfd, 0xf4, 0xf9, 0xf5, 0xff, 0x03, 0x00, 0x00, 0xff, 0xff, 0x0d, 0xcf, 0x28, 0x1f,
+	0x31, 0x1a, 0x00, 0x00,
+>>>>>>> Stashed changes
 }

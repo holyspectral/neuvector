@@ -192,7 +192,7 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 	}
 }
 
-func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
+func getCertificate(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 	// CA cert
 	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
 	if err != nil {
@@ -208,6 +208,11 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 	if err != nil {
 		return nil, err
 	}
+
+	return &cert, nil
+}
+
+func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
 
 	// The assumption is the server and client will use the same set of keys,
 	// so we can use CN in the local public key to get the server name.
@@ -227,9 +232,10 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 	}
 
 	config := &tls.Config{
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{cert},
-		ServerName:   subjectCN,
+		RootCAs:        caCertPool,
+		ServerName:     subjectCN,
+		GetCertificate: getCertificate,
+		GetConfigForClient: ,
 	}
 	creds := credentials.NewTLS(config)
 

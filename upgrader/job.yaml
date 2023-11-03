@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: upgrader
+spec:
+  template:
+    spec:
+      containers:
+      - name: upgrader
+        image: 10.1.56.1:5000/neuvector/upgrader
+        volumeMounts:
+        - mountPath: /etc/neuvector/certs/internal/grpc/cert.pem
+          name: cert
+          readOnly: true
+          subPath: cert.pem
+        - mountPath: /etc/neuvector/certs/internal/grpc/key.pem
+          name: cert
+          readOnly: true
+          subPath: key.pem
+        - mountPath: /etc/neuvector/certs/internal/grpc/ca.cert
+          name: cert
+          readOnly: true
+          subPath: ca.cert
+      restartPolicy: Never
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: neuvector-controller-secret
+  backoffLimit: 4
