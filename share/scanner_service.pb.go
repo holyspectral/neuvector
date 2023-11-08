@@ -17,25 +17,53 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type ScanImageRequest struct {
-	Registry           string                 `protobuf:"bytes,1,opt,name=Registry" json:"Registry,omitempty"`
-	Username           string                 `protobuf:"bytes,2,opt,name=Username" json:"Username,omitempty"`
-	Password           string                 `protobuf:"bytes,3,opt,name=Password" json:"Password,omitempty"`
-	Repository         string                 `protobuf:"bytes,4,opt,name=Repository" json:"Repository,omitempty"`
-	Tag                string                 `protobuf:"bytes,5,opt,name=Tag" json:"Tag,omitempty"`
-	Proxy              string                 `protobuf:"bytes,6,opt,name=Proxy" json:"Proxy,omitempty"`
-	ScanLayers         bool                   `protobuf:"varint,7,opt,name=ScanLayers" json:"ScanLayers,omitempty"`
-	ScanSecrets        bool                   `protobuf:"varint,8,opt,name=ScanSecrets" json:"ScanSecrets,omitempty"`
-	BaseImage          string                 `protobuf:"bytes,9,opt,name=BaseImage" json:"BaseImage,omitempty"`
-	RootsOfTrust       []*SigstoreRootOfTrust `protobuf:"bytes,10,rep,name=RootsOfTrust" json:"RootsOfTrust,omitempty"`
-	Token              string                 `protobuf:"bytes,11,opt,name=Token" json:"Token,omitempty"`
-	ScanTypesRequested *ScanTypeMap           `protobuf:"bytes,12,opt,name=ScanTypesRequested" json:"ScanTypesRequested,omitempty"`
+	Registry             string                 `protobuf:"bytes,1,opt,name=Registry,proto3" json:"Registry,omitempty"`
+	Username             string                 `protobuf:"bytes,2,opt,name=Username,proto3" json:"Username,omitempty"`
+	Password             string                 `protobuf:"bytes,3,opt,name=Password,proto3" json:"Password,omitempty"`
+	Repository           string                 `protobuf:"bytes,4,opt,name=Repository,proto3" json:"Repository,omitempty"`
+	Tag                  string                 `protobuf:"bytes,5,opt,name=Tag,proto3" json:"Tag,omitempty"`
+	Proxy                string                 `protobuf:"bytes,6,opt,name=Proxy,proto3" json:"Proxy,omitempty"`
+	ScanLayers           bool                   `protobuf:"varint,7,opt,name=ScanLayers,proto3" json:"ScanLayers,omitempty"`
+	ScanSecrets          bool                   `protobuf:"varint,8,opt,name=ScanSecrets,proto3" json:"ScanSecrets,omitempty"`
+	BaseImage            string                 `protobuf:"bytes,9,opt,name=BaseImage,proto3" json:"BaseImage,omitempty"`
+	RootsOfTrust         []*SigstoreRootOfTrust `protobuf:"bytes,10,rep,name=RootsOfTrust,proto3" json:"RootsOfTrust,omitempty"`
+	Token                string                 `protobuf:"bytes,11,opt,name=Token,proto3" json:"Token,omitempty"`
+	ScanTypesRequested   *ScanTypeMap           `protobuf:"bytes,12,opt,name=ScanTypesRequested,proto3" json:"ScanTypesRequested,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
 }
 
-func (m *ScanImageRequest) Reset()                    { *m = ScanImageRequest{} }
-func (m *ScanImageRequest) String() string            { return proto.CompactTextString(m) }
-func (*ScanImageRequest) ProtoMessage()               {}
-func (*ScanImageRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+func (m *ScanImageRequest) Reset()         { *m = ScanImageRequest{} }
+func (m *ScanImageRequest) String() string { return proto.CompactTextString(m) }
+func (*ScanImageRequest) ProtoMessage()    {}
+func (*ScanImageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scanner_service_03fd96935b43d393, []int{0}
+}
+func (m *ScanImageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanImageRequest.Unmarshal(m, b)
+}
+func (m *ScanImageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanImageRequest.Marshal(b, m, deterministic)
+}
+func (dst *ScanImageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanImageRequest.Merge(dst, src)
+}
+func (m *ScanImageRequest) XXX_Size() int {
+	return xxx_messageInfo_ScanImageRequest.Size(m)
+}
+func (m *ScanImageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanImageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanImageRequest proto.InternalMessageInfo
 
 func (m *ScanImageRequest) GetRegistry() string {
 	if m != nil {
@@ -122,17 +150,39 @@ func (m *ScanImageRequest) GetScanTypesRequested() *ScanTypeMap {
 }
 
 type SigstoreRootOfTrust struct {
-	Name           string              `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
-	RekorPublicKey string              `protobuf:"bytes,2,opt,name=RekorPublicKey" json:"RekorPublicKey,omitempty"`
-	RootCert       string              `protobuf:"bytes,3,opt,name=RootCert" json:"RootCert,omitempty"`
-	SCTPublicKey   string              `protobuf:"bytes,4,opt,name=SCTPublicKey" json:"SCTPublicKey,omitempty"`
-	Verifiers      []*SigstoreVerifier `protobuf:"bytes,5,rep,name=Verifiers" json:"Verifiers,omitempty"`
+	Name                 string              `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	RekorPublicKey       string              `protobuf:"bytes,2,opt,name=RekorPublicKey,proto3" json:"RekorPublicKey,omitempty"`
+	RootCert             string              `protobuf:"bytes,3,opt,name=RootCert,proto3" json:"RootCert,omitempty"`
+	SCTPublicKey         string              `protobuf:"bytes,4,opt,name=SCTPublicKey,proto3" json:"SCTPublicKey,omitempty"`
+	Verifiers            []*SigstoreVerifier `protobuf:"bytes,5,rep,name=Verifiers,proto3" json:"Verifiers,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
-func (m *SigstoreRootOfTrust) Reset()                    { *m = SigstoreRootOfTrust{} }
-func (m *SigstoreRootOfTrust) String() string            { return proto.CompactTextString(m) }
-func (*SigstoreRootOfTrust) ProtoMessage()               {}
-func (*SigstoreRootOfTrust) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
+func (m *SigstoreRootOfTrust) Reset()         { *m = SigstoreRootOfTrust{} }
+func (m *SigstoreRootOfTrust) String() string { return proto.CompactTextString(m) }
+func (*SigstoreRootOfTrust) ProtoMessage()    {}
+func (*SigstoreRootOfTrust) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scanner_service_03fd96935b43d393, []int{1}
+}
+func (m *SigstoreRootOfTrust) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SigstoreRootOfTrust.Unmarshal(m, b)
+}
+func (m *SigstoreRootOfTrust) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SigstoreRootOfTrust.Marshal(b, m, deterministic)
+}
+func (dst *SigstoreRootOfTrust) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SigstoreRootOfTrust.Merge(dst, src)
+}
+func (m *SigstoreRootOfTrust) XXX_Size() int {
+	return xxx_messageInfo_SigstoreRootOfTrust.Size(m)
+}
+func (m *SigstoreRootOfTrust) XXX_DiscardUnknown() {
+	xxx_messageInfo_SigstoreRootOfTrust.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SigstoreRootOfTrust proto.InternalMessageInfo
 
 func (m *SigstoreRootOfTrust) GetName() string {
 	if m != nil {
@@ -170,16 +220,38 @@ func (m *SigstoreRootOfTrust) GetVerifiers() []*SigstoreVerifier {
 }
 
 type SigstoreVerifier struct {
-	Name           string                  `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
-	Type           string                  `protobuf:"bytes,2,opt,name=Type" json:"Type,omitempty"`
-	KeypairOptions *SigstoreKeypairOptions `protobuf:"bytes,3,opt,name=KeypairOptions" json:"KeypairOptions,omitempty"`
-	KeylessOptions *SigstoreKeylessOptions `protobuf:"bytes,4,opt,name=KeylessOptions" json:"KeylessOptions,omitempty"`
+	Name                 string                  `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	Type                 string                  `protobuf:"bytes,2,opt,name=Type,proto3" json:"Type,omitempty"`
+	KeypairOptions       *SigstoreKeypairOptions `protobuf:"bytes,3,opt,name=KeypairOptions,proto3" json:"KeypairOptions,omitempty"`
+	KeylessOptions       *SigstoreKeylessOptions `protobuf:"bytes,4,opt,name=KeylessOptions,proto3" json:"KeylessOptions,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
+	XXX_unrecognized     []byte                  `json:"-"`
+	XXX_sizecache        int32                   `json:"-"`
 }
 
-func (m *SigstoreVerifier) Reset()                    { *m = SigstoreVerifier{} }
-func (m *SigstoreVerifier) String() string            { return proto.CompactTextString(m) }
-func (*SigstoreVerifier) ProtoMessage()               {}
-func (*SigstoreVerifier) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
+func (m *SigstoreVerifier) Reset()         { *m = SigstoreVerifier{} }
+func (m *SigstoreVerifier) String() string { return proto.CompactTextString(m) }
+func (*SigstoreVerifier) ProtoMessage()    {}
+func (*SigstoreVerifier) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scanner_service_03fd96935b43d393, []int{2}
+}
+func (m *SigstoreVerifier) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SigstoreVerifier.Unmarshal(m, b)
+}
+func (m *SigstoreVerifier) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SigstoreVerifier.Marshal(b, m, deterministic)
+}
+func (dst *SigstoreVerifier) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SigstoreVerifier.Merge(dst, src)
+}
+func (m *SigstoreVerifier) XXX_Size() int {
+	return xxx_messageInfo_SigstoreVerifier.Size(m)
+}
+func (m *SigstoreVerifier) XXX_DiscardUnknown() {
+	xxx_messageInfo_SigstoreVerifier.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SigstoreVerifier proto.InternalMessageInfo
 
 func (m *SigstoreVerifier) GetName() string {
 	if m != nil {
@@ -210,13 +282,35 @@ func (m *SigstoreVerifier) GetKeylessOptions() *SigstoreKeylessOptions {
 }
 
 type SigstoreKeypairOptions struct {
-	PublicKey string `protobuf:"bytes,1,opt,name=PublicKey" json:"PublicKey,omitempty"`
+	PublicKey            string   `protobuf:"bytes,1,opt,name=PublicKey,proto3" json:"PublicKey,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SigstoreKeypairOptions) Reset()                    { *m = SigstoreKeypairOptions{} }
-func (m *SigstoreKeypairOptions) String() string            { return proto.CompactTextString(m) }
-func (*SigstoreKeypairOptions) ProtoMessage()               {}
-func (*SigstoreKeypairOptions) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
+func (m *SigstoreKeypairOptions) Reset()         { *m = SigstoreKeypairOptions{} }
+func (m *SigstoreKeypairOptions) String() string { return proto.CompactTextString(m) }
+func (*SigstoreKeypairOptions) ProtoMessage()    {}
+func (*SigstoreKeypairOptions) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scanner_service_03fd96935b43d393, []int{3}
+}
+func (m *SigstoreKeypairOptions) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SigstoreKeypairOptions.Unmarshal(m, b)
+}
+func (m *SigstoreKeypairOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SigstoreKeypairOptions.Marshal(b, m, deterministic)
+}
+func (dst *SigstoreKeypairOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SigstoreKeypairOptions.Merge(dst, src)
+}
+func (m *SigstoreKeypairOptions) XXX_Size() int {
+	return xxx_messageInfo_SigstoreKeypairOptions.Size(m)
+}
+func (m *SigstoreKeypairOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_SigstoreKeypairOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SigstoreKeypairOptions proto.InternalMessageInfo
 
 func (m *SigstoreKeypairOptions) GetPublicKey() string {
 	if m != nil {
@@ -226,14 +320,36 @@ func (m *SigstoreKeypairOptions) GetPublicKey() string {
 }
 
 type SigstoreKeylessOptions struct {
-	CertIssuer  string `protobuf:"bytes,1,opt,name=CertIssuer" json:"CertIssuer,omitempty"`
-	CertSubject string `protobuf:"bytes,2,opt,name=CertSubject" json:"CertSubject,omitempty"`
+	CertIssuer           string   `protobuf:"bytes,1,opt,name=CertIssuer,proto3" json:"CertIssuer,omitempty"`
+	CertSubject          string   `protobuf:"bytes,2,opt,name=CertSubject,proto3" json:"CertSubject,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SigstoreKeylessOptions) Reset()                    { *m = SigstoreKeylessOptions{} }
-func (m *SigstoreKeylessOptions) String() string            { return proto.CompactTextString(m) }
-func (*SigstoreKeylessOptions) ProtoMessage()               {}
-func (*SigstoreKeylessOptions) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{4} }
+func (m *SigstoreKeylessOptions) Reset()         { *m = SigstoreKeylessOptions{} }
+func (m *SigstoreKeylessOptions) String() string { return proto.CompactTextString(m) }
+func (*SigstoreKeylessOptions) ProtoMessage()    {}
+func (*SigstoreKeylessOptions) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scanner_service_03fd96935b43d393, []int{4}
+}
+func (m *SigstoreKeylessOptions) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SigstoreKeylessOptions.Unmarshal(m, b)
+}
+func (m *SigstoreKeylessOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SigstoreKeylessOptions.Marshal(b, m, deterministic)
+}
+func (dst *SigstoreKeylessOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SigstoreKeylessOptions.Merge(dst, src)
+}
+func (m *SigstoreKeylessOptions) XXX_Size() int {
+	return xxx_messageInfo_SigstoreKeylessOptions.Size(m)
+}
+func (m *SigstoreKeylessOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_SigstoreKeylessOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SigstoreKeylessOptions proto.InternalMessageInfo
 
 func (m *SigstoreKeylessOptions) GetCertIssuer() string {
 	if m != nil {
@@ -265,8 +381,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for ScannerService service
-
+// ScannerServiceClient is the client API for ScannerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ScannerServiceClient interface {
 	ScanRunning(ctx context.Context, in *ScanRunningRequest, opts ...grpc.CallOption) (*ScanResult, error)
 	ScanImageData(ctx context.Context, in *ScanData, opts ...grpc.CallOption) (*ScanResult, error)
@@ -286,7 +403,7 @@ func NewScannerServiceClient(cc *grpc.ClientConn) ScannerServiceClient {
 
 func (c *scannerServiceClient) ScanRunning(ctx context.Context, in *ScanRunningRequest, opts ...grpc.CallOption) (*ScanResult, error) {
 	out := new(ScanResult)
-	err := grpc.Invoke(ctx, "/share.ScannerService/ScanRunning", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ScannerService/ScanRunning", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +412,7 @@ func (c *scannerServiceClient) ScanRunning(ctx context.Context, in *ScanRunningR
 
 func (c *scannerServiceClient) ScanImageData(ctx context.Context, in *ScanData, opts ...grpc.CallOption) (*ScanResult, error) {
 	out := new(ScanResult)
-	err := grpc.Invoke(ctx, "/share.ScannerService/ScanImageData", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ScannerService/ScanImageData", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +421,7 @@ func (c *scannerServiceClient) ScanImageData(ctx context.Context, in *ScanData, 
 
 func (c *scannerServiceClient) ScanImage(ctx context.Context, in *ScanImageRequest, opts ...grpc.CallOption) (*ScanResult, error) {
 	out := new(ScanResult)
-	err := grpc.Invoke(ctx, "/share.ScannerService/ScanImage", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ScannerService/ScanImage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +430,7 @@ func (c *scannerServiceClient) ScanImage(ctx context.Context, in *ScanImageReque
 
 func (c *scannerServiceClient) ScanAppPackage(ctx context.Context, in *ScanAppRequest, opts ...grpc.CallOption) (*ScanResult, error) {
 	out := new(ScanResult)
-	err := grpc.Invoke(ctx, "/share.ScannerService/ScanAppPackage", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ScannerService/ScanAppPackage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +439,7 @@ func (c *scannerServiceClient) ScanAppPackage(ctx context.Context, in *ScanAppRe
 
 func (c *scannerServiceClient) Ping(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ScannerService/Ping", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ScannerService/Ping", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -331,15 +448,14 @@ func (c *scannerServiceClient) Ping(ctx context.Context, in *RPCVoid, opts ...gr
 
 func (c *scannerServiceClient) ScanAwsLambda(ctx context.Context, in *ScanAwsLambdaRequest, opts ...grpc.CallOption) (*ScanResult, error) {
 	out := new(ScanResult)
-	err := grpc.Invoke(ctx, "/share.ScannerService/ScanAwsLambda", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ScannerService/ScanAwsLambda", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ScannerService service
-
+// ScannerServiceServer is the server API for ScannerService service.
 type ScannerServiceServer interface {
 	ScanRunning(context.Context, *ScanRunningRequest) (*ScanResult, error)
 	ScanImageData(context.Context, *ScanData) (*ScanResult, error)
@@ -494,9 +610,11 @@ var _ScannerService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "scanner_service.proto",
 }
 
-func init() { proto.RegisterFile("scanner_service.proto", fileDescriptor4) }
+func init() {
+	proto.RegisterFile("scanner_service.proto", fileDescriptor_scanner_service_03fd96935b43d393)
+}
 
-var fileDescriptor4 = []byte{
+var fileDescriptor_scanner_service_03fd96935b43d393 = []byte{
 	// 620 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x54, 0xdd, 0x6e, 0xd3, 0x4a,
 	0x10, 0x56, 0x9a, 0xa4, 0xa7, 0x99, 0xe4, 0xe4, 0xf4, 0x0c, 0x94, 0x9a, 0xf0, 0xa3, 0x28, 0x17,

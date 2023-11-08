@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -48,8 +49,16 @@ type GRPCServer struct {
 }
 
 func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
+	return NewGRPCServerTCPWithCerts(endpoint,
+		path.Join(internalCertDir, internalCACert),
+		path.Join(internalCertDir, internalCert),
+		path.Join(internalCertDir, internalCertKey),
+	)
+}
+
+func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath string, keyPath string) (*GRPCServer, error) {
 	// CA cert
-	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
+	caCert, err := ioutil.ReadFile(cacertPath)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +66,7 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	// public/private keys
-	cert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s%s", internalCertDir, internalCert),
-		fmt.Sprintf("%s%s", internalCertDir, internalCertKey))
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +199,22 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 	}
 }
 
+// For backward compatibity.  Use internal certs.
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
+	return newGRPCClientTCPWithCerts(ctx,
+		key,
+		endpoint,
+		path.Join(internalCertDir, internalCACert),
+		path.Join(internalCertDir, internalCert),
+		path.Join(internalCertDir, internalCertKey),
+		cb,
+		compress,
+	)
+}
+
+func newGRPCClientTCPWithCerts(ctx context.Context, key, endpoint string, cacertPath string, certPath string, keyPath string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
 	// CA cert
-	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
+	caCert, err := ioutil.ReadFile(cacertPath)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +223,8 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 
 	// public/private keys
 	cert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s%s", internalCertDir, internalCert),
-		fmt.Sprintf("%s%s", internalCertDir, internalCertKey))
+		certPath,
+		keyPath)
 	if err != nil {
 		return nil, err
 	}

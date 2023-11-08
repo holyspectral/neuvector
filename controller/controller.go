@@ -240,6 +240,7 @@ func main() {
 	rpcPort := flag.Uint("rpc_port", 0, "Cluster server RPC port")
 	lanPort := flag.Uint("lan_port", 0, "Cluster Serf LAN port")
 	grpcPort := flag.Uint("grpc_port", 0, "Cluster GRPC port")
+	migrationGRPCPort := flag.Uint("migration_port", cluster.DefaultMigrationGRPCPort, "Cluster Migration GRPC port")
 	internalSubnets := flag.String("n", "", "Predefined internal subnets")
 	persistConfig := flag.Bool("pc", false, "Persist configurations")
 	admctrlPort := flag.Uint("admctrl_port", 20443, "Admission Webhook server port")
@@ -710,6 +711,8 @@ func main() {
 	// GRPC should be started after cacher as the handler are cache functions
 	grpcServer, _ = startGRPCServer(uint16(*grpcPort))
 
+	migrationGRPCServer, _ := startMigrationGRPCServer(uint16(*migrationGRPCPort))
+
 	// init rest server context before listening KV object store, as federation server can be started from there.
 	rctx := rest.Context{
 		LocalDev:           dev,
@@ -837,5 +840,6 @@ func main() {
 	orchConnector.Close()
 	ctrlDeleteLocalInfo()
 	cluster.LeaveCluster(true)
+	migrationGRPCServer.Stop()
 	grpcServer.Stop()
 }

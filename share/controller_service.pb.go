@@ -17,6 +17,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type ReportRespAction int32
 
 const (
@@ -36,7 +42,9 @@ var ReportRespAction_value = map[string]int32{
 func (x ReportRespAction) String() string {
 	return proto.EnumName(ReportRespAction_name, int32(x))
 }
-func (ReportRespAction) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (ReportRespAction) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{0}
+}
 
 type StoreWatcherAction int32
 
@@ -57,7 +65,9 @@ var StoreWatcherAction_value = map[string]int32{
 func (x StoreWatcherAction) String() string {
 	return proto.EnumName(StoreWatcherAction_name, int32(x))
 }
-func (StoreWatcherAction) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (StoreWatcherAction) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{1}
+}
 
 type KickLoginSessionsType int32
 
@@ -81,21 +91,45 @@ var KickLoginSessionsType_value = map[string]int32{
 func (x KickLoginSessionsType) String() string {
 	return proto.EnumName(KickLoginSessionsType_name, int32(x))
 }
-func (KickLoginSessionsType) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
-
-type AdapterScanImageRequest struct {
-	Registry       string `protobuf:"bytes,1,opt,name=Registry" json:"Registry,omitempty"`
-	Repository     string `protobuf:"bytes,2,opt,name=Repository" json:"Repository,omitempty"`
-	Tag            string `protobuf:"bytes,3,opt,name=Tag" json:"Tag,omitempty"`
-	Token          string `protobuf:"bytes,4,opt,name=Token" json:"Token,omitempty"`
-	ScanLayers     bool   `protobuf:"varint,5,opt,name=ScanLayers" json:"ScanLayers,omitempty"`
-	AdapterVersion string `protobuf:"bytes,6,opt,name=AdapterVersion" json:"AdapterVersion,omitempty"`
+func (KickLoginSessionsType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{2}
 }
 
-func (m *AdapterScanImageRequest) Reset()                    { *m = AdapterScanImageRequest{} }
-func (m *AdapterScanImageRequest) String() string            { return proto.CompactTextString(m) }
-func (*AdapterScanImageRequest) ProtoMessage()               {}
-func (*AdapterScanImageRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+type AdapterScanImageRequest struct {
+	Registry             string   `protobuf:"bytes,1,opt,name=Registry,proto3" json:"Registry,omitempty"`
+	Repository           string   `protobuf:"bytes,2,opt,name=Repository,proto3" json:"Repository,omitempty"`
+	Tag                  string   `protobuf:"bytes,3,opt,name=Tag,proto3" json:"Tag,omitempty"`
+	Token                string   `protobuf:"bytes,4,opt,name=Token,proto3" json:"Token,omitempty"`
+	ScanLayers           bool     `protobuf:"varint,5,opt,name=ScanLayers,proto3" json:"ScanLayers,omitempty"`
+	AdapterVersion       string   `protobuf:"bytes,6,opt,name=AdapterVersion,proto3" json:"AdapterVersion,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *AdapterScanImageRequest) Reset()         { *m = AdapterScanImageRequest{} }
+func (m *AdapterScanImageRequest) String() string { return proto.CompactTextString(m) }
+func (*AdapterScanImageRequest) ProtoMessage()    {}
+func (*AdapterScanImageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{0}
+}
+func (m *AdapterScanImageRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AdapterScanImageRequest.Unmarshal(m, b)
+}
+func (m *AdapterScanImageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AdapterScanImageRequest.Marshal(b, m, deterministic)
+}
+func (dst *AdapterScanImageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AdapterScanImageRequest.Merge(dst, src)
+}
+func (m *AdapterScanImageRequest) XXX_Size() int {
+	return xxx_messageInfo_AdapterScanImageRequest.Size(m)
+}
+func (m *AdapterScanImageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AdapterScanImageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AdapterScanImageRequest proto.InternalMessageInfo
 
 func (m *AdapterScanImageRequest) GetRegistry() string {
 	if m != nil {
@@ -140,17 +174,39 @@ func (m *AdapterScanImageRequest) GetAdapterVersion() string {
 }
 
 type GetScannersResponse struct {
-	Scanners       uint32 `protobuf:"varint,1,opt,name=Scanners" json:"Scanners,omitempty"`
-	MaxScanners    uint32 `protobuf:"varint,2,opt,name=MaxScanners" json:"MaxScanners,omitempty"`
-	IdleScanners   uint32 `protobuf:"varint,3,opt,name=IdleScanners" json:"IdleScanners,omitempty"`
-	ScannerVersion string `protobuf:"bytes,4,opt,name=ScannerVersion" json:"ScannerVersion,omitempty"`
-	ScannerDBTime  string `protobuf:"bytes,5,opt,name=ScannerDBTime" json:"ScannerDBTime,omitempty"`
+	Scanners             uint32   `protobuf:"varint,1,opt,name=Scanners,proto3" json:"Scanners,omitempty"`
+	MaxScanners          uint32   `protobuf:"varint,2,opt,name=MaxScanners,proto3" json:"MaxScanners,omitempty"`
+	IdleScanners         uint32   `protobuf:"varint,3,opt,name=IdleScanners,proto3" json:"IdleScanners,omitempty"`
+	ScannerVersion       string   `protobuf:"bytes,4,opt,name=ScannerVersion,proto3" json:"ScannerVersion,omitempty"`
+	ScannerDBTime        string   `protobuf:"bytes,5,opt,name=ScannerDBTime,proto3" json:"ScannerDBTime,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetScannersResponse) Reset()                    { *m = GetScannersResponse{} }
-func (m *GetScannersResponse) String() string            { return proto.CompactTextString(m) }
-func (*GetScannersResponse) ProtoMessage()               {}
-func (*GetScannersResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (m *GetScannersResponse) Reset()         { *m = GetScannersResponse{} }
+func (m *GetScannersResponse) String() string { return proto.CompactTextString(m) }
+func (*GetScannersResponse) ProtoMessage()    {}
+func (*GetScannersResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{1}
+}
+func (m *GetScannersResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetScannersResponse.Unmarshal(m, b)
+}
+func (m *GetScannersResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetScannersResponse.Marshal(b, m, deterministic)
+}
+func (dst *GetScannersResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetScannersResponse.Merge(dst, src)
+}
+func (m *GetScannersResponse) XXX_Size() int {
+	return xxx_messageInfo_GetScannersResponse.Size(m)
+}
+func (m *GetScannersResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetScannersResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetScannersResponse proto.InternalMessageInfo
 
 func (m *GetScannersResponse) GetScanners() uint32 {
 	if m != nil {
@@ -188,18 +244,40 @@ func (m *GetScannersResponse) GetScannerDBTime() string {
 }
 
 type ScannerRegisterData struct {
-	CVEDBVersion    string                        `protobuf:"bytes,1,opt,name=CVEDBVersion" json:"CVEDBVersion,omitempty"`
-	CVEDBCreateTime string                        `protobuf:"bytes,2,opt,name=CVEDBCreateTime" json:"CVEDBCreateTime,omitempty"`
-	CVEDB           map[string]*ScanVulnerability `protobuf:"bytes,3,rep,name=CVEDB" json:"CVEDB,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	RPCServer       string                        `protobuf:"bytes,4,opt,name=RPCServer" json:"RPCServer,omitempty"`
-	RPCServerPort   uint32                        `protobuf:"varint,5,opt,name=RPCServerPort" json:"RPCServerPort,omitempty"`
-	ID              string                        `protobuf:"bytes,6,opt,name=ID" json:"ID,omitempty"`
+	CVEDBVersion         string                        `protobuf:"bytes,1,opt,name=CVEDBVersion,proto3" json:"CVEDBVersion,omitempty"`
+	CVEDBCreateTime      string                        `protobuf:"bytes,2,opt,name=CVEDBCreateTime,proto3" json:"CVEDBCreateTime,omitempty"`
+	CVEDB                map[string]*ScanVulnerability `protobuf:"bytes,3,rep,name=CVEDB,proto3" json:"CVEDB,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	RPCServer            string                        `protobuf:"bytes,4,opt,name=RPCServer,proto3" json:"RPCServer,omitempty"`
+	RPCServerPort        uint32                        `protobuf:"varint,5,opt,name=RPCServerPort,proto3" json:"RPCServerPort,omitempty"`
+	ID                   string                        `protobuf:"bytes,6,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                      `json:"-"`
+	XXX_unrecognized     []byte                        `json:"-"`
+	XXX_sizecache        int32                         `json:"-"`
 }
 
-func (m *ScannerRegisterData) Reset()                    { *m = ScannerRegisterData{} }
-func (m *ScannerRegisterData) String() string            { return proto.CompactTextString(m) }
-func (*ScannerRegisterData) ProtoMessage()               {}
-func (*ScannerRegisterData) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+func (m *ScannerRegisterData) Reset()         { *m = ScannerRegisterData{} }
+func (m *ScannerRegisterData) String() string { return proto.CompactTextString(m) }
+func (*ScannerRegisterData) ProtoMessage()    {}
+func (*ScannerRegisterData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{2}
+}
+func (m *ScannerRegisterData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScannerRegisterData.Unmarshal(m, b)
+}
+func (m *ScannerRegisterData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScannerRegisterData.Marshal(b, m, deterministic)
+}
+func (dst *ScannerRegisterData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScannerRegisterData.Merge(dst, src)
+}
+func (m *ScannerRegisterData) XXX_Size() int {
+	return xxx_messageInfo_ScannerRegisterData.Size(m)
+}
+func (m *ScannerRegisterData) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScannerRegisterData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScannerRegisterData proto.InternalMessageInfo
 
 func (m *ScannerRegisterData) GetCVEDBVersion() string {
 	if m != nil {
@@ -244,13 +322,35 @@ func (m *ScannerRegisterData) GetID() string {
 }
 
 type ScannerDeregisterData struct {
-	ID string `protobuf:"bytes,1,opt,name=ID" json:"ID,omitempty"`
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ScannerDeregisterData) Reset()                    { *m = ScannerDeregisterData{} }
-func (m *ScannerDeregisterData) String() string            { return proto.CompactTextString(m) }
-func (*ScannerDeregisterData) ProtoMessage()               {}
-func (*ScannerDeregisterData) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+func (m *ScannerDeregisterData) Reset()         { *m = ScannerDeregisterData{} }
+func (m *ScannerDeregisterData) String() string { return proto.CompactTextString(m) }
+func (*ScannerDeregisterData) ProtoMessage()    {}
+func (*ScannerDeregisterData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{3}
+}
+func (m *ScannerDeregisterData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScannerDeregisterData.Unmarshal(m, b)
+}
+func (m *ScannerDeregisterData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScannerDeregisterData.Marshal(b, m, deterministic)
+}
+func (dst *ScannerDeregisterData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScannerDeregisterData.Merge(dst, src)
+}
+func (m *ScannerDeregisterData) XXX_Size() int {
+	return xxx_messageInfo_ScannerDeregisterData.Size(m)
+}
+func (m *ScannerDeregisterData) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScannerDeregisterData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScannerDeregisterData proto.InternalMessageInfo
 
 func (m *ScannerDeregisterData) GetID() string {
 	if m != nil {
@@ -260,15 +360,37 @@ func (m *ScannerDeregisterData) GetID() string {
 }
 
 type CLUSFilePacket struct {
-	Data []byte `protobuf:"bytes,1,opt,name=Data,proto3" json:"Data,omitempty"`
-	Name string `protobuf:"bytes,2,opt,name=Name" json:"Name,omitempty"`
-	Len  uint32 `protobuf:"varint,3,opt,name=Len" json:"Len,omitempty"`
+	Data                 []byte   `protobuf:"bytes,1,opt,name=Data,proto3" json:"Data,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=Name,proto3" json:"Name,omitempty"`
+	Len                  uint32   `protobuf:"varint,3,opt,name=Len,proto3" json:"Len,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSFilePacket) Reset()                    { *m = CLUSFilePacket{} }
-func (m *CLUSFilePacket) String() string            { return proto.CompactTextString(m) }
-func (*CLUSFilePacket) ProtoMessage()               {}
-func (*CLUSFilePacket) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+func (m *CLUSFilePacket) Reset()         { *m = CLUSFilePacket{} }
+func (m *CLUSFilePacket) String() string { return proto.CompactTextString(m) }
+func (*CLUSFilePacket) ProtoMessage()    {}
+func (*CLUSFilePacket) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{4}
+}
+func (m *CLUSFilePacket) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSFilePacket.Unmarshal(m, b)
+}
+func (m *CLUSFilePacket) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSFilePacket.Marshal(b, m, deterministic)
+}
+func (dst *CLUSFilePacket) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSFilePacket.Merge(dst, src)
+}
+func (m *CLUSFilePacket) XXX_Size() int {
+	return xxx_messageInfo_CLUSFilePacket.Size(m)
+}
+func (m *CLUSFilePacket) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSFilePacket.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSFilePacket proto.InternalMessageInfo
 
 func (m *CLUSFilePacket) GetData() []byte {
 	if m != nil {
@@ -292,16 +414,38 @@ func (m *CLUSFilePacket) GetLen() uint32 {
 }
 
 type CLUSAdmissionRequest struct {
-	ID         string `protobuf:"bytes,1,opt,name=ID" json:"ID,omitempty"`
-	HostID     string `protobuf:"bytes,2,opt,name=HostID" json:"HostID,omitempty"`
-	HostCPUs   int64  `protobuf:"varint,3,opt,name=HostCPUs" json:"HostCPUs,omitempty"`
-	HostMemory int64  `protobuf:"varint,4,opt,name=HostMemory" json:"HostMemory,omitempty"`
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	HostID               string   `protobuf:"bytes,2,opt,name=HostID,proto3" json:"HostID,omitempty"`
+	HostCPUs             int64    `protobuf:"varint,3,opt,name=HostCPUs,proto3" json:"HostCPUs,omitempty"`
+	HostMemory           int64    `protobuf:"varint,4,opt,name=HostMemory,proto3" json:"HostMemory,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSAdmissionRequest) Reset()                    { *m = CLUSAdmissionRequest{} }
-func (m *CLUSAdmissionRequest) String() string            { return proto.CompactTextString(m) }
-func (*CLUSAdmissionRequest) ProtoMessage()               {}
-func (*CLUSAdmissionRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+func (m *CLUSAdmissionRequest) Reset()         { *m = CLUSAdmissionRequest{} }
+func (m *CLUSAdmissionRequest) String() string { return proto.CompactTextString(m) }
+func (*CLUSAdmissionRequest) ProtoMessage()    {}
+func (*CLUSAdmissionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{5}
+}
+func (m *CLUSAdmissionRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSAdmissionRequest.Unmarshal(m, b)
+}
+func (m *CLUSAdmissionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSAdmissionRequest.Marshal(b, m, deterministic)
+}
+func (dst *CLUSAdmissionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSAdmissionRequest.Merge(dst, src)
+}
+func (m *CLUSAdmissionRequest) XXX_Size() int {
+	return xxx_messageInfo_CLUSAdmissionRequest.Size(m)
+}
+func (m *CLUSAdmissionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSAdmissionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSAdmissionRequest proto.InternalMessageInfo
 
 func (m *CLUSAdmissionRequest) GetID() string {
 	if m != nil {
@@ -332,14 +476,36 @@ func (m *CLUSAdmissionRequest) GetHostMemory() int64 {
 }
 
 type CLUSAdmissionResponse struct {
-	Allowed bool   `protobuf:"varint,1,opt,name=Allowed" json:"Allowed,omitempty"`
-	Reason  string `protobuf:"bytes,2,opt,name=Reason" json:"Reason,omitempty"`
+	Allowed              bool     `protobuf:"varint,1,opt,name=Allowed,proto3" json:"Allowed,omitempty"`
+	Reason               string   `protobuf:"bytes,2,opt,name=Reason,proto3" json:"Reason,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSAdmissionResponse) Reset()                    { *m = CLUSAdmissionResponse{} }
-func (m *CLUSAdmissionResponse) String() string            { return proto.CompactTextString(m) }
-func (*CLUSAdmissionResponse) ProtoMessage()               {}
-func (*CLUSAdmissionResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{6} }
+func (m *CLUSAdmissionResponse) Reset()         { *m = CLUSAdmissionResponse{} }
+func (m *CLUSAdmissionResponse) String() string { return proto.CompactTextString(m) }
+func (*CLUSAdmissionResponse) ProtoMessage()    {}
+func (*CLUSAdmissionResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{6}
+}
+func (m *CLUSAdmissionResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSAdmissionResponse.Unmarshal(m, b)
+}
+func (m *CLUSAdmissionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSAdmissionResponse.Marshal(b, m, deterministic)
+}
+func (dst *CLUSAdmissionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSAdmissionResponse.Merge(dst, src)
+}
+func (m *CLUSAdmissionResponse) XXX_Size() int {
+	return xxx_messageInfo_CLUSAdmissionResponse.Size(m)
+}
+func (m *CLUSAdmissionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSAdmissionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSAdmissionResponse proto.InternalMessageInfo
 
 func (m *CLUSAdmissionResponse) GetAllowed() bool {
 	if m != nil {
@@ -356,19 +522,41 @@ func (m *CLUSAdmissionResponse) GetReason() string {
 }
 
 type CLUSProcProfileReq struct {
-	GroupName string `protobuf:"bytes,1,opt,name=GroupName" json:"GroupName,omitempty"`
-	Name      string `protobuf:"bytes,2,opt,name=Name" json:"Name,omitempty"`
-	Path      string `protobuf:"bytes,3,opt,name=Path" json:"Path,omitempty"`
-	User      string `protobuf:"bytes,4,opt,name=User" json:"User,omitempty"`
-	Uid       int32  `protobuf:"varint,5,opt,name=Uid" json:"Uid,omitempty"`
-	Hash      []byte `protobuf:"bytes,6,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	Action    string `protobuf:"bytes,7,opt,name=Action" json:"Action,omitempty"`
+	GroupName            string   `protobuf:"bytes,1,opt,name=GroupName,proto3" json:"GroupName,omitempty"`
+	Name                 string   `protobuf:"bytes,2,opt,name=Name,proto3" json:"Name,omitempty"`
+	Path                 string   `protobuf:"bytes,3,opt,name=Path,proto3" json:"Path,omitempty"`
+	User                 string   `protobuf:"bytes,4,opt,name=User,proto3" json:"User,omitempty"`
+	Uid                  int32    `protobuf:"varint,5,opt,name=Uid,proto3" json:"Uid,omitempty"`
+	Hash                 []byte   `protobuf:"bytes,6,opt,name=Hash,proto3" json:"Hash,omitempty"`
+	Action               string   `protobuf:"bytes,7,opt,name=Action,proto3" json:"Action,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSProcProfileReq) Reset()                    { *m = CLUSProcProfileReq{} }
-func (m *CLUSProcProfileReq) String() string            { return proto.CompactTextString(m) }
-func (*CLUSProcProfileReq) ProtoMessage()               {}
-func (*CLUSProcProfileReq) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{7} }
+func (m *CLUSProcProfileReq) Reset()         { *m = CLUSProcProfileReq{} }
+func (m *CLUSProcProfileReq) String() string { return proto.CompactTextString(m) }
+func (*CLUSProcProfileReq) ProtoMessage()    {}
+func (*CLUSProcProfileReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{7}
+}
+func (m *CLUSProcProfileReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSProcProfileReq.Unmarshal(m, b)
+}
+func (m *CLUSProcProfileReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSProcProfileReq.Marshal(b, m, deterministic)
+}
+func (dst *CLUSProcProfileReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSProcProfileReq.Merge(dst, src)
+}
+func (m *CLUSProcProfileReq) XXX_Size() int {
+	return xxx_messageInfo_CLUSProcProfileReq.Size(m)
+}
+func (m *CLUSProcProfileReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSProcProfileReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSProcProfileReq proto.InternalMessageInfo
 
 func (m *CLUSProcProfileReq) GetGroupName() string {
 	if m != nil {
@@ -420,13 +608,35 @@ func (m *CLUSProcProfileReq) GetAction() string {
 }
 
 type CLUSProcProfileArray struct {
-	Processes []*CLUSProcProfileReq `protobuf:"bytes,1,rep,name=Processes" json:"Processes,omitempty"`
+	Processes            []*CLUSProcProfileReq `protobuf:"bytes,1,rep,name=Processes,proto3" json:"Processes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
-func (m *CLUSProcProfileArray) Reset()                    { *m = CLUSProcProfileArray{} }
-func (m *CLUSProcProfileArray) String() string            { return proto.CompactTextString(m) }
-func (*CLUSProcProfileArray) ProtoMessage()               {}
-func (*CLUSProcProfileArray) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
+func (m *CLUSProcProfileArray) Reset()         { *m = CLUSProcProfileArray{} }
+func (m *CLUSProcProfileArray) String() string { return proto.CompactTextString(m) }
+func (*CLUSProcProfileArray) ProtoMessage()    {}
+func (*CLUSProcProfileArray) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{8}
+}
+func (m *CLUSProcProfileArray) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSProcProfileArray.Unmarshal(m, b)
+}
+func (m *CLUSProcProfileArray) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSProcProfileArray.Marshal(b, m, deterministic)
+}
+func (dst *CLUSProcProfileArray) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSProcProfileArray.Merge(dst, src)
+}
+func (m *CLUSProcProfileArray) XXX_Size() int {
+	return xxx_messageInfo_CLUSProcProfileArray.Size(m)
+}
+func (m *CLUSProcProfileArray) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSProcProfileArray.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSProcProfileArray proto.InternalMessageInfo
 
 func (m *CLUSProcProfileArray) GetProcesses() []*CLUSProcProfileReq {
 	if m != nil {
@@ -436,15 +646,37 @@ func (m *CLUSProcProfileArray) GetProcesses() []*CLUSProcProfileReq {
 }
 
 type CLUSFileAccessRuleReq struct {
-	GroupName string `protobuf:"bytes,1,opt,name=GroupName" json:"GroupName,omitempty"`
-	Filter    string `protobuf:"bytes,2,opt,name=Filter" json:"Filter,omitempty"`
-	Path      string `protobuf:"bytes,3,opt,name=Path" json:"Path,omitempty"`
+	GroupName            string   `protobuf:"bytes,1,opt,name=GroupName,proto3" json:"GroupName,omitempty"`
+	Filter               string   `protobuf:"bytes,2,opt,name=Filter,proto3" json:"Filter,omitempty"`
+	Path                 string   `protobuf:"bytes,3,opt,name=Path,proto3" json:"Path,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSFileAccessRuleReq) Reset()                    { *m = CLUSFileAccessRuleReq{} }
-func (m *CLUSFileAccessRuleReq) String() string            { return proto.CompactTextString(m) }
-func (*CLUSFileAccessRuleReq) ProtoMessage()               {}
-func (*CLUSFileAccessRuleReq) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{9} }
+func (m *CLUSFileAccessRuleReq) Reset()         { *m = CLUSFileAccessRuleReq{} }
+func (m *CLUSFileAccessRuleReq) String() string { return proto.CompactTextString(m) }
+func (*CLUSFileAccessRuleReq) ProtoMessage()    {}
+func (*CLUSFileAccessRuleReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{9}
+}
+func (m *CLUSFileAccessRuleReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSFileAccessRuleReq.Unmarshal(m, b)
+}
+func (m *CLUSFileAccessRuleReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSFileAccessRuleReq.Marshal(b, m, deterministic)
+}
+func (dst *CLUSFileAccessRuleReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSFileAccessRuleReq.Merge(dst, src)
+}
+func (m *CLUSFileAccessRuleReq) XXX_Size() int {
+	return xxx_messageInfo_CLUSFileAccessRuleReq.Size(m)
+}
+func (m *CLUSFileAccessRuleReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSFileAccessRuleReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSFileAccessRuleReq proto.InternalMessageInfo
 
 func (m *CLUSFileAccessRuleReq) GetGroupName() string {
 	if m != nil {
@@ -468,13 +700,35 @@ func (m *CLUSFileAccessRuleReq) GetPath() string {
 }
 
 type CLUSFileAccessRuleArray struct {
-	Rules []*CLUSFileAccessRuleReq `protobuf:"bytes,1,rep,name=Rules" json:"Rules,omitempty"`
+	Rules                []*CLUSFileAccessRuleReq `protobuf:"bytes,1,rep,name=Rules,proto3" json:"Rules,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
 }
 
-func (m *CLUSFileAccessRuleArray) Reset()                    { *m = CLUSFileAccessRuleArray{} }
-func (m *CLUSFileAccessRuleArray) String() string            { return proto.CompactTextString(m) }
-func (*CLUSFileAccessRuleArray) ProtoMessage()               {}
-func (*CLUSFileAccessRuleArray) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{10} }
+func (m *CLUSFileAccessRuleArray) Reset()         { *m = CLUSFileAccessRuleArray{} }
+func (m *CLUSFileAccessRuleArray) String() string { return proto.CompactTextString(m) }
+func (*CLUSFileAccessRuleArray) ProtoMessage()    {}
+func (*CLUSFileAccessRuleArray) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{10}
+}
+func (m *CLUSFileAccessRuleArray) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSFileAccessRuleArray.Unmarshal(m, b)
+}
+func (m *CLUSFileAccessRuleArray) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSFileAccessRuleArray.Marshal(b, m, deterministic)
+}
+func (dst *CLUSFileAccessRuleArray) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSFileAccessRuleArray.Merge(dst, src)
+}
+func (m *CLUSFileAccessRuleArray) XXX_Size() int {
+	return xxx_messageInfo_CLUSFileAccessRuleArray.Size(m)
+}
+func (m *CLUSFileAccessRuleArray) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSFileAccessRuleArray.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSFileAccessRuleArray proto.InternalMessageInfo
 
 func (m *CLUSFileAccessRuleArray) GetRules() []*CLUSFileAccessRuleReq {
 	if m != nil {
@@ -484,45 +738,67 @@ func (m *CLUSFileAccessRuleArray) GetRules() []*CLUSFileAccessRuleReq {
 }
 
 type CLUSConnection struct {
-	AgentID      string `protobuf:"bytes,1,opt,name=AgentID" json:"AgentID,omitempty"`
-	HostID       string `protobuf:"bytes,2,opt,name=HostID" json:"HostID,omitempty"`
-	ClientWL     string `protobuf:"bytes,3,opt,name=ClientWL" json:"ClientWL,omitempty"`
-	ServerWL     string `protobuf:"bytes,4,opt,name=ServerWL" json:"ServerWL,omitempty"`
-	ClientIP     []byte `protobuf:"bytes,5,opt,name=ClientIP,proto3" json:"ClientIP,omitempty"`
-	ServerIP     []byte `protobuf:"bytes,6,opt,name=ServerIP,proto3" json:"ServerIP,omitempty"`
-	Scope        string `protobuf:"bytes,7,opt,name=Scope" json:"Scope,omitempty"`
-	Network      string `protobuf:"bytes,8,opt,name=Network" json:"Network,omitempty"`
-	ClientPort   uint32 `protobuf:"varint,9,opt,name=ClientPort" json:"ClientPort,omitempty"`
-	ServerPort   uint32 `protobuf:"varint,10,opt,name=ServerPort" json:"ServerPort,omitempty"`
-	IPProto      uint32 `protobuf:"varint,11,opt,name=IPProto" json:"IPProto,omitempty"`
-	Application  uint32 `protobuf:"varint,12,opt,name=Application" json:"Application,omitempty"`
-	Bytes        uint64 `protobuf:"varint,13,opt,name=Bytes" json:"Bytes,omitempty"`
-	Sessions     uint32 `protobuf:"varint,14,opt,name=Sessions" json:"Sessions,omitempty"`
-	FirstSeenAt  uint32 `protobuf:"varint,15,opt,name=FirstSeenAt" json:"FirstSeenAt,omitempty"`
-	LastSeenAt   uint32 `protobuf:"varint,16,opt,name=LastSeenAt" json:"LastSeenAt,omitempty"`
-	ThreatID     uint32 `protobuf:"varint,17,opt,name=ThreatID" json:"ThreatID,omitempty"`
-	Severity     uint32 `protobuf:"varint,18,opt,name=Severity" json:"Severity,omitempty"`
-	PolicyAction uint32 `protobuf:"varint,19,opt,name=PolicyAction" json:"PolicyAction,omitempty"`
-	Ingress      bool   `protobuf:"varint,20,opt,name=Ingress" json:"Ingress,omitempty"`
-	ExternalPeer bool   `protobuf:"varint,21,opt,name=ExternalPeer" json:"ExternalPeer,omitempty"`
-	LocalPeer    bool   `protobuf:"varint,22,opt,name=LocalPeer" json:"LocalPeer,omitempty"`
-	PolicyId     uint32 `protobuf:"varint,23,opt,name=PolicyId" json:"PolicyId,omitempty"`
-	Violates     uint32 `protobuf:"varint,24,opt,name=Violates" json:"Violates,omitempty"`
-	LogUID       string `protobuf:"bytes,25,opt,name=LogUID" json:"LogUID,omitempty"`
-	Xff          bool   `protobuf:"varint,26,opt,name=Xff" json:"Xff,omitempty"`
-	SvcExtIP     bool   `protobuf:"varint,27,opt,name=SvcExtIP" json:"SvcExtIP,omitempty"`
-	ToSidecar    bool   `protobuf:"varint,28,opt,name=ToSidecar" json:"ToSidecar,omitempty"`
-	MeshToSvr    bool   `protobuf:"varint,29,opt,name=MeshToSvr" json:"MeshToSvr,omitempty"`
-	LinkLocal    bool   `protobuf:"varint,30,opt,name=LinkLocal" json:"LinkLocal,omitempty"`
-	TmpOpen      bool   `protobuf:"varint,31,opt,name=TmpOpen" json:"TmpOpen,omitempty"`
-	UwlIp        bool   `protobuf:"varint,32,opt,name=UwlIp" json:"UwlIp,omitempty"`
-	FQDN         string `protobuf:"bytes,33,opt,name=FQDN" json:"FQDN,omitempty"`
+	AgentID              string   `protobuf:"bytes,1,opt,name=AgentID,proto3" json:"AgentID,omitempty"`
+	HostID               string   `protobuf:"bytes,2,opt,name=HostID,proto3" json:"HostID,omitempty"`
+	ClientWL             string   `protobuf:"bytes,3,opt,name=ClientWL,proto3" json:"ClientWL,omitempty"`
+	ServerWL             string   `protobuf:"bytes,4,opt,name=ServerWL,proto3" json:"ServerWL,omitempty"`
+	ClientIP             []byte   `protobuf:"bytes,5,opt,name=ClientIP,proto3" json:"ClientIP,omitempty"`
+	ServerIP             []byte   `protobuf:"bytes,6,opt,name=ServerIP,proto3" json:"ServerIP,omitempty"`
+	Scope                string   `protobuf:"bytes,7,opt,name=Scope,proto3" json:"Scope,omitempty"`
+	Network              string   `protobuf:"bytes,8,opt,name=Network,proto3" json:"Network,omitempty"`
+	ClientPort           uint32   `protobuf:"varint,9,opt,name=ClientPort,proto3" json:"ClientPort,omitempty"`
+	ServerPort           uint32   `protobuf:"varint,10,opt,name=ServerPort,proto3" json:"ServerPort,omitempty"`
+	IPProto              uint32   `protobuf:"varint,11,opt,name=IPProto,proto3" json:"IPProto,omitempty"`
+	Application          uint32   `protobuf:"varint,12,opt,name=Application,proto3" json:"Application,omitempty"`
+	Bytes                uint64   `protobuf:"varint,13,opt,name=Bytes,proto3" json:"Bytes,omitempty"`
+	Sessions             uint32   `protobuf:"varint,14,opt,name=Sessions,proto3" json:"Sessions,omitempty"`
+	FirstSeenAt          uint32   `protobuf:"varint,15,opt,name=FirstSeenAt,proto3" json:"FirstSeenAt,omitempty"`
+	LastSeenAt           uint32   `protobuf:"varint,16,opt,name=LastSeenAt,proto3" json:"LastSeenAt,omitempty"`
+	ThreatID             uint32   `protobuf:"varint,17,opt,name=ThreatID,proto3" json:"ThreatID,omitempty"`
+	Severity             uint32   `protobuf:"varint,18,opt,name=Severity,proto3" json:"Severity,omitempty"`
+	PolicyAction         uint32   `protobuf:"varint,19,opt,name=PolicyAction,proto3" json:"PolicyAction,omitempty"`
+	Ingress              bool     `protobuf:"varint,20,opt,name=Ingress,proto3" json:"Ingress,omitempty"`
+	ExternalPeer         bool     `protobuf:"varint,21,opt,name=ExternalPeer,proto3" json:"ExternalPeer,omitempty"`
+	LocalPeer            bool     `protobuf:"varint,22,opt,name=LocalPeer,proto3" json:"LocalPeer,omitempty"`
+	PolicyId             uint32   `protobuf:"varint,23,opt,name=PolicyId,proto3" json:"PolicyId,omitempty"`
+	Violates             uint32   `protobuf:"varint,24,opt,name=Violates,proto3" json:"Violates,omitempty"`
+	LogUID               string   `protobuf:"bytes,25,opt,name=LogUID,proto3" json:"LogUID,omitempty"`
+	Xff                  bool     `protobuf:"varint,26,opt,name=Xff,proto3" json:"Xff,omitempty"`
+	SvcExtIP             bool     `protobuf:"varint,27,opt,name=SvcExtIP,proto3" json:"SvcExtIP,omitempty"`
+	ToSidecar            bool     `protobuf:"varint,28,opt,name=ToSidecar,proto3" json:"ToSidecar,omitempty"`
+	MeshToSvr            bool     `protobuf:"varint,29,opt,name=MeshToSvr,proto3" json:"MeshToSvr,omitempty"`
+	LinkLocal            bool     `protobuf:"varint,30,opt,name=LinkLocal,proto3" json:"LinkLocal,omitempty"`
+	TmpOpen              bool     `protobuf:"varint,31,opt,name=TmpOpen,proto3" json:"TmpOpen,omitempty"`
+	UwlIp                bool     `protobuf:"varint,32,opt,name=UwlIp,proto3" json:"UwlIp,omitempty"`
+	FQDN                 string   `protobuf:"bytes,33,opt,name=FQDN,proto3" json:"FQDN,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSConnection) Reset()                    { *m = CLUSConnection{} }
-func (m *CLUSConnection) String() string            { return proto.CompactTextString(m) }
-func (*CLUSConnection) ProtoMessage()               {}
-func (*CLUSConnection) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{11} }
+func (m *CLUSConnection) Reset()         { *m = CLUSConnection{} }
+func (m *CLUSConnection) String() string { return proto.CompactTextString(m) }
+func (*CLUSConnection) ProtoMessage()    {}
+func (*CLUSConnection) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{11}
+}
+func (m *CLUSConnection) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSConnection.Unmarshal(m, b)
+}
+func (m *CLUSConnection) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSConnection.Marshal(b, m, deterministic)
+}
+func (dst *CLUSConnection) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSConnection.Merge(dst, src)
+}
+func (m *CLUSConnection) XXX_Size() int {
+	return xxx_messageInfo_CLUSConnection.Size(m)
+}
+func (m *CLUSConnection) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSConnection.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSConnection proto.InternalMessageInfo
 
 func (m *CLUSConnection) GetAgentID() string {
 	if m != nil {
@@ -756,13 +1032,35 @@ func (m *CLUSConnection) GetFQDN() string {
 }
 
 type CLUSConnectionArray struct {
-	Connections []*CLUSConnection `protobuf:"bytes,1,rep,name=Connections" json:"Connections,omitempty"`
+	Connections          []*CLUSConnection `protobuf:"bytes,1,rep,name=Connections,proto3" json:"Connections,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
-func (m *CLUSConnectionArray) Reset()                    { *m = CLUSConnectionArray{} }
-func (m *CLUSConnectionArray) String() string            { return proto.CompactTextString(m) }
-func (*CLUSConnectionArray) ProtoMessage()               {}
-func (*CLUSConnectionArray) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{12} }
+func (m *CLUSConnectionArray) Reset()         { *m = CLUSConnectionArray{} }
+func (m *CLUSConnectionArray) String() string { return proto.CompactTextString(m) }
+func (*CLUSConnectionArray) ProtoMessage()    {}
+func (*CLUSConnectionArray) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{12}
+}
+func (m *CLUSConnectionArray) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSConnectionArray.Unmarshal(m, b)
+}
+func (m *CLUSConnectionArray) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSConnectionArray.Marshal(b, m, deterministic)
+}
+func (dst *CLUSConnectionArray) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSConnectionArray.Merge(dst, src)
+}
+func (m *CLUSConnectionArray) XXX_Size() int {
+	return xxx_messageInfo_CLUSConnectionArray.Size(m)
+}
+func (m *CLUSConnectionArray) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSConnectionArray.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSConnectionArray proto.InternalMessageInfo
 
 func (m *CLUSConnectionArray) GetConnections() []*CLUSConnection {
 	if m != nil {
@@ -772,14 +1070,36 @@ func (m *CLUSConnectionArray) GetConnections() []*CLUSConnection {
 }
 
 type CLUSReportResponse struct {
-	Action         ReportRespAction `protobuf:"varint,1,opt,name=Action,enum=share.ReportRespAction" json:"Action,omitempty"`
-	ReportInterval uint32           `protobuf:"varint,2,opt,name=ReportInterval" json:"ReportInterval,omitempty"`
+	Action               ReportRespAction `protobuf:"varint,1,opt,name=Action,proto3,enum=share.ReportRespAction" json:"Action,omitempty"`
+	ReportInterval       uint32           `protobuf:"varint,2,opt,name=ReportInterval,proto3" json:"ReportInterval,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *CLUSReportResponse) Reset()                    { *m = CLUSReportResponse{} }
-func (m *CLUSReportResponse) String() string            { return proto.CompactTextString(m) }
-func (*CLUSReportResponse) ProtoMessage()               {}
-func (*CLUSReportResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{13} }
+func (m *CLUSReportResponse) Reset()         { *m = CLUSReportResponse{} }
+func (m *CLUSReportResponse) String() string { return proto.CompactTextString(m) }
+func (*CLUSReportResponse) ProtoMessage()    {}
+func (*CLUSReportResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{13}
+}
+func (m *CLUSReportResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSReportResponse.Unmarshal(m, b)
+}
+func (m *CLUSReportResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSReportResponse.Marshal(b, m, deterministic)
+}
+func (dst *CLUSReportResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSReportResponse.Merge(dst, src)
+}
+func (m *CLUSReportResponse) XXX_Size() int {
+	return xxx_messageInfo_CLUSReportResponse.Size(m)
+}
+func (m *CLUSReportResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSReportResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSReportResponse proto.InternalMessageInfo
 
 func (m *CLUSReportResponse) GetAction() ReportRespAction {
 	if m != nil {
@@ -796,14 +1116,36 @@ func (m *CLUSReportResponse) GetReportInterval() uint32 {
 }
 
 type CLUSSyncRequest struct {
-	Category string `protobuf:"bytes,1,opt,name=Category" json:"Category,omitempty"`
-	From     string `protobuf:"bytes,2,opt,name=From" json:"From,omitempty"`
+	Category             string   `protobuf:"bytes,1,opt,name=Category,proto3" json:"Category,omitempty"`
+	From                 string   `protobuf:"bytes,2,opt,name=From,proto3" json:"From,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSSyncRequest) Reset()                    { *m = CLUSSyncRequest{} }
-func (m *CLUSSyncRequest) String() string            { return proto.CompactTextString(m) }
-func (*CLUSSyncRequest) ProtoMessage()               {}
-func (*CLUSSyncRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{14} }
+func (m *CLUSSyncRequest) Reset()         { *m = CLUSSyncRequest{} }
+func (m *CLUSSyncRequest) String() string { return proto.CompactTextString(m) }
+func (*CLUSSyncRequest) ProtoMessage()    {}
+func (*CLUSSyncRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{14}
+}
+func (m *CLUSSyncRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSSyncRequest.Unmarshal(m, b)
+}
+func (m *CLUSSyncRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSSyncRequest.Marshal(b, m, deterministic)
+}
+func (dst *CLUSSyncRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSSyncRequest.Merge(dst, src)
+}
+func (m *CLUSSyncRequest) XXX_Size() int {
+	return xxx_messageInfo_CLUSSyncRequest.Size(m)
+}
+func (m *CLUSSyncRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSSyncRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSSyncRequest proto.InternalMessageInfo
 
 func (m *CLUSSyncRequest) GetCategory() string {
 	if m != nil {
@@ -820,14 +1162,36 @@ func (m *CLUSSyncRequest) GetFrom() string {
 }
 
 type CLUSSyncReply struct {
-	Category string `protobuf:"bytes,1,opt,name=Category" json:"Category,omitempty"`
-	Data     []byte `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
+	Category             string   `protobuf:"bytes,1,opt,name=Category,proto3" json:"Category,omitempty"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSSyncReply) Reset()                    { *m = CLUSSyncReply{} }
-func (m *CLUSSyncReply) String() string            { return proto.CompactTextString(m) }
-func (*CLUSSyncReply) ProtoMessage()               {}
-func (*CLUSSyncReply) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{15} }
+func (m *CLUSSyncReply) Reset()         { *m = CLUSSyncReply{} }
+func (m *CLUSSyncReply) String() string { return proto.CompactTextString(m) }
+func (*CLUSSyncReply) ProtoMessage()    {}
+func (*CLUSSyncReply) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{15}
+}
+func (m *CLUSSyncReply) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSSyncReply.Unmarshal(m, b)
+}
+func (m *CLUSSyncReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSSyncReply.Marshal(b, m, deterministic)
+}
+func (dst *CLUSSyncReply) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSSyncReply.Merge(dst, src)
+}
+func (m *CLUSSyncReply) XXX_Size() int {
+	return xxx_messageInfo_CLUSSyncReply.Size(m)
+}
+func (m *CLUSSyncReply) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSSyncReply.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSSyncReply proto.InternalMessageInfo
 
 func (m *CLUSSyncReply) GetCategory() string {
 	if m != nil {
@@ -844,17 +1208,39 @@ func (m *CLUSSyncReply) GetData() []byte {
 }
 
 type CLUSControllerCounter struct {
-	GraphNodes uint32 `protobuf:"varint,1,opt,name=GraphNodes" json:"GraphNodes,omitempty"`
-	GoRoutines uint32 `protobuf:"varint,2,opt,name=GoRoutines" json:"GoRoutines,omitempty"`
-	Lsof       []byte `protobuf:"bytes,3,opt,name=Lsof,proto3" json:"Lsof,omitempty"`
-	PS         []byte `protobuf:"bytes,4,opt,name=PS,proto3" json:"PS,omitempty"`
-	ScanTasks  uint32 `protobuf:"varint,5,opt,name=ScanTasks" json:"ScanTasks,omitempty"`
+	GraphNodes           uint32   `protobuf:"varint,1,opt,name=GraphNodes,proto3" json:"GraphNodes,omitempty"`
+	GoRoutines           uint32   `protobuf:"varint,2,opt,name=GoRoutines,proto3" json:"GoRoutines,omitempty"`
+	Lsof                 []byte   `protobuf:"bytes,3,opt,name=Lsof,proto3" json:"Lsof,omitempty"`
+	PS                   []byte   `protobuf:"bytes,4,opt,name=PS,proto3" json:"PS,omitempty"`
+	ScanTasks            uint32   `protobuf:"varint,5,opt,name=ScanTasks,proto3" json:"ScanTasks,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSControllerCounter) Reset()                    { *m = CLUSControllerCounter{} }
-func (m *CLUSControllerCounter) String() string            { return proto.CompactTextString(m) }
-func (*CLUSControllerCounter) ProtoMessage()               {}
-func (*CLUSControllerCounter) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{16} }
+func (m *CLUSControllerCounter) Reset()         { *m = CLUSControllerCounter{} }
+func (m *CLUSControllerCounter) String() string { return proto.CompactTextString(m) }
+func (*CLUSControllerCounter) ProtoMessage()    {}
+func (*CLUSControllerCounter) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{16}
+}
+func (m *CLUSControllerCounter) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSControllerCounter.Unmarshal(m, b)
+}
+func (m *CLUSControllerCounter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSControllerCounter.Marshal(b, m, deterministic)
+}
+func (dst *CLUSControllerCounter) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSControllerCounter.Merge(dst, src)
+}
+func (m *CLUSControllerCounter) XXX_Size() int {
+	return xxx_messageInfo_CLUSControllerCounter.Size(m)
+}
+func (m *CLUSControllerCounter) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSControllerCounter.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSControllerCounter proto.InternalMessageInfo
 
 func (m *CLUSControllerCounter) GetGraphNodes() uint32 {
 	if m != nil {
@@ -892,16 +1278,38 @@ func (m *CLUSControllerCounter) GetScanTasks() uint32 {
 }
 
 type CLUSGraphOps struct {
-	From     string `protobuf:"bytes,1,opt,name=From" json:"From,omitempty"`
-	To       string `protobuf:"bytes,2,opt,name=To" json:"To,omitempty"`
-	Endpoint string `protobuf:"bytes,3,opt,name=Endpoint" json:"Endpoint,omitempty"`
-	Alias    string `protobuf:"bytes,4,opt,name=Alias" json:"Alias,omitempty"`
+	From                 string   `protobuf:"bytes,1,opt,name=From,proto3" json:"From,omitempty"`
+	To                   string   `protobuf:"bytes,2,opt,name=To,proto3" json:"To,omitempty"`
+	Endpoint             string   `protobuf:"bytes,3,opt,name=Endpoint,proto3" json:"Endpoint,omitempty"`
+	Alias                string   `protobuf:"bytes,4,opt,name=Alias,proto3" json:"Alias,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSGraphOps) Reset()                    { *m = CLUSGraphOps{} }
-func (m *CLUSGraphOps) String() string            { return proto.CompactTextString(m) }
-func (*CLUSGraphOps) ProtoMessage()               {}
-func (*CLUSGraphOps) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{17} }
+func (m *CLUSGraphOps) Reset()         { *m = CLUSGraphOps{} }
+func (m *CLUSGraphOps) String() string { return proto.CompactTextString(m) }
+func (*CLUSGraphOps) ProtoMessage()    {}
+func (*CLUSGraphOps) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{17}
+}
+func (m *CLUSGraphOps) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSGraphOps.Unmarshal(m, b)
+}
+func (m *CLUSGraphOps) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSGraphOps.Marshal(b, m, deterministic)
+}
+func (dst *CLUSGraphOps) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSGraphOps.Merge(dst, src)
+}
+func (m *CLUSGraphOps) XXX_Size() int {
+	return xxx_messageInfo_CLUSGraphOps.Size(m)
+}
+func (m *CLUSGraphOps) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSGraphOps.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSGraphOps proto.InternalMessageInfo
 
 func (m *CLUSGraphOps) GetFrom() string {
 	if m != nil {
@@ -932,21 +1340,43 @@ func (m *CLUSGraphOps) GetAlias() string {
 }
 
 type CLUSPolicyRuleCheck struct {
-	ID           uint32   `protobuf:"varint,1,opt,name=ID" json:"ID,omitempty"`
-	From         string   `protobuf:"bytes,2,opt,name=From" json:"From,omitempty"`
-	To           string   `protobuf:"bytes,3,opt,name=To" json:"To,omitempty"`
-	Ports        string   `protobuf:"bytes,4,opt,name=Ports" json:"Ports,omitempty"`
-	Applications []uint32 `protobuf:"varint,5,rep,packed,name=Applications" json:"Applications,omitempty"`
-	Learned      bool     `protobuf:"varint,6,opt,name=Learned" json:"Learned,omitempty"`
-	Disabled     bool     `protobuf:"varint,7,opt,name=Disabled" json:"Disabled,omitempty"`
-	CreatedTS    int64    `protobuf:"varint,8,opt,name=CreatedTS" json:"CreatedTS,omitempty"`
-	LastModTS    int64    `protobuf:"varint,9,opt,name=LastModTS" json:"LastModTS,omitempty"`
+	ID                   uint32   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	From                 string   `protobuf:"bytes,2,opt,name=From,proto3" json:"From,omitempty"`
+	To                   string   `protobuf:"bytes,3,opt,name=To,proto3" json:"To,omitempty"`
+	Ports                string   `protobuf:"bytes,4,opt,name=Ports,proto3" json:"Ports,omitempty"`
+	Applications         []uint32 `protobuf:"varint,5,rep,packed,name=Applications,proto3" json:"Applications,omitempty"`
+	Learned              bool     `protobuf:"varint,6,opt,name=Learned,proto3" json:"Learned,omitempty"` // Deprecated: Do not use.
+	Disabled             bool     `protobuf:"varint,7,opt,name=Disabled,proto3" json:"Disabled,omitempty"`
+	CreatedTS            int64    `protobuf:"varint,8,opt,name=CreatedTS,proto3" json:"CreatedTS,omitempty"`
+	LastModTS            int64    `protobuf:"varint,9,opt,name=LastModTS,proto3" json:"LastModTS,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSPolicyRuleCheck) Reset()                    { *m = CLUSPolicyRuleCheck{} }
-func (m *CLUSPolicyRuleCheck) String() string            { return proto.CompactTextString(m) }
-func (*CLUSPolicyRuleCheck) ProtoMessage()               {}
-func (*CLUSPolicyRuleCheck) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{18} }
+func (m *CLUSPolicyRuleCheck) Reset()         { *m = CLUSPolicyRuleCheck{} }
+func (m *CLUSPolicyRuleCheck) String() string { return proto.CompactTextString(m) }
+func (*CLUSPolicyRuleCheck) ProtoMessage()    {}
+func (*CLUSPolicyRuleCheck) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{18}
+}
+func (m *CLUSPolicyRuleCheck) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSPolicyRuleCheck.Unmarshal(m, b)
+}
+func (m *CLUSPolicyRuleCheck) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSPolicyRuleCheck.Marshal(b, m, deterministic)
+}
+func (dst *CLUSPolicyRuleCheck) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSPolicyRuleCheck.Merge(dst, src)
+}
+func (m *CLUSPolicyRuleCheck) XXX_Size() int {
+	return xxx_messageInfo_CLUSPolicyRuleCheck.Size(m)
+}
+func (m *CLUSPolicyRuleCheck) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSPolicyRuleCheck.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSPolicyRuleCheck proto.InternalMessageInfo
 
 func (m *CLUSPolicyRuleCheck) GetID() uint32 {
 	if m != nil {
@@ -983,6 +1413,7 @@ func (m *CLUSPolicyRuleCheck) GetApplications() []uint32 {
 	return nil
 }
 
+// Deprecated: Do not use.
 func (m *CLUSPolicyRuleCheck) GetLearned() bool {
 	if m != nil {
 		return m.Learned
@@ -1012,14 +1443,36 @@ func (m *CLUSPolicyRuleCheck) GetLastModTS() int64 {
 }
 
 type CLUSPolicyRuleMismatch struct {
-	ClusterRule *CLUSPolicyRuleCheck `protobuf:"bytes,1,opt,name=ClusterRule" json:"ClusterRule,omitempty"`
-	LearnedRule *CLUSPolicyRuleCheck `protobuf:"bytes,2,opt,name=LearnedRule" json:"LearnedRule,omitempty"`
+	ClusterRule          *CLUSPolicyRuleCheck `protobuf:"bytes,1,opt,name=ClusterRule,proto3" json:"ClusterRule,omitempty"`
+	LearnedRule          *CLUSPolicyRuleCheck `protobuf:"bytes,2,opt,name=LearnedRule,proto3" json:"LearnedRule,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *CLUSPolicyRuleMismatch) Reset()                    { *m = CLUSPolicyRuleMismatch{} }
-func (m *CLUSPolicyRuleMismatch) String() string            { return proto.CompactTextString(m) }
-func (*CLUSPolicyRuleMismatch) ProtoMessage()               {}
-func (*CLUSPolicyRuleMismatch) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{19} }
+func (m *CLUSPolicyRuleMismatch) Reset()         { *m = CLUSPolicyRuleMismatch{} }
+func (m *CLUSPolicyRuleMismatch) String() string { return proto.CompactTextString(m) }
+func (*CLUSPolicyRuleMismatch) ProtoMessage()    {}
+func (*CLUSPolicyRuleMismatch) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{19}
+}
+func (m *CLUSPolicyRuleMismatch) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSPolicyRuleMismatch.Unmarshal(m, b)
+}
+func (m *CLUSPolicyRuleMismatch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSPolicyRuleMismatch.Marshal(b, m, deterministic)
+}
+func (dst *CLUSPolicyRuleMismatch) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSPolicyRuleMismatch.Merge(dst, src)
+}
+func (m *CLUSPolicyRuleMismatch) XXX_Size() int {
+	return xxx_messageInfo_CLUSPolicyRuleMismatch.Size(m)
+}
+func (m *CLUSPolicyRuleMismatch) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSPolicyRuleMismatch.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSPolicyRuleMismatch proto.InternalMessageInfo
 
 func (m *CLUSPolicyRuleMismatch) GetClusterRule() *CLUSPolicyRuleCheck {
 	if m != nil {
@@ -1036,16 +1489,38 @@ func (m *CLUSPolicyRuleMismatch) GetLearnedRule() *CLUSPolicyRuleCheck {
 }
 
 type CLUSPolicySyncStatus struct {
-	Leader         bool                      `protobuf:"varint,1,opt,name=Leader" json:"Leader,omitempty"`
-	GraphNodeCount uint32                    `protobuf:"varint,2,opt,name=GraphNodeCount" json:"GraphNodeCount,omitempty"`
-	LearnedRuleMax uint32                    `protobuf:"varint,3,opt,name=LearnedRuleMax" json:"LearnedRuleMax,omitempty"`
-	Mismatches     []*CLUSPolicyRuleMismatch `protobuf:"bytes,4,rep,name=Mismatches" json:"Mismatches,omitempty"`
+	Leader               bool                      `protobuf:"varint,1,opt,name=Leader,proto3" json:"Leader,omitempty"`
+	GraphNodeCount       uint32                    `protobuf:"varint,2,opt,name=GraphNodeCount,proto3" json:"GraphNodeCount,omitempty"`
+	LearnedRuleMax       uint32                    `protobuf:"varint,3,opt,name=LearnedRuleMax,proto3" json:"LearnedRuleMax,omitempty"`
+	Mismatches           []*CLUSPolicyRuleMismatch `protobuf:"bytes,4,rep,name=Mismatches,proto3" json:"Mismatches,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
 }
 
-func (m *CLUSPolicySyncStatus) Reset()                    { *m = CLUSPolicySyncStatus{} }
-func (m *CLUSPolicySyncStatus) String() string            { return proto.CompactTextString(m) }
-func (*CLUSPolicySyncStatus) ProtoMessage()               {}
-func (*CLUSPolicySyncStatus) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{20} }
+func (m *CLUSPolicySyncStatus) Reset()         { *m = CLUSPolicySyncStatus{} }
+func (m *CLUSPolicySyncStatus) String() string { return proto.CompactTextString(m) }
+func (*CLUSPolicySyncStatus) ProtoMessage()    {}
+func (*CLUSPolicySyncStatus) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{20}
+}
+func (m *CLUSPolicySyncStatus) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSPolicySyncStatus.Unmarshal(m, b)
+}
+func (m *CLUSPolicySyncStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSPolicySyncStatus.Marshal(b, m, deterministic)
+}
+func (dst *CLUSPolicySyncStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSPolicySyncStatus.Merge(dst, src)
+}
+func (m *CLUSPolicySyncStatus) XXX_Size() int {
+	return xxx_messageInfo_CLUSPolicySyncStatus.Size(m)
+}
+func (m *CLUSPolicySyncStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSPolicySyncStatus.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSPolicySyncStatus proto.InternalMessageInfo
 
 func (m *CLUSPolicySyncStatus) GetLeader() bool {
 	if m != nil {
@@ -1076,15 +1551,37 @@ func (m *CLUSPolicySyncStatus) GetMismatches() []*CLUSPolicyRuleMismatch {
 }
 
 type CLUSStoreWatcherInfo struct {
-	CtrlerID string             `protobuf:"bytes,1,opt,name=CtrlerID" json:"CtrlerID,omitempty"`
-	Key      string             `protobuf:"bytes,2,opt,name=Key" json:"Key,omitempty"`
-	Action   StoreWatcherAction `protobuf:"varint,3,opt,name=Action,enum=share.StoreWatcherAction" json:"Action,omitempty"`
+	CtrlerID             string             `protobuf:"bytes,1,opt,name=CtrlerID,proto3" json:"CtrlerID,omitempty"`
+	Key                  string             `protobuf:"bytes,2,opt,name=Key,proto3" json:"Key,omitempty"`
+	Action               StoreWatcherAction `protobuf:"varint,3,opt,name=Action,proto3,enum=share.StoreWatcherAction" json:"Action,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
 }
 
-func (m *CLUSStoreWatcherInfo) Reset()                    { *m = CLUSStoreWatcherInfo{} }
-func (m *CLUSStoreWatcherInfo) String() string            { return proto.CompactTextString(m) }
-func (*CLUSStoreWatcherInfo) ProtoMessage()               {}
-func (*CLUSStoreWatcherInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{21} }
+func (m *CLUSStoreWatcherInfo) Reset()         { *m = CLUSStoreWatcherInfo{} }
+func (m *CLUSStoreWatcherInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSStoreWatcherInfo) ProtoMessage()    {}
+func (*CLUSStoreWatcherInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{21}
+}
+func (m *CLUSStoreWatcherInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSStoreWatcherInfo.Unmarshal(m, b)
+}
+func (m *CLUSStoreWatcherInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSStoreWatcherInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSStoreWatcherInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSStoreWatcherInfo.Merge(dst, src)
+}
+func (m *CLUSStoreWatcherInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSStoreWatcherInfo.Size(m)
+}
+func (m *CLUSStoreWatcherInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSStoreWatcherInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSStoreWatcherInfo proto.InternalMessageInfo
 
 func (m *CLUSStoreWatcherInfo) GetCtrlerID() string {
 	if m != nil {
@@ -1108,18 +1605,40 @@ func (m *CLUSStoreWatcherInfo) GetAction() StoreWatcherAction {
 }
 
 type CLUSKickLoginSessionsRequest struct {
-	CtrlerID     string                `protobuf:"bytes,1,opt,name=CtrlerID" json:"CtrlerID,omitempty"`
-	Type         KickLoginSessionsType `protobuf:"varint,2,opt,name=Type,enum=share.KickLoginSessionsType" json:"Type,omitempty"`
-	Server       string                `protobuf:"bytes,3,opt,name=Server" json:"Server,omitempty"`
-	UserFullname string                `protobuf:"bytes,4,opt,name=UserFullname" json:"UserFullname,omitempty"`
-	UserServer   string                `protobuf:"bytes,5,opt,name=UserServer" json:"UserServer,omitempty"`
-	UserName     string                `protobuf:"bytes,6,opt,name=UserName" json:"UserName,omitempty"`
+	CtrlerID             string                `protobuf:"bytes,1,opt,name=CtrlerID,proto3" json:"CtrlerID,omitempty"`
+	Type                 KickLoginSessionsType `protobuf:"varint,2,opt,name=Type,proto3,enum=share.KickLoginSessionsType" json:"Type,omitempty"`
+	Server               string                `protobuf:"bytes,3,opt,name=Server,proto3" json:"Server,omitempty"`
+	UserFullname         string                `protobuf:"bytes,4,opt,name=UserFullname,proto3" json:"UserFullname,omitempty"`
+	UserServer           string                `protobuf:"bytes,5,opt,name=UserServer,proto3" json:"UserServer,omitempty"`
+	UserName             string                `protobuf:"bytes,6,opt,name=UserName,proto3" json:"UserName,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
-func (m *CLUSKickLoginSessionsRequest) Reset()                    { *m = CLUSKickLoginSessionsRequest{} }
-func (m *CLUSKickLoginSessionsRequest) String() string            { return proto.CompactTextString(m) }
-func (*CLUSKickLoginSessionsRequest) ProtoMessage()               {}
-func (*CLUSKickLoginSessionsRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{22} }
+func (m *CLUSKickLoginSessionsRequest) Reset()         { *m = CLUSKickLoginSessionsRequest{} }
+func (m *CLUSKickLoginSessionsRequest) String() string { return proto.CompactTextString(m) }
+func (*CLUSKickLoginSessionsRequest) ProtoMessage()    {}
+func (*CLUSKickLoginSessionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{22}
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSKickLoginSessionsRequest.Unmarshal(m, b)
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSKickLoginSessionsRequest.Marshal(b, m, deterministic)
+}
+func (dst *CLUSKickLoginSessionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSKickLoginSessionsRequest.Merge(dst, src)
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_Size() int {
+	return xxx_messageInfo_CLUSKickLoginSessionsRequest.Size(m)
+}
+func (m *CLUSKickLoginSessionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSKickLoginSessionsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSKickLoginSessionsRequest proto.InternalMessageInfo
 
 func (m *CLUSKickLoginSessionsRequest) GetCtrlerID() string {
 	if m != nil {
@@ -1164,16 +1683,38 @@ func (m *CLUSKickLoginSessionsRequest) GetUserName() string {
 }
 
 type CLUSLoginTokenInfo struct {
-	CtrlerID     string `protobuf:"bytes,1,opt,name=CtrlerID" json:"CtrlerID,omitempty"`
-	LoginID      string `protobuf:"bytes,2,opt,name=LoginID" json:"LoginID,omitempty"`
-	UserFullname string `protobuf:"bytes,3,opt,name=UserFullname" json:"UserFullname,omitempty"`
-	LoginToken   string `protobuf:"bytes,4,opt,name=LoginToken" json:"LoginToken,omitempty"`
+	CtrlerID             string   `protobuf:"bytes,1,opt,name=CtrlerID,proto3" json:"CtrlerID,omitempty"`
+	LoginID              string   `protobuf:"bytes,2,opt,name=LoginID,proto3" json:"LoginID,omitempty"`
+	UserFullname         string   `protobuf:"bytes,3,opt,name=UserFullname,proto3" json:"UserFullname,omitempty"`
+	LoginToken           string   `protobuf:"bytes,4,opt,name=LoginToken,proto3" json:"LoginToken,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSLoginTokenInfo) Reset()                    { *m = CLUSLoginTokenInfo{} }
-func (m *CLUSLoginTokenInfo) String() string            { return proto.CompactTextString(m) }
-func (*CLUSLoginTokenInfo) ProtoMessage()               {}
-func (*CLUSLoginTokenInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{23} }
+func (m *CLUSLoginTokenInfo) Reset()         { *m = CLUSLoginTokenInfo{} }
+func (m *CLUSLoginTokenInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSLoginTokenInfo) ProtoMessage()    {}
+func (*CLUSLoginTokenInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{23}
+}
+func (m *CLUSLoginTokenInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSLoginTokenInfo.Unmarshal(m, b)
+}
+func (m *CLUSLoginTokenInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSLoginTokenInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSLoginTokenInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSLoginTokenInfo.Merge(dst, src)
+}
+func (m *CLUSLoginTokenInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSLoginTokenInfo.Size(m)
+}
+func (m *CLUSLoginTokenInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSLoginTokenInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSLoginTokenInfo proto.InternalMessageInfo
 
 func (m *CLUSLoginTokenInfo) GetCtrlerID() string {
 	if m != nil {
@@ -1204,14 +1745,36 @@ func (m *CLUSLoginTokenInfo) GetLoginToken() string {
 }
 
 type CLUSKubernetesResInfo struct {
-	DocKey string `protobuf:"bytes,1,opt,name=DocKey" json:"DocKey,omitempty"`
-	Data   string `protobuf:"bytes,2,opt,name=Data" json:"Data,omitempty"`
+	DocKey               string   `protobuf:"bytes,1,opt,name=DocKey,proto3" json:"DocKey,omitempty"`
+	Data                 string   `protobuf:"bytes,2,opt,name=Data,proto3" json:"Data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CLUSKubernetesResInfo) Reset()                    { *m = CLUSKubernetesResInfo{} }
-func (m *CLUSKubernetesResInfo) String() string            { return proto.CompactTextString(m) }
-func (*CLUSKubernetesResInfo) ProtoMessage()               {}
-func (*CLUSKubernetesResInfo) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{24} }
+func (m *CLUSKubernetesResInfo) Reset()         { *m = CLUSKubernetesResInfo{} }
+func (m *CLUSKubernetesResInfo) String() string { return proto.CompactTextString(m) }
+func (*CLUSKubernetesResInfo) ProtoMessage()    {}
+func (*CLUSKubernetesResInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_controller_service_80c2c2c964d5c3a8, []int{24}
+}
+func (m *CLUSKubernetesResInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_CLUSKubernetesResInfo.Unmarshal(m, b)
+}
+func (m *CLUSKubernetesResInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_CLUSKubernetesResInfo.Marshal(b, m, deterministic)
+}
+func (dst *CLUSKubernetesResInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CLUSKubernetesResInfo.Merge(dst, src)
+}
+func (m *CLUSKubernetesResInfo) XXX_Size() int {
+	return xxx_messageInfo_CLUSKubernetesResInfo.Size(m)
+}
+func (m *CLUSKubernetesResInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_CLUSKubernetesResInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CLUSKubernetesResInfo proto.InternalMessageInfo
 
 func (m *CLUSKubernetesResInfo) GetDocKey() string {
 	if m != nil {
@@ -1231,6 +1794,7 @@ func init() {
 	proto.RegisterType((*AdapterScanImageRequest)(nil), "share.AdapterScanImageRequest")
 	proto.RegisterType((*GetScannersResponse)(nil), "share.GetScannersResponse")
 	proto.RegisterType((*ScannerRegisterData)(nil), "share.ScannerRegisterData")
+	proto.RegisterMapType((map[string]*ScanVulnerability)(nil), "share.ScannerRegisterData.CVEDBEntry")
 	proto.RegisterType((*ScannerDeregisterData)(nil), "share.ScannerDeregisterData")
 	proto.RegisterType((*CLUSFilePacket)(nil), "share.CLUSFilePacket")
 	proto.RegisterType((*CLUSAdmissionRequest)(nil), "share.CLUSAdmissionRequest")
@@ -1266,8 +1830,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for ControllerCapService service
-
+// ControllerCapServiceClient is the client API for ControllerCapService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ControllerCapServiceClient interface {
 	IsGRPCCompressed(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSBoolean, error)
 }
@@ -1282,15 +1847,14 @@ func NewControllerCapServiceClient(cc *grpc.ClientConn) ControllerCapServiceClie
 
 func (c *controllerCapServiceClient) IsGRPCCompressed(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSBoolean, error) {
 	out := new(CLUSBoolean)
-	err := grpc.Invoke(ctx, "/share.ControllerCapService/IsGRPCCompressed", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCapService/IsGRPCCompressed", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ControllerCapService service
-
+// ControllerCapServiceServer is the server API for ControllerCapService service.
 type ControllerCapServiceServer interface {
 	IsGRPCCompressed(context.Context, *RPCVoid) (*CLUSBoolean, error)
 }
@@ -1330,8 +1894,9 @@ var _ControllerCapService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
-// Client API for ControllerScanAdapterService service
-
+// ControllerScanAdapterServiceClient is the client API for ControllerScanAdapterService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ControllerScanAdapterServiceClient interface {
 	GetScanners(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*GetScannersResponse, error)
 	ScanImage(ctx context.Context, in *AdapterScanImageRequest, opts ...grpc.CallOption) (*ScanResult, error)
@@ -1347,7 +1912,7 @@ func NewControllerScanAdapterServiceClient(cc *grpc.ClientConn) ControllerScanAd
 
 func (c *controllerScanAdapterServiceClient) GetScanners(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*GetScannersResponse, error) {
 	out := new(GetScannersResponse)
-	err := grpc.Invoke(ctx, "/share.ControllerScanAdapterService/GetScanners", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerScanAdapterService/GetScanners", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1356,15 +1921,14 @@ func (c *controllerScanAdapterServiceClient) GetScanners(ctx context.Context, in
 
 func (c *controllerScanAdapterServiceClient) ScanImage(ctx context.Context, in *AdapterScanImageRequest, opts ...grpc.CallOption) (*ScanResult, error) {
 	out := new(ScanResult)
-	err := grpc.Invoke(ctx, "/share.ControllerScanAdapterService/ScanImage", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerScanAdapterService/ScanImage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ControllerScanAdapterService service
-
+// ControllerScanAdapterServiceServer is the server API for ControllerScanAdapterService service.
 type ControllerScanAdapterServiceServer interface {
 	GetScanners(context.Context, *RPCVoid) (*GetScannersResponse, error)
 	ScanImage(context.Context, *AdapterScanImageRequest) (*ScanResult, error)
@@ -1427,8 +1991,9 @@ var _ControllerScanAdapterService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
-// Client API for ControllerScanService service
-
+// ControllerScanServiceClient is the client API for ControllerScanService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ControllerScanServiceClient interface {
 	ScannerRegister(ctx context.Context, in *ScannerRegisterData, opts ...grpc.CallOption) (*RPCVoid, error)
 	ScannerRegisterStream(ctx context.Context, opts ...grpc.CallOption) (ControllerScanService_ScannerRegisterStreamClient, error)
@@ -1446,7 +2011,7 @@ func NewControllerScanServiceClient(cc *grpc.ClientConn) ControllerScanServiceCl
 
 func (c *controllerScanServiceClient) ScannerRegister(ctx context.Context, in *ScannerRegisterData, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerScanService/ScannerRegister", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerScanService/ScannerRegister", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1454,7 +2019,7 @@ func (c *controllerScanServiceClient) ScannerRegister(ctx context.Context, in *S
 }
 
 func (c *controllerScanServiceClient) ScannerRegisterStream(ctx context.Context, opts ...grpc.CallOption) (ControllerScanService_ScannerRegisterStreamClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_ControllerScanService_serviceDesc.Streams[0], c.cc, "/share.ControllerScanService/ScannerRegisterStream", opts...)
+	stream, err := c.cc.NewStream(ctx, &_ControllerScanService_serviceDesc.Streams[0], "/share.ControllerScanService/ScannerRegisterStream", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1489,7 +2054,7 @@ func (x *controllerScanServiceScannerRegisterStreamClient) CloseAndRecv() (*RPCV
 
 func (c *controllerScanServiceClient) ScannerDeregister(ctx context.Context, in *ScannerDeregisterData, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerScanService/ScannerDeregister", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerScanService/ScannerDeregister", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1498,15 +2063,14 @@ func (c *controllerScanServiceClient) ScannerDeregister(ctx context.Context, in 
 
 func (c *controllerScanServiceClient) SubmitScanResult(ctx context.Context, in *ScanResult, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerScanService/SubmitScanResult", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerScanService/SubmitScanResult", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ControllerScanService service
-
+// ControllerScanServiceServer is the server API for ControllerScanService service.
 type ControllerScanServiceServer interface {
 	ScannerRegister(context.Context, *ScannerRegisterData) (*RPCVoid, error)
 	ScannerRegisterStream(ControllerScanService_ScannerRegisterStreamServer) error
@@ -1625,8 +2189,9 @@ var _ControllerScanService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
-// Client API for ControllerUpgradeService service
-
+// ControllerUpgradeServiceClient is the client API for ControllerUpgradeService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ControllerUpgradeServiceClient interface {
 	UpgradeScannerDB(ctx context.Context, opts ...grpc.CallOption) (ControllerUpgradeService_UpgradeScannerDBClient, error)
 	SupportRegularDB(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSBoolean, error)
@@ -1642,7 +2207,7 @@ func NewControllerUpgradeServiceClient(cc *grpc.ClientConn) ControllerUpgradeSer
 }
 
 func (c *controllerUpgradeServiceClient) UpgradeScannerDB(ctx context.Context, opts ...grpc.CallOption) (ControllerUpgradeService_UpgradeScannerDBClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_ControllerUpgradeService_serviceDesc.Streams[0], c.cc, "/share.ControllerUpgradeService/UpgradeScannerDB", opts...)
+	stream, err := c.cc.NewStream(ctx, &_ControllerUpgradeService_serviceDesc.Streams[0], "/share.ControllerUpgradeService/UpgradeScannerDB", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1677,7 +2242,7 @@ func (x *controllerUpgradeServiceUpgradeScannerDBClient) CloseAndRecv() (*RPCVoi
 
 func (c *controllerUpgradeServiceClient) SupportRegularDB(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSBoolean, error) {
 	out := new(CLUSBoolean)
-	err := grpc.Invoke(ctx, "/share.ControllerUpgradeService/SupportRegularDB", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerUpgradeService/SupportRegularDB", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1686,15 +2251,14 @@ func (c *controllerUpgradeServiceClient) SupportRegularDB(ctx context.Context, i
 
 func (c *controllerUpgradeServiceClient) SupportUpgradeDB(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSBoolean, error) {
 	out := new(CLUSBoolean)
-	err := grpc.Invoke(ctx, "/share.ControllerUpgradeService/SupportUpgradeDB", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerUpgradeService/SupportUpgradeDB", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ControllerUpgradeService service
-
+// ControllerUpgradeServiceServer is the server API for ControllerUpgradeService service.
 type ControllerUpgradeServiceServer interface {
 	UpgradeScannerDB(ControllerUpgradeService_UpgradeScannerDBServer) error
 	SupportRegularDB(context.Context, *RPCVoid) (*CLUSBoolean, error)
@@ -1790,8 +2354,9 @@ var _ControllerUpgradeService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
-// Client API for ControllerAgentService service
-
+// ControllerAgentServiceClient is the client API for ControllerAgentService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ControllerAgentServiceClient interface {
 	RequestAdmission(ctx context.Context, in *CLUSAdmissionRequest, opts ...grpc.CallOption) (*CLUSAdmissionResponse, error)
 	ReportProcProfile(ctx context.Context, in *CLUSProcProfileArray, opts ...grpc.CallOption) (*CLUSReportResponse, error)
@@ -1809,7 +2374,7 @@ func NewControllerAgentServiceClient(cc *grpc.ClientConn) ControllerAgentService
 
 func (c *controllerAgentServiceClient) RequestAdmission(ctx context.Context, in *CLUSAdmissionRequest, opts ...grpc.CallOption) (*CLUSAdmissionResponse, error) {
 	out := new(CLUSAdmissionResponse)
-	err := grpc.Invoke(ctx, "/share.ControllerAgentService/RequestAdmission", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerAgentService/RequestAdmission", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1818,7 +2383,7 @@ func (c *controllerAgentServiceClient) RequestAdmission(ctx context.Context, in 
 
 func (c *controllerAgentServiceClient) ReportProcProfile(ctx context.Context, in *CLUSProcProfileArray, opts ...grpc.CallOption) (*CLUSReportResponse, error) {
 	out := new(CLUSReportResponse)
-	err := grpc.Invoke(ctx, "/share.ControllerAgentService/ReportProcProfile", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerAgentService/ReportProcProfile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1827,7 +2392,7 @@ func (c *controllerAgentServiceClient) ReportProcProfile(ctx context.Context, in
 
 func (c *controllerAgentServiceClient) ReportFileAccessRule(ctx context.Context, in *CLUSFileAccessRuleArray, opts ...grpc.CallOption) (*CLUSReportResponse, error) {
 	out := new(CLUSReportResponse)
-	err := grpc.Invoke(ctx, "/share.ControllerAgentService/ReportFileAccessRule", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerAgentService/ReportFileAccessRule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1836,15 +2401,14 @@ func (c *controllerAgentServiceClient) ReportFileAccessRule(ctx context.Context,
 
 func (c *controllerAgentServiceClient) ReportConnections(ctx context.Context, in *CLUSConnectionArray, opts ...grpc.CallOption) (*CLUSReportResponse, error) {
 	out := new(CLUSReportResponse)
-	err := grpc.Invoke(ctx, "/share.ControllerAgentService/ReportConnections", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerAgentService/ReportConnections", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ControllerAgentService service
-
+// ControllerAgentServiceServer is the server API for ControllerAgentService service.
 type ControllerAgentServiceServer interface {
 	RequestAdmission(context.Context, *CLUSAdmissionRequest) (*CLUSAdmissionResponse, error)
 	ReportProcProfile(context.Context, *CLUSProcProfileArray) (*CLUSReportResponse, error)
@@ -1953,8 +2517,9 @@ var _ControllerAgentService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
-// Client API for ControllerCtrlService service
-
+// ControllerCtrlServiceClient is the client API for ControllerCtrlService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ControllerCtrlServiceClient interface {
 	ReqSync(ctx context.Context, in *CLUSSyncRequest, opts ...grpc.CallOption) (*CLUSSyncReply, error)
 	ReqSyncStream(ctx context.Context, in *CLUSSyncRequest, opts ...grpc.CallOption) (ControllerCtrlService_ReqSyncStreamClient, error)
@@ -1984,7 +2549,7 @@ func NewControllerCtrlServiceClient(cc *grpc.ClientConn) ControllerCtrlServiceCl
 
 func (c *controllerCtrlServiceClient) ReqSync(ctx context.Context, in *CLUSSyncRequest, opts ...grpc.CallOption) (*CLUSSyncReply, error) {
 	out := new(CLUSSyncReply)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/ReqSync", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/ReqSync", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1992,7 +2557,7 @@ func (c *controllerCtrlServiceClient) ReqSync(ctx context.Context, in *CLUSSyncR
 }
 
 func (c *controllerCtrlServiceClient) ReqSyncStream(ctx context.Context, in *CLUSSyncRequest, opts ...grpc.CallOption) (ControllerCtrlService_ReqSyncStreamClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_ControllerCtrlService_serviceDesc.Streams[0], c.cc, "/share.ControllerCtrlService/ReqSyncStream", opts...)
+	stream, err := c.cc.NewStream(ctx, &_ControllerCtrlService_serviceDesc.Streams[0], "/share.ControllerCtrlService/ReqSyncStream", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2025,7 +2590,7 @@ func (x *controllerCtrlServiceReqSyncStreamClient) Recv() (*CLUSSyncReply, error
 
 func (c *controllerCtrlServiceClient) ReportConnections(ctx context.Context, in *CLUSConnectionArray, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/ReportConnections", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/ReportConnections", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2034,7 +2599,7 @@ func (c *controllerCtrlServiceClient) ReportConnections(ctx context.Context, in 
 
 func (c *controllerCtrlServiceClient) GetControllerCounter(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSControllerCounter, error) {
 	out := new(CLUSControllerCounter)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/GetControllerCounter", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/GetControllerCounter", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2043,7 +2608,7 @@ func (c *controllerCtrlServiceClient) GetControllerCounter(ctx context.Context, 
 
 func (c *controllerCtrlServiceClient) DeleteConversation(ctx context.Context, in *CLUSGraphOps, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/DeleteConversation", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/DeleteConversation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2052,7 +2617,7 @@ func (c *controllerCtrlServiceClient) DeleteConversation(ctx context.Context, in
 
 func (c *controllerCtrlServiceClient) DeleteEndpoint(ctx context.Context, in *CLUSGraphOps, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/DeleteEndpoint", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/DeleteEndpoint", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2061,7 +2626,7 @@ func (c *controllerCtrlServiceClient) DeleteEndpoint(ctx context.Context, in *CL
 
 func (c *controllerCtrlServiceClient) SetEndpointAlias(ctx context.Context, in *CLUSGraphOps, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/SetEndpointAlias", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/SetEndpointAlias", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2070,7 +2635,7 @@ func (c *controllerCtrlServiceClient) SetEndpointAlias(ctx context.Context, in *
 
 func (c *controllerCtrlServiceClient) CheckPolicySyncStatus(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSPolicySyncStatus, error) {
 	out := new(CLUSPolicySyncStatus)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/CheckPolicySyncStatus", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/CheckPolicySyncStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2079,7 +2644,7 @@ func (c *controllerCtrlServiceClient) CheckPolicySyncStatus(ctx context.Context,
 
 func (c *controllerCtrlServiceClient) TriggerSync(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/TriggerSync", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/TriggerSync", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2088,7 +2653,7 @@ func (c *controllerCtrlServiceClient) TriggerSync(ctx context.Context, in *RPCVo
 
 func (c *controllerCtrlServiceClient) ProfilingCmd(ctx context.Context, in *CLUSProfilingRequest, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/ProfilingCmd", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/ProfilingCmd", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2097,7 +2662,7 @@ func (c *controllerCtrlServiceClient) ProfilingCmd(ctx context.Context, in *CLUS
 
 func (c *controllerCtrlServiceClient) TriggerSyncLearnedPolicy(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/TriggerSyncLearnedPolicy", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/TriggerSyncLearnedPolicy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2106,7 +2671,7 @@ func (c *controllerCtrlServiceClient) TriggerSyncLearnedPolicy(ctx context.Conte
 
 func (c *controllerCtrlServiceClient) PauseResumeStoreWatcher(ctx context.Context, in *CLUSStoreWatcherInfo, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/PauseResumeStoreWatcher", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/PauseResumeStoreWatcher", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2115,7 +2680,7 @@ func (c *controllerCtrlServiceClient) PauseResumeStoreWatcher(ctx context.Contex
 
 func (c *controllerCtrlServiceClient) KickLoginSessions(ctx context.Context, in *CLUSKickLoginSessionsRequest, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/KickLoginSessions", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/KickLoginSessions", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2124,7 +2689,7 @@ func (c *controllerCtrlServiceClient) KickLoginSessions(ctx context.Context, in 
 
 func (c *controllerCtrlServiceClient) GetStats(ctx context.Context, in *RPCVoid, opts ...grpc.CallOption) (*CLUSStats, error) {
 	out := new(CLUSStats)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/GetStats", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/GetStats", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2133,7 +2698,7 @@ func (c *controllerCtrlServiceClient) GetStats(ctx context.Context, in *RPCVoid,
 
 func (c *controllerCtrlServiceClient) ResetLoginTokenTimer(ctx context.Context, in *CLUSLoginTokenInfo, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/ResetLoginTokenTimer", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/ResetLoginTokenTimer", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2142,15 +2707,14 @@ func (c *controllerCtrlServiceClient) ResetLoginTokenTimer(ctx context.Context, 
 
 func (c *controllerCtrlServiceClient) ReportK8SResToOPA(ctx context.Context, in *CLUSKubernetesResInfo, opts ...grpc.CallOption) (*RPCVoid, error) {
 	out := new(RPCVoid)
-	err := grpc.Invoke(ctx, "/share.ControllerCtrlService/ReportK8sResToOPA", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/share.ControllerCtrlService/ReportK8sResToOPA", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for ControllerCtrlService service
-
+// ControllerCtrlServiceServer is the server API for ControllerCtrlService service.
 type ControllerCtrlServiceServer interface {
 	ReqSync(context.Context, *CLUSSyncRequest) (*CLUSSyncReply, error)
 	ReqSyncStream(*CLUSSyncRequest, ControllerCtrlService_ReqSyncStreamServer) error
@@ -2540,9 +3104,11 @@ var _ControllerCtrlService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "controller_service.proto",
 }
 
-func init() { proto.RegisterFile("controller_service.proto", fileDescriptor1) }
+func init() {
+	proto.RegisterFile("controller_service.proto", fileDescriptor_controller_service_80c2c2c964d5c3a8)
+}
 
-var fileDescriptor1 = []byte{
+var fileDescriptor_controller_service_80c2c2c964d5c3a8 = []byte{
 	// 2361 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x59, 0xcd, 0x72, 0x1b, 0xb9,
 	0x11, 0x5e, 0x52, 0x92, 0x25, 0x41, 0x94, 0x4c, 0xc1, 0x92, 0x3c, 0x4b, 0x6b, 0x1d, 0x65, 0xf2,

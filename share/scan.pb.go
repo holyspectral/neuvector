@@ -12,6 +12,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type ScanErrorCode int32
 
 const (
@@ -88,7 +94,9 @@ var ScanErrorCode_value = map[string]int32{
 func (x ScanErrorCode) String() string {
 	return proto.EnumName(ScanErrorCode_name, int32(x))
 }
-func (ScanErrorCode) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (ScanErrorCode) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{0}
+}
 
 type ScanObjectType int32
 
@@ -118,7 +126,9 @@ var ScanObjectType_value = map[string]int32{
 func (x ScanObjectType) String() string {
 	return proto.EnumName(ScanObjectType_name, int32(x))
 }
-func (ScanObjectType) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (ScanObjectType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{1}
+}
 
 type ScanProvider int32
 
@@ -139,7 +149,9 @@ var ScanProvider_value = map[string]int32{
 func (x ScanProvider) String() string {
 	return proto.EnumName(ScanProvider_name, int32(x))
 }
-func (ScanProvider) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (ScanProvider) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{2}
+}
 
 type ScanVulStatus int32
 
@@ -166,17 +178,41 @@ var ScanVulStatus_value = map[string]int32{
 func (x ScanVulStatus) String() string {
 	return proto.EnumName(ScanVulStatus_name, int32(x))
 }
-func (ScanVulStatus) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
-
-type ScanTypeMap struct {
-	Vulnerability bool `protobuf:"varint,1,opt,name=Vulnerability" json:"Vulnerability,omitempty"`
-	Signature     bool `protobuf:"varint,2,opt,name=Signature" json:"Signature,omitempty"`
+func (ScanVulStatus) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{3}
 }
 
-func (m *ScanTypeMap) Reset()                    { *m = ScanTypeMap{} }
-func (m *ScanTypeMap) String() string            { return proto.CompactTextString(m) }
-func (*ScanTypeMap) ProtoMessage()               {}
-func (*ScanTypeMap) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+type ScanTypeMap struct {
+	Vulnerability        bool     `protobuf:"varint,1,opt,name=Vulnerability,proto3" json:"Vulnerability,omitempty"`
+	Signature            bool     `protobuf:"varint,2,opt,name=Signature,proto3" json:"Signature,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ScanTypeMap) Reset()         { *m = ScanTypeMap{} }
+func (m *ScanTypeMap) String() string { return proto.CompactTextString(m) }
+func (*ScanTypeMap) ProtoMessage()    {}
+func (*ScanTypeMap) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{0}
+}
+func (m *ScanTypeMap) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanTypeMap.Unmarshal(m, b)
+}
+func (m *ScanTypeMap) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanTypeMap.Marshal(b, m, deterministic)
+}
+func (dst *ScanTypeMap) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanTypeMap.Merge(dst, src)
+}
+func (m *ScanTypeMap) XXX_Size() int {
+	return xxx_messageInfo_ScanTypeMap.Size(m)
+}
+func (m *ScanTypeMap) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanTypeMap.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanTypeMap proto.InternalMessageInfo
 
 func (m *ScanTypeMap) GetVulnerability() bool {
 	if m != nil {
@@ -193,32 +229,54 @@ func (m *ScanTypeMap) GetSignature() bool {
 }
 
 type ScanVulnerability struct {
-	Name                  string   `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
-	Score                 float32  `protobuf:"fixed32,2,opt,name=Score" json:"Score,omitempty"`
-	Severity              string   `protobuf:"bytes,3,opt,name=Severity" json:"Severity,omitempty"`
-	Description           string   `protobuf:"bytes,4,opt,name=Description" json:"Description,omitempty"`
-	PackageNameDeprecated string   `protobuf:"bytes,5,opt,name=PackageNameDeprecated" json:"PackageNameDeprecated,omitempty"`
-	PackageVersion        string   `protobuf:"bytes,6,opt,name=PackageVersion" json:"PackageVersion,omitempty"`
-	FixedVersion          string   `protobuf:"bytes,7,opt,name=FixedVersion" json:"FixedVersion,omitempty"`
-	Link                  string   `protobuf:"bytes,8,opt,name=Link" json:"Link,omitempty"`
-	Vectors               string   `protobuf:"bytes,9,opt,name=Vectors" json:"Vectors,omitempty"`
-	ScoreV3               float32  `protobuf:"fixed32,10,opt,name=ScoreV3" json:"ScoreV3,omitempty"`
-	VectorsV3             string   `protobuf:"bytes,11,opt,name=VectorsV3" json:"VectorsV3,omitempty"`
-	PublishedDate         string   `protobuf:"bytes,12,opt,name=PublishedDate" json:"PublishedDate,omitempty"`
-	LastModifiedDate      string   `protobuf:"bytes,13,opt,name=LastModifiedDate" json:"LastModifiedDate,omitempty"`
-	CPEs                  []string `protobuf:"bytes,14,rep,name=CPEs" json:"CPEs,omitempty"`
-	CVEs                  []string `protobuf:"bytes,15,rep,name=CVEs" json:"CVEs,omitempty"`
-	FeedRating            string   `protobuf:"bytes,16,opt,name=FeedRating" json:"FeedRating,omitempty"`
-	InBase                bool     `protobuf:"varint,17,opt,name=InBase" json:"InBase,omitempty"`
-	DBKey                 string   `protobuf:"bytes,18,opt,name=DBKey" json:"DBKey,omitempty"`
-	FileName              string   `protobuf:"bytes,19,opt,name=FileName" json:"FileName,omitempty"`
-	PackageName           string   `protobuf:"bytes,20,opt,name=PackageName" json:"PackageName,omitempty"`
+	Name                  string   `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	Score                 float32  `protobuf:"fixed32,2,opt,name=Score,proto3" json:"Score,omitempty"`
+	Severity              string   `protobuf:"bytes,3,opt,name=Severity,proto3" json:"Severity,omitempty"`
+	Description           string   `protobuf:"bytes,4,opt,name=Description,proto3" json:"Description,omitempty"`
+	PackageNameDeprecated string   `protobuf:"bytes,5,opt,name=PackageNameDeprecated,proto3" json:"PackageNameDeprecated,omitempty"`
+	PackageVersion        string   `protobuf:"bytes,6,opt,name=PackageVersion,proto3" json:"PackageVersion,omitempty"`
+	FixedVersion          string   `protobuf:"bytes,7,opt,name=FixedVersion,proto3" json:"FixedVersion,omitempty"`
+	Link                  string   `protobuf:"bytes,8,opt,name=Link,proto3" json:"Link,omitempty"`
+	Vectors               string   `protobuf:"bytes,9,opt,name=Vectors,proto3" json:"Vectors,omitempty"`
+	ScoreV3               float32  `protobuf:"fixed32,10,opt,name=ScoreV3,proto3" json:"ScoreV3,omitempty"`
+	VectorsV3             string   `protobuf:"bytes,11,opt,name=VectorsV3,proto3" json:"VectorsV3,omitempty"`
+	PublishedDate         string   `protobuf:"bytes,12,opt,name=PublishedDate,proto3" json:"PublishedDate,omitempty"`
+	LastModifiedDate      string   `protobuf:"bytes,13,opt,name=LastModifiedDate,proto3" json:"LastModifiedDate,omitempty"`
+	CPEs                  []string `protobuf:"bytes,14,rep,name=CPEs,proto3" json:"CPEs,omitempty"`
+	CVEs                  []string `protobuf:"bytes,15,rep,name=CVEs,proto3" json:"CVEs,omitempty"`
+	FeedRating            string   `protobuf:"bytes,16,opt,name=FeedRating,proto3" json:"FeedRating,omitempty"`
+	InBase                bool     `protobuf:"varint,17,opt,name=InBase,proto3" json:"InBase,omitempty"`
+	DBKey                 string   `protobuf:"bytes,18,opt,name=DBKey,proto3" json:"DBKey,omitempty"`
+	FileName              string   `protobuf:"bytes,19,opt,name=FileName,proto3" json:"FileName,omitempty"`
+	PackageName           string   `protobuf:"bytes,20,opt,name=PackageName,proto3" json:"PackageName,omitempty"`
+	XXX_NoUnkeyedLiteral  struct{} `json:"-"`
+	XXX_unrecognized      []byte   `json:"-"`
+	XXX_sizecache         int32    `json:"-"`
 }
 
-func (m *ScanVulnerability) Reset()                    { *m = ScanVulnerability{} }
-func (m *ScanVulnerability) String() string            { return proto.CompactTextString(m) }
-func (*ScanVulnerability) ProtoMessage()               {}
-func (*ScanVulnerability) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (m *ScanVulnerability) Reset()         { *m = ScanVulnerability{} }
+func (m *ScanVulnerability) String() string { return proto.CompactTextString(m) }
+func (*ScanVulnerability) ProtoMessage()    {}
+func (*ScanVulnerability) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{1}
+}
+func (m *ScanVulnerability) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanVulnerability.Unmarshal(m, b)
+}
+func (m *ScanVulnerability) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanVulnerability.Marshal(b, m, deterministic)
+}
+func (dst *ScanVulnerability) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanVulnerability.Merge(dst, src)
+}
+func (m *ScanVulnerability) XXX_Size() int {
+	return xxx_messageInfo_ScanVulnerability.Size(m)
+}
+func (m *ScanVulnerability) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanVulnerability.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanVulnerability proto.InternalMessageInfo
 
 func (m *ScanVulnerability) GetName() string {
 	if m != nil {
@@ -361,17 +419,39 @@ func (m *ScanVulnerability) GetPackageName() string {
 }
 
 type ScanLayerResult struct {
-	Digest  string               `protobuf:"bytes,1,opt,name=Digest" json:"Digest,omitempty"`
-	Vuls    []*ScanVulnerability `protobuf:"bytes,2,rep,name=Vuls" json:"Vuls,omitempty"`
-	Cmds    string               `protobuf:"bytes,3,opt,name=Cmds" json:"Cmds,omitempty"`
-	Size    int64                `protobuf:"varint,4,opt,name=Size" json:"Size,omitempty"`
-	Secrets *ScanSecretResult    `protobuf:"bytes,5,opt,name=Secrets" json:"Secrets,omitempty"`
+	Digest               string               `protobuf:"bytes,1,opt,name=Digest,proto3" json:"Digest,omitempty"`
+	Vuls                 []*ScanVulnerability `protobuf:"bytes,2,rep,name=Vuls,proto3" json:"Vuls,omitempty"`
+	Cmds                 string               `protobuf:"bytes,3,opt,name=Cmds,proto3" json:"Cmds,omitempty"`
+	Size                 int64                `protobuf:"varint,4,opt,name=Size,proto3" json:"Size,omitempty"`
+	Secrets              *ScanSecretResult    `protobuf:"bytes,5,opt,name=Secrets,proto3" json:"Secrets,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *ScanLayerResult) Reset()                    { *m = ScanLayerResult{} }
-func (m *ScanLayerResult) String() string            { return proto.CompactTextString(m) }
-func (*ScanLayerResult) ProtoMessage()               {}
-func (*ScanLayerResult) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (m *ScanLayerResult) Reset()         { *m = ScanLayerResult{} }
+func (m *ScanLayerResult) String() string { return proto.CompactTextString(m) }
+func (*ScanLayerResult) ProtoMessage()    {}
+func (*ScanLayerResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{2}
+}
+func (m *ScanLayerResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanLayerResult.Unmarshal(m, b)
+}
+func (m *ScanLayerResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanLayerResult.Marshal(b, m, deterministic)
+}
+func (dst *ScanLayerResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanLayerResult.Merge(dst, src)
+}
+func (m *ScanLayerResult) XXX_Size() int {
+	return xxx_messageInfo_ScanLayerResult.Size(m)
+}
+func (m *ScanLayerResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanLayerResult.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanLayerResult proto.InternalMessageInfo
 
 func (m *ScanLayerResult) GetDigest() string {
 	if m != nil {
@@ -409,17 +489,39 @@ func (m *ScanLayerResult) GetSecrets() *ScanSecretResult {
 }
 
 type ScanModule struct {
-	Name    string           `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
-	Version string           `protobuf:"bytes,2,opt,name=Version" json:"Version,omitempty"`
-	Source  string           `protobuf:"bytes,3,opt,name=Source" json:"Source,omitempty"`
-	Vuls    []*ScanModuleVul `protobuf:"bytes,4,rep,name=Vuls" json:"Vuls,omitempty"`
-	CPEs    []string         `protobuf:"bytes,5,rep,name=CPEs" json:"CPEs,omitempty"`
+	Name                 string           `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	Version              string           `protobuf:"bytes,2,opt,name=Version,proto3" json:"Version,omitempty"`
+	Source               string           `protobuf:"bytes,3,opt,name=Source,proto3" json:"Source,omitempty"`
+	Vuls                 []*ScanModuleVul `protobuf:"bytes,4,rep,name=Vuls,proto3" json:"Vuls,omitempty"`
+	CPEs                 []string         `protobuf:"bytes,5,rep,name=CPEs,proto3" json:"CPEs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *ScanModule) Reset()                    { *m = ScanModule{} }
-func (m *ScanModule) String() string            { return proto.CompactTextString(m) }
-func (*ScanModule) ProtoMessage()               {}
-func (*ScanModule) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
+func (m *ScanModule) Reset()         { *m = ScanModule{} }
+func (m *ScanModule) String() string { return proto.CompactTextString(m) }
+func (*ScanModule) ProtoMessage()    {}
+func (*ScanModule) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{3}
+}
+func (m *ScanModule) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanModule.Unmarshal(m, b)
+}
+func (m *ScanModule) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanModule.Marshal(b, m, deterministic)
+}
+func (dst *ScanModule) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanModule.Merge(dst, src)
+}
+func (m *ScanModule) XXX_Size() int {
+	return xxx_messageInfo_ScanModule.Size(m)
+}
+func (m *ScanModule) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanModule.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanModule proto.InternalMessageInfo
 
 func (m *ScanModule) GetName() string {
 	if m != nil {
@@ -457,14 +559,36 @@ func (m *ScanModule) GetCPEs() []string {
 }
 
 type ScanModuleVul struct {
-	Name   string        `protobuf:"bytes,1,opt,name=Name" json:"Name,omitempty"`
-	Status ScanVulStatus `protobuf:"varint,2,opt,name=Status,enum=share.ScanVulStatus" json:"Status,omitempty"`
+	Name                 string        `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	Status               ScanVulStatus `protobuf:"varint,2,opt,name=Status,proto3,enum=share.ScanVulStatus" json:"Status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *ScanModuleVul) Reset()                    { *m = ScanModuleVul{} }
-func (m *ScanModuleVul) String() string            { return proto.CompactTextString(m) }
-func (*ScanModuleVul) ProtoMessage()               {}
-func (*ScanModuleVul) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{4} }
+func (m *ScanModuleVul) Reset()         { *m = ScanModuleVul{} }
+func (m *ScanModuleVul) String() string { return proto.CompactTextString(m) }
+func (*ScanModuleVul) ProtoMessage()    {}
+func (*ScanModuleVul) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{4}
+}
+func (m *ScanModuleVul) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanModuleVul.Unmarshal(m, b)
+}
+func (m *ScanModuleVul) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanModuleVul.Marshal(b, m, deterministic)
+}
+func (dst *ScanModuleVul) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanModuleVul.Merge(dst, src)
+}
+func (m *ScanModuleVul) XXX_Size() int {
+	return xxx_messageInfo_ScanModuleVul.Size(m)
+}
+func (m *ScanModuleVul) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanModuleVul.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanModuleVul proto.InternalMessageInfo
 
 func (m *ScanModuleVul) GetName() string {
 	if m != nil {
@@ -481,17 +605,39 @@ func (m *ScanModuleVul) GetStatus() ScanVulStatus {
 }
 
 type ScanSecretLog struct {
-	Type       string `protobuf:"bytes,1,opt,name=Type" json:"Type,omitempty"`
-	Text       string `protobuf:"bytes,2,opt,name=Text" json:"Text,omitempty"`
-	File       string `protobuf:"bytes,3,opt,name=File" json:"File,omitempty"`
-	RuleDesc   string `protobuf:"bytes,4,opt,name=RuleDesc" json:"RuleDesc,omitempty"`
-	Suggestion string `protobuf:"bytes,5,opt,name=Suggestion" json:"Suggestion,omitempty"`
+	Type                 string   `protobuf:"bytes,1,opt,name=Type,proto3" json:"Type,omitempty"`
+	Text                 string   `protobuf:"bytes,2,opt,name=Text,proto3" json:"Text,omitempty"`
+	File                 string   `protobuf:"bytes,3,opt,name=File,proto3" json:"File,omitempty"`
+	RuleDesc             string   `protobuf:"bytes,4,opt,name=RuleDesc,proto3" json:"RuleDesc,omitempty"`
+	Suggestion           string   `protobuf:"bytes,5,opt,name=Suggestion,proto3" json:"Suggestion,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ScanSecretLog) Reset()                    { *m = ScanSecretLog{} }
-func (m *ScanSecretLog) String() string            { return proto.CompactTextString(m) }
-func (*ScanSecretLog) ProtoMessage()               {}
-func (*ScanSecretLog) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{5} }
+func (m *ScanSecretLog) Reset()         { *m = ScanSecretLog{} }
+func (m *ScanSecretLog) String() string { return proto.CompactTextString(m) }
+func (*ScanSecretLog) ProtoMessage()    {}
+func (*ScanSecretLog) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{5}
+}
+func (m *ScanSecretLog) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanSecretLog.Unmarshal(m, b)
+}
+func (m *ScanSecretLog) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanSecretLog.Marshal(b, m, deterministic)
+}
+func (dst *ScanSecretLog) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanSecretLog.Merge(dst, src)
+}
+func (m *ScanSecretLog) XXX_Size() int {
+	return xxx_messageInfo_ScanSecretLog.Size(m)
+}
+func (m *ScanSecretLog) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanSecretLog.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanSecretLog proto.InternalMessageInfo
 
 func (m *ScanSecretLog) GetType() string {
 	if m != nil {
@@ -529,14 +675,36 @@ func (m *ScanSecretLog) GetSuggestion() string {
 }
 
 type ScanSecretResult struct {
-	Error ScanErrorCode    `protobuf:"varint,1,opt,name=Error,enum=share.ScanErrorCode" json:"Error,omitempty"`
-	Logs  []*ScanSecretLog `protobuf:"bytes,2,rep,name=Logs" json:"Logs,omitempty"`
+	Error                ScanErrorCode    `protobuf:"varint,1,opt,name=Error,proto3,enum=share.ScanErrorCode" json:"Error,omitempty"`
+	Logs                 []*ScanSecretLog `protobuf:"bytes,2,rep,name=Logs,proto3" json:"Logs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *ScanSecretResult) Reset()                    { *m = ScanSecretResult{} }
-func (m *ScanSecretResult) String() string            { return proto.CompactTextString(m) }
-func (*ScanSecretResult) ProtoMessage()               {}
-func (*ScanSecretResult) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{6} }
+func (m *ScanSecretResult) Reset()         { *m = ScanSecretResult{} }
+func (m *ScanSecretResult) String() string { return proto.CompactTextString(m) }
+func (*ScanSecretResult) ProtoMessage()    {}
+func (*ScanSecretResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{6}
+}
+func (m *ScanSecretResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanSecretResult.Unmarshal(m, b)
+}
+func (m *ScanSecretResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanSecretResult.Marshal(b, m, deterministic)
+}
+func (dst *ScanSecretResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanSecretResult.Merge(dst, src)
+}
+func (m *ScanSecretResult) XXX_Size() int {
+	return xxx_messageInfo_ScanSecretResult.Size(m)
+}
+func (m *ScanSecretResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanSecretResult.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanSecretResult proto.InternalMessageInfo
 
 func (m *ScanSecretResult) GetError() ScanErrorCode {
 	if m != nil {
@@ -553,15 +721,37 @@ func (m *ScanSecretResult) GetLogs() []*ScanSecretLog {
 }
 
 type ScanSetIdPermLog struct {
-	Type     string `protobuf:"bytes,1,opt,name=Type" json:"Type,omitempty"`
-	File     string `protobuf:"bytes,2,opt,name=File" json:"File,omitempty"`
-	Evidence string `protobuf:"bytes,3,opt,name=Evidence" json:"Evidence,omitempty"`
+	Type                 string   `protobuf:"bytes,1,opt,name=Type,proto3" json:"Type,omitempty"`
+	File                 string   `protobuf:"bytes,2,opt,name=File,proto3" json:"File,omitempty"`
+	Evidence             string   `protobuf:"bytes,3,opt,name=Evidence,proto3" json:"Evidence,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ScanSetIdPermLog) Reset()                    { *m = ScanSetIdPermLog{} }
-func (m *ScanSetIdPermLog) String() string            { return proto.CompactTextString(m) }
-func (*ScanSetIdPermLog) ProtoMessage()               {}
-func (*ScanSetIdPermLog) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{7} }
+func (m *ScanSetIdPermLog) Reset()         { *m = ScanSetIdPermLog{} }
+func (m *ScanSetIdPermLog) String() string { return proto.CompactTextString(m) }
+func (*ScanSetIdPermLog) ProtoMessage()    {}
+func (*ScanSetIdPermLog) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{7}
+}
+func (m *ScanSetIdPermLog) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanSetIdPermLog.Unmarshal(m, b)
+}
+func (m *ScanSetIdPermLog) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanSetIdPermLog.Marshal(b, m, deterministic)
+}
+func (dst *ScanSetIdPermLog) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanSetIdPermLog.Merge(dst, src)
+}
+func (m *ScanSetIdPermLog) XXX_Size() int {
+	return xxx_messageInfo_ScanSetIdPermLog.Size(m)
+}
+func (m *ScanSetIdPermLog) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanSetIdPermLog.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanSetIdPermLog proto.InternalMessageInfo
 
 func (m *ScanSetIdPermLog) GetType() string {
 	if m != nil {
@@ -585,39 +775,61 @@ func (m *ScanSetIdPermLog) GetEvidence() string {
 }
 
 type ScanResult struct {
-	Version            string               `protobuf:"bytes,1,opt,name=Version" json:"Version,omitempty"`
-	Error              ScanErrorCode        `protobuf:"varint,2,opt,name=Error,enum=share.ScanErrorCode" json:"Error,omitempty"`
-	Namespace          string               `protobuf:"bytes,3,opt,name=Namespace" json:"Namespace,omitempty"`
-	Vuls               []*ScanVulnerability `protobuf:"bytes,4,rep,name=Vuls" json:"Vuls,omitempty"`
-	ContainerID        string               `protobuf:"bytes,5,opt,name=ContainerID" json:"ContainerID,omitempty"`
-	HostID             string               `protobuf:"bytes,6,opt,name=HostID" json:"HostID,omitempty"`
-	Registry           string               `protobuf:"bytes,7,opt,name=Registry" json:"Registry,omitempty"`
-	Repository         string               `protobuf:"bytes,8,opt,name=Repository" json:"Repository,omitempty"`
-	Tag                string               `protobuf:"bytes,9,opt,name=Tag" json:"Tag,omitempty"`
-	Digest             string               `protobuf:"bytes,10,opt,name=Digest" json:"Digest,omitempty"`
-	ImageID            string               `protobuf:"bytes,11,opt,name=ImageID" json:"ImageID,omitempty"`
-	Layers             []*ScanLayerResult   `protobuf:"bytes,12,rep,name=Layers" json:"Layers,omitempty"`
-	Envs               []string             `protobuf:"bytes,13,rep,name=Envs" json:"Envs,omitempty"`
-	Labels             map[string]string    `protobuf:"bytes,14,rep,name=Labels" json:"Labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Platform           string               `protobuf:"bytes,15,opt,name=Platform" json:"Platform,omitempty"`
-	PlatformVersion    string               `protobuf:"bytes,16,opt,name=PlatformVersion" json:"PlatformVersion,omitempty"`
-	Author             string               `protobuf:"bytes,17,opt,name=Author" json:"Author,omitempty"`
-	CVEDBCreateTime    string               `protobuf:"bytes,18,opt,name=CVEDBCreateTime" json:"CVEDBCreateTime,omitempty"`
-	Modules            []*ScanModule        `protobuf:"bytes,19,rep,name=Modules" json:"Modules,omitempty"`
-	Secrets            *ScanSecretResult    `protobuf:"bytes,20,opt,name=Secrets" json:"Secrets,omitempty"`
-	Cmds               []string             `protobuf:"bytes,21,rep,name=Cmds" json:"Cmds,omitempty"`
-	SetIdPerms         []*ScanSetIdPermLog  `protobuf:"bytes,22,rep,name=SetIdPerms" json:"SetIdPerms,omitempty"`
-	Provider           ScanProvider         `protobuf:"varint,23,opt,name=Provider,enum=share.ScanProvider" json:"Provider,omitempty"`
-	Size               int64                `protobuf:"varint,24,opt,name=Size" json:"Size,omitempty"`
-	SignatureInfo      *ScanSignatureInfo   `protobuf:"bytes,25,opt,name=SignatureInfo" json:"SignatureInfo,omitempty"`
-	Created            string               `protobuf:"bytes,26,opt,name=Created" json:"Created,omitempty"`
-	ScanTypesRequested *ScanTypeMap         `protobuf:"bytes,27,opt,name=ScanTypesRequested" json:"ScanTypesRequested,omitempty"`
+	Version              string               `protobuf:"bytes,1,opt,name=Version,proto3" json:"Version,omitempty"`
+	Error                ScanErrorCode        `protobuf:"varint,2,opt,name=Error,proto3,enum=share.ScanErrorCode" json:"Error,omitempty"`
+	Namespace            string               `protobuf:"bytes,3,opt,name=Namespace,proto3" json:"Namespace,omitempty"`
+	Vuls                 []*ScanVulnerability `protobuf:"bytes,4,rep,name=Vuls,proto3" json:"Vuls,omitempty"`
+	ContainerID          string               `protobuf:"bytes,5,opt,name=ContainerID,proto3" json:"ContainerID,omitempty"`
+	HostID               string               `protobuf:"bytes,6,opt,name=HostID,proto3" json:"HostID,omitempty"`
+	Registry             string               `protobuf:"bytes,7,opt,name=Registry,proto3" json:"Registry,omitempty"`
+	Repository           string               `protobuf:"bytes,8,opt,name=Repository,proto3" json:"Repository,omitempty"`
+	Tag                  string               `protobuf:"bytes,9,opt,name=Tag,proto3" json:"Tag,omitempty"`
+	Digest               string               `protobuf:"bytes,10,opt,name=Digest,proto3" json:"Digest,omitempty"`
+	ImageID              string               `protobuf:"bytes,11,opt,name=ImageID,proto3" json:"ImageID,omitempty"`
+	Layers               []*ScanLayerResult   `protobuf:"bytes,12,rep,name=Layers,proto3" json:"Layers,omitempty"`
+	Envs                 []string             `protobuf:"bytes,13,rep,name=Envs,proto3" json:"Envs,omitempty"`
+	Labels               map[string]string    `protobuf:"bytes,14,rep,name=Labels,proto3" json:"Labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Platform             string               `protobuf:"bytes,15,opt,name=Platform,proto3" json:"Platform,omitempty"`
+	PlatformVersion      string               `protobuf:"bytes,16,opt,name=PlatformVersion,proto3" json:"PlatformVersion,omitempty"`
+	Author               string               `protobuf:"bytes,17,opt,name=Author,proto3" json:"Author,omitempty"`
+	CVEDBCreateTime      string               `protobuf:"bytes,18,opt,name=CVEDBCreateTime,proto3" json:"CVEDBCreateTime,omitempty"`
+	Modules              []*ScanModule        `protobuf:"bytes,19,rep,name=Modules,proto3" json:"Modules,omitempty"`
+	Secrets              *ScanSecretResult    `protobuf:"bytes,20,opt,name=Secrets,proto3" json:"Secrets,omitempty"`
+	Cmds                 []string             `protobuf:"bytes,21,rep,name=Cmds,proto3" json:"Cmds,omitempty"`
+	SetIdPerms           []*ScanSetIdPermLog  `protobuf:"bytes,22,rep,name=SetIdPerms,proto3" json:"SetIdPerms,omitempty"`
+	Provider             ScanProvider         `protobuf:"varint,23,opt,name=Provider,proto3,enum=share.ScanProvider" json:"Provider,omitempty"`
+	Size                 int64                `protobuf:"varint,24,opt,name=Size,proto3" json:"Size,omitempty"`
+	SignatureInfo        *ScanSignatureInfo   `protobuf:"bytes,25,opt,name=SignatureInfo,proto3" json:"SignatureInfo,omitempty"`
+	Created              string               `protobuf:"bytes,26,opt,name=Created,proto3" json:"Created,omitempty"`
+	ScanTypesRequested   *ScanTypeMap         `protobuf:"bytes,27,opt,name=ScanTypesRequested,proto3" json:"ScanTypesRequested,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *ScanResult) Reset()                    { *m = ScanResult{} }
-func (m *ScanResult) String() string            { return proto.CompactTextString(m) }
-func (*ScanResult) ProtoMessage()               {}
-func (*ScanResult) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{8} }
+func (m *ScanResult) Reset()         { *m = ScanResult{} }
+func (m *ScanResult) String() string { return proto.CompactTextString(m) }
+func (*ScanResult) ProtoMessage()    {}
+func (*ScanResult) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{8}
+}
+func (m *ScanResult) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanResult.Unmarshal(m, b)
+}
+func (m *ScanResult) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanResult.Marshal(b, m, deterministic)
+}
+func (dst *ScanResult) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanResult.Merge(dst, src)
+}
+func (m *ScanResult) XXX_Size() int {
+	return xxx_messageInfo_ScanResult.Size(m)
+}
+func (m *ScanResult) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanResult.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanResult proto.InternalMessageInfo
 
 func (m *ScanResult) GetVersion() string {
 	if m != nil {
@@ -809,15 +1021,37 @@ func (m *ScanResult) GetScanTypesRequested() *ScanTypeMap {
 }
 
 type ScanSignatureInfo struct {
-	Verifiers             []string      `protobuf:"bytes,1,rep,name=Verifiers" json:"Verifiers,omitempty"`
-	VerificationTimestamp string        `protobuf:"bytes,2,opt,name=VerificationTimestamp" json:"VerificationTimestamp,omitempty"`
-	VerificationError     ScanErrorCode `protobuf:"varint,3,opt,name=VerificationError,enum=share.ScanErrorCode" json:"VerificationError,omitempty"`
+	Verifiers             []string      `protobuf:"bytes,1,rep,name=Verifiers,proto3" json:"Verifiers,omitempty"`
+	VerificationTimestamp string        `protobuf:"bytes,2,opt,name=VerificationTimestamp,proto3" json:"VerificationTimestamp,omitempty"`
+	VerificationError     ScanErrorCode `protobuf:"varint,3,opt,name=VerificationError,proto3,enum=share.ScanErrorCode" json:"VerificationError,omitempty"`
+	XXX_NoUnkeyedLiteral  struct{}      `json:"-"`
+	XXX_unrecognized      []byte        `json:"-"`
+	XXX_sizecache         int32         `json:"-"`
 }
 
-func (m *ScanSignatureInfo) Reset()                    { *m = ScanSignatureInfo{} }
-func (m *ScanSignatureInfo) String() string            { return proto.CompactTextString(m) }
-func (*ScanSignatureInfo) ProtoMessage()               {}
-func (*ScanSignatureInfo) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{9} }
+func (m *ScanSignatureInfo) Reset()         { *m = ScanSignatureInfo{} }
+func (m *ScanSignatureInfo) String() string { return proto.CompactTextString(m) }
+func (*ScanSignatureInfo) ProtoMessage()    {}
+func (*ScanSignatureInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{9}
+}
+func (m *ScanSignatureInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanSignatureInfo.Unmarshal(m, b)
+}
+func (m *ScanSignatureInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanSignatureInfo.Marshal(b, m, deterministic)
+}
+func (dst *ScanSignatureInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanSignatureInfo.Merge(dst, src)
+}
+func (m *ScanSignatureInfo) XXX_Size() int {
+	return xxx_messageInfo_ScanSignatureInfo.Size(m)
+}
+func (m *ScanSignatureInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanSignatureInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanSignatureInfo proto.InternalMessageInfo
 
 func (m *ScanSignatureInfo) GetVerifiers() []string {
 	if m != nil {
@@ -841,16 +1075,38 @@ func (m *ScanSignatureInfo) GetVerificationError() ScanErrorCode {
 }
 
 type ScanRunningRequest struct {
-	Type             ScanObjectType `protobuf:"varint,1,opt,name=Type,enum=share.ScanObjectType" json:"Type,omitempty"`
-	ID               string         `protobuf:"bytes,2,opt,name=ID" json:"ID,omitempty"`
-	AgentID          string         `protobuf:"bytes,3,opt,name=AgentID" json:"AgentID,omitempty"`
-	AgentRPCEndPoint string         `protobuf:"bytes,4,opt,name=AgentRPCEndPoint" json:"AgentRPCEndPoint,omitempty"`
+	Type                 ScanObjectType `protobuf:"varint,1,opt,name=Type,proto3,enum=share.ScanObjectType" json:"Type,omitempty"`
+	ID                   string         `protobuf:"bytes,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	AgentID              string         `protobuf:"bytes,3,opt,name=AgentID,proto3" json:"AgentID,omitempty"`
+	AgentRPCEndPoint     string         `protobuf:"bytes,4,opt,name=AgentRPCEndPoint,proto3" json:"AgentRPCEndPoint,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
 }
 
-func (m *ScanRunningRequest) Reset()                    { *m = ScanRunningRequest{} }
-func (m *ScanRunningRequest) String() string            { return proto.CompactTextString(m) }
-func (*ScanRunningRequest) ProtoMessage()               {}
-func (*ScanRunningRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{10} }
+func (m *ScanRunningRequest) Reset()         { *m = ScanRunningRequest{} }
+func (m *ScanRunningRequest) String() string { return proto.CompactTextString(m) }
+func (*ScanRunningRequest) ProtoMessage()    {}
+func (*ScanRunningRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{10}
+}
+func (m *ScanRunningRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanRunningRequest.Unmarshal(m, b)
+}
+func (m *ScanRunningRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanRunningRequest.Marshal(b, m, deterministic)
+}
+func (dst *ScanRunningRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanRunningRequest.Merge(dst, src)
+}
+func (m *ScanRunningRequest) XXX_Size() int {
+	return xxx_messageInfo_ScanRunningRequest.Size(m)
+}
+func (m *ScanRunningRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanRunningRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanRunningRequest proto.InternalMessageInfo
 
 func (m *ScanRunningRequest) GetType() ScanObjectType {
 	if m != nil {
@@ -881,14 +1137,36 @@ func (m *ScanRunningRequest) GetAgentRPCEndPoint() string {
 }
 
 type ScanData struct {
-	Error  ScanErrorCode `protobuf:"varint,1,opt,name=Error,enum=share.ScanErrorCode" json:"Error,omitempty"`
-	Buffer []byte        `protobuf:"bytes,2,opt,name=Buffer,proto3" json:"Buffer,omitempty"`
+	Error                ScanErrorCode `protobuf:"varint,1,opt,name=Error,proto3,enum=share.ScanErrorCode" json:"Error,omitempty"`
+	Buffer               []byte        `protobuf:"bytes,2,opt,name=Buffer,proto3" json:"Buffer,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *ScanData) Reset()                    { *m = ScanData{} }
-func (m *ScanData) String() string            { return proto.CompactTextString(m) }
-func (*ScanData) ProtoMessage()               {}
-func (*ScanData) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{11} }
+func (m *ScanData) Reset()         { *m = ScanData{} }
+func (m *ScanData) String() string { return proto.CompactTextString(m) }
+func (*ScanData) ProtoMessage()    {}
+func (*ScanData) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{11}
+}
+func (m *ScanData) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanData.Unmarshal(m, b)
+}
+func (m *ScanData) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanData.Marshal(b, m, deterministic)
+}
+func (dst *ScanData) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanData.Merge(dst, src)
+}
+func (m *ScanData) XXX_Size() int {
+	return xxx_messageInfo_ScanData.Size(m)
+}
+func (m *ScanData) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanData.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanData proto.InternalMessageInfo
 
 func (m *ScanData) GetError() ScanErrorCode {
 	if m != nil {
@@ -905,16 +1183,38 @@ func (m *ScanData) GetBuffer() []byte {
 }
 
 type ScanAppPackage struct {
-	AppName    string `protobuf:"bytes,1,opt,name=AppName" json:"AppName,omitempty"`
-	ModuleName string `protobuf:"bytes,2,opt,name=ModuleName" json:"ModuleName,omitempty"`
-	Version    string `protobuf:"bytes,3,opt,name=Version" json:"Version,omitempty"`
-	FileName   string `protobuf:"bytes,4,opt,name=FileName" json:"FileName,omitempty"`
+	AppName              string   `protobuf:"bytes,1,opt,name=AppName,proto3" json:"AppName,omitempty"`
+	ModuleName           string   `protobuf:"bytes,2,opt,name=ModuleName,proto3" json:"ModuleName,omitempty"`
+	Version              string   `protobuf:"bytes,3,opt,name=Version,proto3" json:"Version,omitempty"`
+	FileName             string   `protobuf:"bytes,4,opt,name=FileName,proto3" json:"FileName,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ScanAppPackage) Reset()                    { *m = ScanAppPackage{} }
-func (m *ScanAppPackage) String() string            { return proto.CompactTextString(m) }
-func (*ScanAppPackage) ProtoMessage()               {}
-func (*ScanAppPackage) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{12} }
+func (m *ScanAppPackage) Reset()         { *m = ScanAppPackage{} }
+func (m *ScanAppPackage) String() string { return proto.CompactTextString(m) }
+func (*ScanAppPackage) ProtoMessage()    {}
+func (*ScanAppPackage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{12}
+}
+func (m *ScanAppPackage) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanAppPackage.Unmarshal(m, b)
+}
+func (m *ScanAppPackage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanAppPackage.Marshal(b, m, deterministic)
+}
+func (dst *ScanAppPackage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanAppPackage.Merge(dst, src)
+}
+func (m *ScanAppPackage) XXX_Size() int {
+	return xxx_messageInfo_ScanAppPackage.Size(m)
+}
+func (m *ScanAppPackage) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanAppPackage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanAppPackage proto.InternalMessageInfo
 
 func (m *ScanAppPackage) GetAppName() string {
 	if m != nil {
@@ -945,13 +1245,35 @@ func (m *ScanAppPackage) GetFileName() string {
 }
 
 type ScanAppRequest struct {
-	Packages []*ScanAppPackage `protobuf:"bytes,1,rep,name=Packages" json:"Packages,omitempty"`
+	Packages             []*ScanAppPackage `protobuf:"bytes,1,rep,name=Packages,proto3" json:"Packages,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
-func (m *ScanAppRequest) Reset()                    { *m = ScanAppRequest{} }
-func (m *ScanAppRequest) String() string            { return proto.CompactTextString(m) }
-func (*ScanAppRequest) ProtoMessage()               {}
-func (*ScanAppRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{13} }
+func (m *ScanAppRequest) Reset()         { *m = ScanAppRequest{} }
+func (m *ScanAppRequest) String() string { return proto.CompactTextString(m) }
+func (*ScanAppRequest) ProtoMessage()    {}
+func (*ScanAppRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{13}
+}
+func (m *ScanAppRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanAppRequest.Unmarshal(m, b)
+}
+func (m *ScanAppRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanAppRequest.Marshal(b, m, deterministic)
+}
+func (dst *ScanAppRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanAppRequest.Merge(dst, src)
+}
+func (m *ScanAppRequest) XXX_Size() int {
+	return xxx_messageInfo_ScanAppRequest.Size(m)
+}
+func (m *ScanAppRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanAppRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanAppRequest proto.InternalMessageInfo
 
 func (m *ScanAppRequest) GetPackages() []*ScanAppPackage {
 	if m != nil {
@@ -961,17 +1283,39 @@ func (m *ScanAppRequest) GetPackages() []*ScanAppPackage {
 }
 
 type ScanAwsLambdaRequest struct {
-	ResType     string `protobuf:"bytes,1,opt,name=ResType" json:"ResType,omitempty"`
-	FuncName    string `protobuf:"bytes,2,opt,name=FuncName" json:"FuncName,omitempty"`
-	Region      string `protobuf:"bytes,3,opt,name=Region" json:"Region,omitempty"`
-	FuncLink    string `protobuf:"bytes,4,opt,name=FuncLink" json:"FuncLink,omitempty"`
-	ScanSecrets bool   `protobuf:"varint,5,opt,name=ScanSecrets" json:"ScanSecrets,omitempty"`
+	ResType              string   `protobuf:"bytes,1,opt,name=ResType,proto3" json:"ResType,omitempty"`
+	FuncName             string   `protobuf:"bytes,2,opt,name=FuncName,proto3" json:"FuncName,omitempty"`
+	Region               string   `protobuf:"bytes,3,opt,name=Region,proto3" json:"Region,omitempty"`
+	FuncLink             string   `protobuf:"bytes,4,opt,name=FuncLink,proto3" json:"FuncLink,omitempty"`
+	ScanSecrets          bool     `protobuf:"varint,5,opt,name=ScanSecrets,proto3" json:"ScanSecrets,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ScanAwsLambdaRequest) Reset()                    { *m = ScanAwsLambdaRequest{} }
-func (m *ScanAwsLambdaRequest) String() string            { return proto.CompactTextString(m) }
-func (*ScanAwsLambdaRequest) ProtoMessage()               {}
-func (*ScanAwsLambdaRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{14} }
+func (m *ScanAwsLambdaRequest) Reset()         { *m = ScanAwsLambdaRequest{} }
+func (m *ScanAwsLambdaRequest) String() string { return proto.CompactTextString(m) }
+func (*ScanAwsLambdaRequest) ProtoMessage()    {}
+func (*ScanAwsLambdaRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_scan_2b7e06c79cf3c6d5, []int{14}
+}
+func (m *ScanAwsLambdaRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ScanAwsLambdaRequest.Unmarshal(m, b)
+}
+func (m *ScanAwsLambdaRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ScanAwsLambdaRequest.Marshal(b, m, deterministic)
+}
+func (dst *ScanAwsLambdaRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ScanAwsLambdaRequest.Merge(dst, src)
+}
+func (m *ScanAwsLambdaRequest) XXX_Size() int {
+	return xxx_messageInfo_ScanAwsLambdaRequest.Size(m)
+}
+func (m *ScanAwsLambdaRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ScanAwsLambdaRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ScanAwsLambdaRequest proto.InternalMessageInfo
 
 func (m *ScanAwsLambdaRequest) GetResType() string {
 	if m != nil {
@@ -1018,6 +1362,7 @@ func init() {
 	proto.RegisterType((*ScanSecretResult)(nil), "share.ScanSecretResult")
 	proto.RegisterType((*ScanSetIdPermLog)(nil), "share.ScanSetIdPermLog")
 	proto.RegisterType((*ScanResult)(nil), "share.ScanResult")
+	proto.RegisterMapType((map[string]string)(nil), "share.ScanResult.LabelsEntry")
 	proto.RegisterType((*ScanSignatureInfo)(nil), "share.ScanSignatureInfo")
 	proto.RegisterType((*ScanRunningRequest)(nil), "share.ScanRunningRequest")
 	proto.RegisterType((*ScanData)(nil), "share.ScanData")
@@ -1030,9 +1375,9 @@ func init() {
 	proto.RegisterEnum("share.ScanVulStatus", ScanVulStatus_name, ScanVulStatus_value)
 }
 
-func init() { proto.RegisterFile("scan.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("scan.proto", fileDescriptor_scan_2b7e06c79cf3c6d5) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor_scan_2b7e06c79cf3c6d5 = []byte{
 	// 1702 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x57, 0x4b, 0x73, 0xe3, 0xb8,
 	0x11, 0x1e, 0x3d, 0x6c, 0xcb, 0x90, 0x1f, 0x30, 0xfc, 0x18, 0xce, 0x64, 0x77, 0xcb, 0xa5, 0x4a,

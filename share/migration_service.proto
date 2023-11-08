@@ -1,0 +1,12 @@
+syntax = "proto3";
+package share;
+
+message ReloadRequest {
+}
+
+message ReloadResponse {
+}
+
+service MigrationService {
+  rpc Reload(ReloadRequest) returns (ReloadResponse);
+}
