@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -48,8 +49,17 @@ type GRPCServer struct {
 }
 
 func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
+	return NewGRPCServerTCPWithCerts(endpoint,
+		path.Join(InternalCertDir, InternalCACert),
+		path.Join(InternalCertDir, InternalCert),
+		path.Join(InternalCertDir, InternalCertKey),
+		tls.VersionTLS11,
+	)
+}
+
+func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath string, keyPath string, minTLSVersion uint16) (*GRPCServer, error) {
 	// CA cert
-	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
+	caCert, err := ioutil.ReadFile(cacertPath)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +67,7 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	// public/private keys
-	cert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s%s", internalCertDir, internalCert),
-		fmt.Sprintf("%s%s", internalCertDir, internalCertKey))
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +75,12 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 	config := &tls.Config{
 		ClientCAs:                caCertPool,
 		Certificates:             []tls.Certificate{cert},
-		MinVersion:               tls.VersionTLS11,
 		PreferServerCipherSuites: true,
 		CipherSuites:             utils.GetSupportedTLSCipherSuites(),
 		ClientAuth:               tls.RequireAndVerifyClientCert,
 	}
+	config.MinVersion = minTLSVersion
+
 	creds := credentials.NewTLS(config)
 
 	opts := []grpc.ServerOption{
@@ -121,6 +130,7 @@ func (s *GRPCServer) GetServer() *grpc.Server {
 
 func (s *GRPCServer) Start() {
 	s.stopped = false
+	log.Debug("GRPCServer is starting")
 	for {
 		if err := s.server.Serve(s.listen); err != nil {
 			if s.stopped {
@@ -131,6 +141,7 @@ func (s *GRPCServer) Start() {
 			}
 		}
 	}
+	log.Debug("GRPCServer terminated.")
 }
 
 func (s *GRPCServer) Stop() {
@@ -139,6 +150,7 @@ func (s *GRPCServer) Stop() {
 }
 
 func (s *GRPCServer) GracefulStop() {
+	s.stopped = true
 	s.server.GracefulStop()
 }
 
@@ -192,9 +204,22 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 	}
 }
 
+// For backward compatibity.  Use internal certs.
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
+	return newGRPCClientTCPWithCerts(ctx,
+		key,
+		endpoint,
+		path.Join(InternalCertDir, InternalCACert),
+		path.Join(InternalCertDir, InternalCert),
+		path.Join(InternalCertDir, InternalCertKey),
+		cb,
+		compress,
+	)
+}
+
+func newGRPCClientTCPWithCerts(ctx context.Context, key, endpoint string, cacertPath string, certPath string, keyPath string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
 	// CA cert
-	caCert, err := ioutil.ReadFile(fmt.Sprintf("%s%s", internalCertDir, internalCACert))
+	caCert, err := ioutil.ReadFile(cacertPath)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +228,8 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 
 	// public/private keys
 	cert, err := tls.LoadX509KeyPair(
-		fmt.Sprintf("%s%s", internalCertDir, internalCert),
-		fmt.Sprintf("%s%s", internalCertDir, internalCertKey))
+		certPath,
+		keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +245,7 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 		}
 
 		if subjectCN == "" {
-			subjectCN = internalCertCN
+			subjectCN = InternalCertCN
 		}
 
 		log.WithFields(log.Fields{"cn": subjectCN}).Info("Expected server name")
@@ -254,7 +279,6 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 	if err != nil {
 		return nil, err
 	}
-
 	c := &GRPCClient{conn: conn, key: key, server: endpoint, cb: cb}
 
 	// TODO: one go routine per connection, should consider combine them if this is too many.
@@ -454,6 +478,7 @@ func newClient(s *grpcClient, cb GRPCCallback, compress bool) error {
 	var err error
 	var c *GRPCClient
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	if s.unix {
 		c, err = newGRPCClientUnix(ctx, s.key, s.endpoint, cb, compress)
 	} else {
@@ -495,6 +520,27 @@ func GetGRPCClient(key string, isCompressed IsCompressedFunc, cb GRPCCallback) (
 		}
 	}
 	return nil, fmt.Errorf("Client not found")
+}
+
+// This function is used during internal cert reload when internal certificates are changed.
+// It removes gRPC client from clientMap[key], so all connections have to be re-established using new certs.
+// After this function, old client will not be retrievable via GetGRPCClient() API.  Instead, new client will be created.
+// The user of the existing old clients will be able to continue using the client, while it's cancelled and connection is closed.
+//
+// This way, GetGRPCClientEndpoint() can still find correct endpoints while certs used gRPC clients are being reloaded.
+func ReloadAllGRPCClients() error {
+	mtx.Lock()
+	defer mtx.Unlock()
+	for _, v := range clientMap {
+		if v.client != nil {
+			v.cancel()
+			v.client.Close()
+			v.client = nil
+			v.service = nil
+			v.cancel = nil
+		}
+	}
+	return nil
 }
 
 func GetGRPCClientEndpoint(key string) string {

@@ -24,6 +24,7 @@ import (
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/fsmon"
 	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/utils"
 )
@@ -492,6 +493,36 @@ func main() {
 	log.WithFields(log.Fields{"hostIPs": gInfo.hostIPs}).Info("")
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
+
+	// Add cert reload
+	// TODO: Initialize those services too?
+	migration.InitializeInternalSecretController([]func([]byte, []byte, []byte) error{
+		// Reload consul
+		func(cacert []byte, cert []byte, key []byte) error {
+			if err := cluster.Reload(nil); err != nil {
+				return fmt.Errorf("failed to reload consul: %w", err)
+			}
+			return nil
+		},
+		// Reload grpc server
+		func(cacert []byte, cert []byte, key []byte) error {
+			if grpcServer != nil {
+				grpcServer.GracefulStop()
+				grpcServer, Agent.RPCServerPort = startGRPCServer(uint16(*grpcPort))
+			}
+			return nil
+		},
+		// Reload grpc client
+		func(cacert []byte, cert []byte, key []byte) error {
+			// TODO: Make sure all gRPC call retries.
+			// TODO: Make sure server can completes normally without resource leak.
+			// TODO: Add lock on grpcServer.
+			if err := cluster.ReloadAllGRPCClients(); err != nil {
+				return fmt.Errorf("failed to purge gRPC client cache: %w", err)
+			}
+			return nil
+		},
+	})
 
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)
