@@ -25,6 +25,7 @@ const internalCertCN string = "NeuVector"
 const DefaultControllerGRPCPort = 18400
 const DefaultAgentGRPCPort = 18401
 const DefaultScannerGRPCPort = 18402
+const DefaultMigrationGRPCPort = 18500
 
 const DefaultDataCenter string = "neuvector"
 
