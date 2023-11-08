@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -24,6 +25,8 @@ import (
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/fsmon"
 	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/healthz"
+	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/utils"
 )
@@ -492,6 +495,65 @@ func main() {
 	log.WithFields(log.Fields{"hostIPs": gInfo.hostIPs}).Info("")
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
+	go func() {
+		if err := healthz.StartHealthzServer(); err != nil {
+			log.WithError(err).Warn("failed to start healthz server")
+		}
+	}()
+
+	var controllerCancel context.CancelFunc
+	var ctx context.Context
+
+	if os.Getenv("AUTO_INTERNAL_CERT") != "" {
+
+		log.Info("start initializing k8s internal secret controller and wait for internal secret creation if it's not created")
+
+		go func() {
+			if err := healthz.StartHealthzServer(); err != nil {
+				log.WithError(err).Warn("failed to start healthz server")
+			}
+		}()
+
+		ctx, controllerCancel = context.WithCancel(context.Background())
+		// Initialize secrets.  Most of services are not running at this moment, so skip their reload functions.
+		err = migration.InitializeInternalSecretController(ctx, []func([]byte, []byte, []byte) error{
+			// Reload consul
+			func(cacert []byte, cert []byte, key []byte) error {
+				log.Info("Reloading consul config")
+				if err := cluster.Reload(nil); err != nil {
+					return fmt.Errorf("failed to reload consul: %w", err)
+				}
+
+				return nil
+			},
+			// Reload grpc server
+			func(cacert []byte, cert []byte, key []byte) error {
+				log.Info("Reloading gRPC server")
+				if grpcServer != nil {
+					// Revisit here when we don't want downtime.
+					// grpcServer.GracefulStop()
+					grpcServer.Stop()
+					grpcServer, _ = startGRPCServer(uint16(*grpcPort))
+				}
+				return nil
+			},
+			// Reload grpc client
+			func(cacert []byte, cert []byte, key []byte) error {
+				// TODO: Make sure all gRPC calls retry.
+				// TODO: Make sure server can complete normally without resource leak.
+				log.Info("Reloading gRPC clients")
+				if err := cluster.ReloadAllGRPCClients(); err != nil {
+					return fmt.Errorf("failed to purge gRPC client cache: %w", err)
+				}
+				return nil
+			},
+		})
+		if err != nil {
+			log.WithError(err).Error("failed to initialize internal secret controller")
+			os.Exit(-2)
+		}
+		log.Info("internal certificate is initialized")
+	}
 
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)
@@ -698,6 +760,8 @@ func main() {
 	if walkerTask != nil {
 		walkerTask.Close()
 	}
+
+	controllerCancel()
 
 	prober.Close() // both file monitors should be released at first
 	fileWatcher.Close()
