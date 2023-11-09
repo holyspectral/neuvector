@@ -12,7 +12,7 @@ replace (
 	github.com/kubernetes/cri-api => k8s.io/cri-api v0.22.3
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc5
 	golang.org/x/net => golang.org/x/net v0.0.0-20200822124328-c89045814202
-	google.golang.org/grpc => google.golang.org/grpc v1.45.0
+	google.golang.org/grpc => google.golang.org/grpc v1.48.0
 	k8s.io/api => k8s.io/api v0.21.14
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.14
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.0
@@ -86,8 +86,8 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
 	golang.org/x/tools v0.1.10 // indirect
-	google.golang.org/grpc v1.45.0
-	google.golang.org/grpc/security/advancedtls v0.0.0-20220309184314-a82cc96f07c9
+	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc/security/advancedtls v0.0.0-20220712212810-64174955202f
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ldap.v2 v2.5.1
 	gopkg.in/square/go-jose.v2 v2.2.2
