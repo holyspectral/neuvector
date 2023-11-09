@@ -13,12 +13,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const internalCertDir = "/etc/neuvector/certs/internal/"
+const InternalCertDir = "/etc/neuvector/certs/internal/"
 
-const internalCACert string = "ca.cert"
-const internalCert string = "cert.pem"
-const internalCertKey string = "cert.key"
-const internalCertCN string = "NeuVector"
+const InternalCACert string = "ca.cert"
+const InternalCert string = "cert.pem"
+const InternalCertKey string = "cert.key"
+const InternalCertCN string = "NeuVector"
 
 // --
 
@@ -1055,6 +1055,14 @@ func FillClusterAddrs(cfg *ClusterConfig, sys *system.SystemTools) error {
 				return errors.New("Node should either bootstrap a cluster or join a cluster")
 		*/
 	}
+}
+
+func Reload(cc *ClusterConfig) error {
+	config := cc
+	if cc == nil {
+		config = &clusterCfg
+	}
+	return driver.Reload(config)
 }
 
 var curLogLevel log.Level = log.InfoLevel

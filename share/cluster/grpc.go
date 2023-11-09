@@ -50,9 +50,9 @@ type GRPCServer struct {
 
 func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 	return NewGRPCServerTCPWithCerts(endpoint,
-		path.Join(internalCertDir, internalCACert),
-		path.Join(internalCertDir, internalCert),
-		path.Join(internalCertDir, internalCertKey),
+		path.Join(InternalCertDir, InternalCACert),
+		path.Join(InternalCertDir, InternalCert),
+		path.Join(InternalCertDir, InternalCertKey),
 	)
 }
 
@@ -204,9 +204,9 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 	return newGRPCClientTCPWithCerts(ctx,
 		key,
 		endpoint,
-		path.Join(internalCertDir, internalCACert),
-		path.Join(internalCertDir, internalCert),
-		path.Join(internalCertDir, internalCertKey),
+		path.Join(InternalCertDir, InternalCACert),
+		path.Join(InternalCertDir, InternalCert),
+		path.Join(InternalCertDir, InternalCertKey),
 		cb,
 		compress,
 	)
@@ -240,7 +240,7 @@ func newGRPCClientTCPWithCerts(ctx context.Context, key, endpoint string, cacert
 		}
 
 		if subjectCN == "" {
-			subjectCN = internalCertCN
+			subjectCN = InternalCertCN
 		}
 
 		log.WithFields(log.Fields{"cn": subjectCN}).Info("Expected server name")

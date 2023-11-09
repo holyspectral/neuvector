@@ -5,6 +5,8 @@ message ReloadRequest {
 }
 
 message ReloadResponse {
+  bool Success = 1;
+  string Error = 2;
 }
 
 service MigrationService {
