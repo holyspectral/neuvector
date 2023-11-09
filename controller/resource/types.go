@@ -46,6 +46,7 @@ const (
 	RscTypeDaemonSet                      = "daemonset"
 	RscTypeReplicaSet                     = "replicaset"
 	RscTypeStatefulSet                    = "statefulset"
+	RscTypeSecret                         = "secret"
 )
 
 const (
@@ -64,8 +65,8 @@ const (
 const RscCspUsageName = "neuvector-usage"
 
 // ValidatingWebhookConfiguration resource instance (neuvector-validating-admission-webhook) contains 2 webhooks:
-// 	1. neuvector-validating-admission-webhook.neuvector.svc
-// 	2. neuvector-validating-status-webhook.neuvector.svc
+//  1. neuvector-validating-admission-webhook.neuvector.svc
+//  2. neuvector-validating-status-webhook.neuvector.svc
 var NvAdmMutatingName = "neuvector-mutating-admission-webhook"     // ValidatingWebhookConfiguration resource instance metadata name
 var NvAdmValidatingName = "neuvector-validating-admission-webhook" // ValidatingWebhookConfiguration resource instance metadata name
 var NvCrdValidatingName = "neuvector-validating-crd-webhook"       // ValidatingWebhookConfiguration resource instance metadata name
@@ -95,6 +96,13 @@ type Node struct {
 }
 
 type Namespace struct {
+	UID    string
+	Name   string
+	Labels map[string]string
+}
+
+// We don't cache secret.  Only keep its name and labels.
+type Secret struct {
 	UID    string
 	Name   string
 	Labels map[string]string
