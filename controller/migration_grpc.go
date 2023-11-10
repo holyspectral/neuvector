@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -24,6 +25,8 @@ import (
 const DefaultMigrationGRPCStartRetry = 10
 
 type MigrationService struct {
+	Reloads []func([]byte, []byte, []byte) error
+	lock    sync.Mutex
 }
 
 // TODO: Change me
@@ -76,6 +79,9 @@ func verifyCert(cacert []byte, cert []byte, key []byte) error {
 }
 
 func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest) (*share.ReloadResponse, error) {
+	// Make sure only one caller at all time.
+	ms.lock.Lock()
+	defer ms.lock.Unlock()
 
 	var obj interface{}
 	var err error
@@ -147,12 +153,14 @@ func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest)
 		}, nil
 	}
 
-	if err := cluster.Reload(nil); err != nil {
-		log.WithError(err).Error("reload failed")
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "reload failed",
-		}, nil
+	for _, f := range ms.Reloads {
+		if err := f(cacert, cert, key); err != nil {
+			log.WithError(err).Error("failed to reload certs")
+			return &share.ReloadResponse{
+				Success: false,
+				Error:   "failed to reload certs",
+			}, nil
+		}
 	}
 
 	// TODO: Reload cert for gRPC.
@@ -164,7 +172,7 @@ func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest)
 }
 
 // This function would block if it fails to bind port.  Use a go routine to call it instead.
-func startMigrationGRPCServer(port uint16) (*cluster.GRPCServer, error) {
+func startMigrationGRPCServer(port uint16, reloadFuncs []func([]byte, []byte, []byte) error) (*cluster.GRPCServer, error) {
 	var grpc *cluster.GRPCServer
 	var err error
 
@@ -192,7 +200,9 @@ func startMigrationGRPCServer(port uint16) (*cluster.GRPCServer, error) {
 		return nil, err
 	}
 
-	share.RegisterMigrationServiceServer(grpc.GetServer(), new(MigrationService))
+	share.RegisterMigrationServiceServer(grpc.GetServer(), &MigrationService{
+		Reloads: reloadFuncs,
+	})
 	go grpc.Start()
 
 	log.Info("Migration GRPC server started")

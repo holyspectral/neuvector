@@ -32,6 +32,7 @@ import (
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/system"
 	"github.com/neuvector/neuvector/share/utils"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -746,7 +747,25 @@ func main() {
 	// GRPC should be started after cacher as the handler are cache functions
 	grpcServer, _ = startGRPCServer(uint16(*grpcPort))
 
-	migrationGRPCServer, _ := startMigrationGRPCServer(uint16(*migrationGRPCPort))
+	migrationGRPCServer, _ := startMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
+		func(cacert []byte, cert []byte, key []byte) error {
+			if err := cluster.Reload(nil); err != nil {
+				return errors.Wrap(err, "failed to reload consul")
+			}
+			return nil
+		},
+		func(cacert []byte, cert []byte, key []byte) error {
+			// TODO: Make sure all gRPC call retries.
+			// TODO: race condition
+			// TBD: The original go routine should stop.
+			fmt.Println(grpcServer.GetServer())
+			grpcServer.GracefulStop()
+			fmt.Println(grpcServer.GetServer())
+			grpcServer2, _ := startGRPCServer(uint16(*grpcPort))
+			fmt.Println(grpcServer2.GetServer())
+			return nil
+		},
+	})
 
 	// init rest server context before listening KV object store, as federation server can be started from there.
 	rctx := rest.Context{
