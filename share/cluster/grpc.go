@@ -146,6 +146,7 @@ func (s *GRPCServer) Stop() {
 }
 
 func (s *GRPCServer) GracefulStop() {
+	s.stopped = true
 	s.server.GracefulStop()
 }
 
@@ -474,6 +475,7 @@ func newClient(s *grpcClient, cb GRPCCallback, compress bool) error {
 	var err error
 	var c *GRPCClient
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	if s.unix {
 		c, err = newGRPCClientUnix(ctx, s.key, s.endpoint, cb, compress)
 	} else {

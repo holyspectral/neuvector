@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -756,13 +755,10 @@ func main() {
 		},
 		func(cacert []byte, cert []byte, key []byte) error {
 			// TODO: Make sure all gRPC call retries.
-			// TODO: race condition
-			// TBD: The original go routine should stop.
-			fmt.Println(grpcServer.GetServer())
+			// TODO: Make sure server can completes normally without resource leak.
+			// TODO: Check race condition
 			grpcServer.GracefulStop()
-			fmt.Println(grpcServer.GetServer())
-			grpcServer2, _ := startGRPCServer(uint16(*grpcPort))
-			fmt.Println(grpcServer2.GetServer())
+			grpcServer, _ = startGRPCServer(uint16(*grpcPort))
 			return nil
 		},
 	})
