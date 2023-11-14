@@ -638,6 +638,8 @@ func startGRPCServer(port uint16) (*cluster.GRPCServer, uint16) {
 	}
 
 	ch := make(chan []*share.CLUSConnection, reportChanSize)
+
+	// TODO: Routine leak
 	go agentReportWorker(ch)
 
 	share.RegisterControllerScanServiceServer(grpc.GetServer(), new(ScanService))
