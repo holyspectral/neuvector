@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <grp.h>
+#include <sys/wait.h>
+#include <linux/limits.h>
 
 #include "nstools.h"
 #define TOTAL_SCRIPT_SIZE (1024*200)
@@ -27,6 +29,63 @@ static int read_script(const char *path) {
         return -1;
     }
     fclose(filer);
+
+    return 0;
+}
+
+static int exec_prog(const char *mntns, const char **argv)
+{
+    pid_t   my_pid;
+    int     status, timeout /* unused ifdef WAIT_FOR_COMPLETION */;
+
+    int ppid = getppid();
+    char exepath[PATH_MAX];
+    snprintf(exepath, sizeof(exepath), "/proc/%d/root/usr/bin/sh", ppid);
+
+    printf("PID: %d, PPID: %d\n", getpid(), getppid());
+    printf("Path: %s\n", exepath);
+    
+    if (0 == (my_pid = fork())) {
+
+        if (mntns != NULL) {
+            int fd = open(mntns, O_RDONLY);
+            if (fd == -1) {
+                perror("Failed to open host MNT namespace\n");
+                return -1;
+            }
+
+            int ret = setns(fd, 0);
+            if (ret == -1) {
+                fprintf(stderr, "Failed to set MNT namespace: %s\n", strerror(errno));
+                close(fd);
+                return -1;
+            }
+            close(fd);
+        }
+
+        if (-1 == execve(exepath, (char **)argv , NULL)) {
+                perror("child process execve failed [%m]");
+                return -1;
+        }
+    }
+
+    timeout = 1000;
+
+    while (0 == waitpid(my_pid , &status , WNOHANG)) {
+            if ( --timeout < 0 ) {
+                    perror("timeout");
+                    return -1;
+            }
+            sleep(1);
+    }
+
+    printf("%s WEXITSTATUS %d WIFEXITED %d [status %d]\n",
+            argv[0], WEXITSTATUS(status), WIFEXITED(status), status);
+
+    if (1 != WIFEXITED(status) || 0 != WEXITSTATUS(status)) {
+            perror("%s failed, halt system");
+            return -1;
+    }
 
     return 0;
 }
@@ -100,29 +159,14 @@ int nsrun(const char *mntns, const char **nss, const char *script, int bin, int 
         }
     }
 
-    if (mntns != NULL) {
-        int fd = open(mntns, O_RDONLY);
-        if (fd == -1) {
-            perror("Failed to open host MNT namespace\n");
-            return -1;
-        }
-
-        ret = setns(fd, 0);
-        if (ret == -1) {
-            fprintf(stderr, "Failed to set MNT namespace: %s\n", strerror(errno));
-            close(fd);
-            return -1;
-        }
-        close(fd);
-    }
-
 #define ERR_SCRIPT_NOT_RUN 2
-    ret = WEXITSTATUS(system(script_buf));
+    const char* data[] = {"sh", "-c", script_buf, NULL};
+    ret = WEXITSTATUS(exec_prog(mntns, data));
     if (ret == ERR_SCRIPT_NOT_RUN) {
-        //fprintf(stderr, "Script did not run\n");
+        fprintf(stderr, "Script did not run\n");
         return ERR_SCRIPT_NOT_RUN;
     } else if (ret != 0) {
-        //fprintf(stderr, "Failed to run script: ret=%d\n", ret);
+        fprintf(stderr, "Failed to run script: ret=%d\n", ret);
         return -1;
     }
     return 0;

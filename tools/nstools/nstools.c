@@ -26,33 +26,6 @@ static void help(const char *prog)
     printf("  l: Mega byte to read, default=0.only apply to text, if 0, read all text file - get action\n");
 }
 
-static int VerifyParentProcess(void) {
-    struct stat sb;
-    char path[256]={0};
-    int nRet = 0;
-
-    sprintf( path, "/proc/%d/exe",  getppid());
-    if (lstat(path, &sb) != -1) {
-        char *linkname = (char *) malloc( 256);
-        if (linkname != NULL) {
-            memset( linkname, 0, 256);
-            ssize_t r = readlink( path, linkname, 256);
-            if (r > 0) {
-                if (strcmp("/usr/local/bin/agent", linkname) == 0 ||
-                   strcmp("/usr/local/bin/controller", linkname) == 0 ||
-                   strcmp("/usr/local/bin/pathWalker", linkname) == 0) {
-                    nRet = 1;
-                }
-            }
-        }
-
-        if (linkname != NULL) {
-            free( linkname);
-        }
-    }
-    return nRet;
-}
-
 int main(int argc, char *argv[]) {
     int ret;
     char *act = NULL, *mntns = NULL, *filepath = NULL;
@@ -60,16 +33,11 @@ int main(int argc, char *argv[]) {
     int arg = 0;
     const char *nss[6]={NULL,NULL,NULL,NULL,NULL,NULL};
 
-    if( 0==VerifyParentProcess()) {
-        printf("\n====\n");   // invalid caller
-        help(argv[0]);      // confuse users
-        exit(-1);
-    }
-
     if (argc < 2) {
         help(argv[0]);
         exit(-1);
     }
+    printf("PIDD: %d %d\n", getpid(), getppid());
 
     act = argv[1];
 
