@@ -8,19 +8,21 @@ replace (
 	github.com/cri-o/cri-o => github.com/cri-o/cri-o v1.15.4
 	github.com/docker/distribution => github.com/docker/distribution v2.8.0-beta.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v1.13.1
+	github.com/go-openapi/spec => github.com/go-openapi/spec v0.20.9
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.3
+	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
 	github.com/kubernetes/cri-api => k8s.io/cri-api v0.22.3
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc5
 	github.com/russellhaering/gosaml2 => github.com/holyspectral/gosaml2 v0.0.0-20231003195827-3d916621a704
-	golang.org/x/net => golang.org/x/net v0.0.0-20200822124328-c89045814202
+	golang.org/x/net => golang.org/x/net v0.0.0-20201022231255-08b38378de70
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
 	google.golang.org/grpc => google.golang.org/grpc v1.30.1
 	k8s.io/api => k8s.io/api v0.21.14
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.21.14
-	k8s.io/apimachinery => k8s.io/apimachinery v0.19.0
+	k8s.io/apimachinery => k8s.io/apimachinery v0.21.14
 	k8s.io/apiserver => k8s.io/apiserver v0.20.15
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.20.15
-	k8s.io/client-go => k8s.io/client-go v0.20.15
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.21.14
+	k8s.io/client-go => k8s.io/client-go v0.21.14
 	k8s.io/cloud-provider => k8s.io/cloud-provider v0.20.15
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.20.15
 	k8s.io/code-generator => k8s.io/code-generator v0.20.15
@@ -33,7 +35,7 @@ replace (
 	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.20.15
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.20.15
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.20.15
-	k8s.io/kubectl => k8s.io/kubectl v0.20.15
+	k8s.io/kubectl => k8s.io/kubectl v0.21.14
 	k8s.io/kubelet => k8s.io/kubelet v0.20.15
 	k8s.io/kubernetes => k8s.io/kubernetes v1.23.1
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.20.15
@@ -41,6 +43,7 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.20.14
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.22.5
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.20.15
+	k8s.io/utils => k8s.io/utils v0.0.0-20211116205334-6203023598ed
 )
 
 require (
@@ -70,6 +73,7 @@ require (
 	github.com/hashicorp/go-version v1.4.0
 	github.com/hashicorp/serf v0.9.7
 	github.com/jonboulle/clockwork v0.3.0
+	github.com/jrhouston/k8slock v0.1.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/knqyf263/go-rpmdb v0.0.0-20220209103220-0f7a6d951a6d
 	github.com/kr/pretty v0.3.1 // indirect
@@ -87,6 +91,7 @@ require (
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/streadway/simpleuuid v0.0.0-20130420165545-6617b501e485
 	github.com/stretchr/testify v1.7.1
+	github.com/urfave/cli/v2 v2.4.1
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed // indirect
@@ -98,8 +103,11 @@ require (
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ldap.v2 v2.5.1
 	gopkg.in/square/go-jose.v2 v2.2.2
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/api v0.22.5
-	k8s.io/apimachinery v0.25.2
+	k8s.io/apimachinery v0.22.5
+	k8s.io/client-go v1.5.2
 	k8s.io/cri-api v0.0.0
+	k8s.io/kubectl v0.21.14
 	sigs.k8s.io/yaml v1.3.0
 )
