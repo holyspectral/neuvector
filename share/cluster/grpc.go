@@ -128,6 +128,7 @@ func (s *GRPCServer) GetServer() *grpc.Server {
 
 func (s *GRPCServer) Start() {
 	s.stopped = false
+	log.Debug("GRPCServer is starting")
 	for {
 		if err := s.server.Serve(s.listen); err != nil {
 			if s.stopped {
@@ -138,6 +139,7 @@ func (s *GRPCServer) Start() {
 			}
 		}
 	}
+	log.Debug("GRPCServer terminated.")
 }
 
 func (s *GRPCServer) Stop() {
