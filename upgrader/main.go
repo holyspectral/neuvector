@@ -18,6 +18,7 @@ import (
 
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8sError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
@@ -32,6 +33,12 @@ import (
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
 
+const (
+	TARGET_SECRET_SOURCE_NAME_CACERT = "target-cacert"
+	TARGET_SECRET_SOURCE_NAME_CERT   = "target-cert"
+	TARGET_SECRET_SOURCE_NAME_KEY    = "target-key"
+)
+
 // Will be built with Go 1.14 at the moment.
 // TODO: Should we use existing library?  Options:
 // 1. Use client-go + Go 1.16 => Need to patch build environment.  How?
@@ -40,17 +47,21 @@ import (
 
 var (
 	// TODO: change file name to align with cert-manger default.
-	cacertPath = flag.String("cacert", "/etc/neuvector/certs/internal/migration/ca.cert", "CA cert path")
-	certPath   = flag.String("cert", "/etc/neuvector/certs/internal/migration/cert.pem", "cert path")
-	keyPath    = flag.String("key", "/etc/neuvector/certs/internal/migration/key.pem", "key path")
-	subjectCN  = flag.String("subject", "NeuVector", "expected subject name from remote server")
-	kubeconfig = flag.String("kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
-	namespace  = flag.String("namespace", "neuvector", "Kubernetes namespace that NeuVector is running in.")
-	timeout    = flag.Duration("timeout", 0, "timeout for waiting deployment to complete")
-	grpc_port  = flag.Int("grpc_port", 18500, "the listening port for migration gRPC server")
+	cacertPath    = flag.String("cacert", "/etc/neuvector/certs/internal/migration/ca.cert", "CA cert path")
+	certPath      = flag.String("cert", "/etc/neuvector/certs/internal/migration/cert.pem", "cert path")
+	keyPath       = flag.String("key", "/etc/neuvector/certs/internal/migration/key.pem", "key path")
+	subjectCN     = flag.String("subject", "NeuVector", "expected subject name from remote server")
+	kubeconfig    = flag.String("kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
+	namespace     = flag.String("namespace", "neuvector", "Kubernetes namespace that NeuVector is running in.")
+	timeout       = flag.Duration("timeout", 0, "timeout for waiting deployment to complete")
+	grpcPort      = flag.Int("grpc-port", 18500, "the listening port for migration gRPC server")
+	dstSecretName = flag.String("target-secret-name", "neuvector-internal-certs-active", "the target cert name for migration")
+	srcSecretName = flag.String("source-secret-name", "neuvector-internal-certs", "the source secret name for migration")
 )
 
 func main() {
+	// TODO: Implement a lock, so only one instance will be running.  (Lease?)
+
 	flag.Parse()
 	var config *rest.Config
 	var err error
@@ -90,48 +101,192 @@ func main() {
 		"neuvector-controller-pod",
 		client)
 
-	// 2. Call grpc API of all controllers.
-	items, err := client.Resource(
-		schema.GroupVersionResource{
-			Resource: "pods",
-			Version:  "v1",
-		},
-	).Namespace(*namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: fields.OneTermEqualSelector("app", "neuvector-controller-pod").String(),
-	})
+	// Flow:
+	// src secret => target secret.  Eventually src and target will be the same.
+	//
+	// 0. When helm chart is installed, no secret will be created.
+	// 		a. Retire cert-manager support?
+	//		b. Or allow user/cert-manager to specify cert via src secret?
+	//      c. Reconcile via controller? Or schedule job?
+	// 1. When this job runs, it checks if either of below conditions is met.  If so, start migration.
+	// 		a. cert is not present
+	// 		b. a src secret is present
+	// 2. Update target cert and call each component's reload.
 
-	if err != nil {
-		log.WithError(err).Fatal("failed to list pods")
+	var srcSecret, dstSecret *corev1.Secret
+	var dstNotFound bool
+	//var srcNotFound bool
+
+	if dstSecret, err = GetK8sSecret(context.TODO(), client, *dstSecretName); err != nil {
+		if !k8sError.IsNotFound(err) {
+			log.WithError(err).Fatal("failed to find destination secret")
+		}
+	}
+
+	if srcSecret, err = GetK8sSecret(context.TODO(), client, *srcSecretName); err != nil {
+		if !k8sError.IsNotFound(err) {
+			log.WithError(err).Fatal("failed to find source secret")
+		}
+	}
+
+	if dstSecret != nil && srcSecret == nil {
+		log.Info("Destination secret is already preset and no source secret is available. Migration completed.")
+		// No need to migration.  Bye.
+		return
+	}
+
+	// Fill srcSecret and dstSecret so they're not nil
+	if srcSecret == nil {
+		// srcNotFound = true
+		// TODO: Generate one as srcSecret.  Shouldn't be null at this stage.
+	}
+
+	if dstSecret == nil {
+		dstNotFound = true
+		// TODO: Use cert manager's convention
+		dstSecret = &corev1.Secret{
+			Data: map[string][]byte{
+				"ca.cert":  []byte(LegacyCaCert),
+				"cert.pem": []byte(LegacyCert),
+				"key.pem":  []byte(LegacyKey),
+			},
+		}
 	}
 
 	// TODO: Update certificate
+	for step := range []int{0, 1, 2} {
+		secret := &corev1.Secret{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: *dstSecretName,
+				//Labels:      map[string]string{}, // TODO: fill these
+				//Annotations: map[string]string{}, // TODO: fill these
+			},
+			Data: map[string][]byte{},
+			Type: "Opaque",
+		}
+		// state: 0
+		// merged cacert + old cert + old key
+		// state: 1
+		// merged cacert + new cert + new key
+		// state: 2
+		// new cacert + new cert + new key
+		// TODO: CRD?
+		// oldcert: {xxx, xxx, xxx}
+		// newcert: {xxx, xxx, xxx}
+		switch step {
+		case (0):
+			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], dstSecret.Data["ca.cert"]...)
+			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], []byte("\n")...)
+			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], srcSecret.Data["ca.cert"]...)
 
-	// Reload certs
-	for _, item := range items.Items {
-		var pod corev1.Pod
-		err = runtime.DefaultUnstructuredConverter.
-			FromUnstructured(item.UnstructuredContent(), &pod)
-		// TODO: deal with terminating pods
-		log.Println(pod.Status.PodIP)
+			secret.Data["key.pem"] = dstSecret.Data["key.pem"]
+			secret.Data["cert.pem"] = dstSecret.Data["cert.pem"]
+		case (1):
+			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], dstSecret.Data["ca.cert"]...)
+			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], []byte("\n")...)
+			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], srcSecret.Data["ca.cert"]...)
 
-		podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpc_port))
-		conn, err := NewGRPCClient(context.TODO(), podAddress, *cacertPath, *certPath, *keyPath, *subjectCN)
-		if err != nil {
-			log.WithError(err).Error("failed to create grpc client")
-			return
+			secret.Data["key.pem"] = srcSecret.Data["key.pem"]
+			secret.Data["cert.pem"] = srcSecret.Data["cert.pem"]
+		case (2):
+			secret.Data["ca.cert"] = srcSecret.Data["ca.cert"]
+			secret.Data["key.pem"] = srcSecret.Data["key.pem"]
+			secret.Data["cert.pem"] = srcSecret.Data["cert.pem"]
 		}
 
-		mgClient := share.NewMigrationServiceClient(conn)
-		resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
+		unstructedSecret, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
 		if err != nil {
-			log.WithError(err).Error("failed to call reload API")
-			return
+			//return nil, errors.Wrap(err, "failed to convert target secret")
+			log.WithError(err).Fatal("failed to convert target secret")
 		}
-		log.WithFields(log.Fields{
-			"resp": resp,
-			"pod":  podAddress,
-		}).Info("Certificate is reloaded")
+
+		// TODO: CreateOrUpdate
+		if dstNotFound {
+			_, err = client.Resource(schema.GroupVersionResource{
+				Resource: "secrets",
+				Version:  "v1",
+			}).Namespace(*namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
+		} else {
+			_, err = client.Resource(schema.GroupVersionResource{
+				Resource: "secrets",
+				Version:  "v1",
+			}).Namespace(*namespace).Update(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
+		}
+
+		if err != nil {
+			//return nil, errors.Wrap(err, "failed to convert target secret")
+			log.WithError(err).WithFields(log.Fields{
+				"secret": unstructedSecret,
+			}).Fatal("failed to create/update dst secret")
+		}
+
+		items, err := client.Resource(
+			schema.GroupVersionResource{
+				Resource: "pods",
+				Version:  "v1",
+			},
+		).Namespace(*namespace).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: fields.OneTermEqualSelector("app", "neuvector-controller-pod").String(),
+		})
+
+		if err != nil {
+			log.WithError(err).Fatal("failed to list pods")
+		}
+
+		// Reload
+		for _, item := range items.Items {
+			var pod corev1.Pod
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(item.UnstructuredContent(), &pod)
+			// TODO: deal with terminating pods
+			log.WithFields(log.Fields{
+				"pod": pod.Status.PodIP,
+			}).Info("triggering reloads")
+
+			podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpcPort))
+			conn, err := NewGRPCClient(context.TODO(), podAddress, *cacertPath, *certPath, *keyPath, *subjectCN)
+			if err != nil {
+				log.WithError(err).Error("failed to create grpc client")
+				return
+			}
+
+			mgClient := share.NewMigrationServiceClient(conn)
+			resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
+			if err != nil {
+				log.WithError(err).Error("failed to call reload API")
+				return
+			}
+			log.WithFields(log.Fields{
+				"resp": resp,
+				"pod":  podAddress,
+			}).Info("Certificate is reloaded")
+		}
 	}
+}
+
+func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*corev1.Secret, error) {
+	item, err := client.Resource(
+		schema.GroupVersionResource{
+			Resource: "secrets",
+			Version:  "v1",
+		},
+	).Namespace(*namespace).Get(ctx, name, metav1.GetOptions{})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get secret")
+	}
+
+	var targetSecret corev1.Secret
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &targetSecret)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse target secret")
+	}
+	return &targetSecret, nil
 }
 
 func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, name string, client dynamic.Interface) error {
