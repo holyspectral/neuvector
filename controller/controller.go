@@ -460,6 +460,16 @@ func main() {
 		Ctrler: &Ctrler,
 	}
 
+	// TODO: Is this the right place to reload cert?
+	if _, _, _, err := ReloadCert(); err != nil {
+		// Failed to reload cert.
+		// TODO: better check
+		if !strings.Contains(err.Error(), "not found") {
+			// TODO: Make sure this is the only way to deal with the error
+			log.WithError(err).Fatal("failed to reload kubernetes secret")
+		}
+	}
+
 	eventLogKey := share.CLUSControllerEventLogKey(Host.ID, Ctrler.ID)
 	evqueue = cluster.NewObjectQueue(eventLogKey, cluster.DefaultMaxQLen)
 	auditLogKey := share.CLUSAuditLogKey(Host.ID, Ctrler.ID)

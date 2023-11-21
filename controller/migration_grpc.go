@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 
 	corev1 "github.com/neuvector/k8s/apis/core/v1"
+	"github.com/neuvector/neuvector/controller/common"
 	"github.com/neuvector/neuvector/controller/resource"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/cluster"
@@ -24,13 +25,14 @@ import (
 
 const DefaultMigrationGRPCStartRetry = 10
 
+var reloadLock sync.Mutex
+
 type MigrationService struct {
 	Reloads []func([]byte, []byte, []byte) error
-	lock    sync.Mutex
 }
 
 // TODO: Change me
-const certName = "internal-certs"
+const certName = "neuvector-internal-certs-active"
 
 // This function rejects empty data.
 func decodeBase64(data []byte) ([]byte, error) {
@@ -78,11 +80,12 @@ func verifyCert(cacert []byte, cert []byte, key []byte) error {
 	return nil
 }
 
-func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest) (*share.ReloadResponse, error) {
-	// Make sure only one caller at all time.
-	ms.lock.Lock()
-	defer ms.lock.Unlock()
+// Reload cert from specified secret
+func ReloadCert() ([]byte, []byte, []byte, error) {
+	reloadLock.Lock()
+	defer reloadLock.Unlock()
 
+	// TODO: Check orchestration
 	var obj interface{}
 	var err error
 	var cacert []byte
@@ -90,31 +93,23 @@ func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest)
 	var key []byte
 	var secret *corev1.Secret
 	var ok bool
-	// 1. Load internal certs from consul.
+	// 1. Load internal certs
 	if obj, err = global.ORCH.GetResource(resource.RscTypeSecret, resource.NvAdmSvcNamespace, certName); err != nil {
 		log.WithError(err).Error("no internal certificates are available.")
 		// Failed to find internal certs.
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "No internal certificates are available.",
-		}, nil
+		if err == common.ErrObjectNotFound {
+			return nil, nil, nil, err
+		}
+		return nil, nil, nil, errors.Wrap(err, "no internal certificates are available.")
 	}
 
 	if secret, ok = obj.(*corev1.Secret); !ok || secret == nil {
-		log.WithError(err).Error("invalid secret")
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "Invalid secret.",
-		}, nil
+		return nil, nil, nil, errors.New("invalid secret")
 	}
 
 	data := secret.GetData()
 	if data == nil {
-		log.WithError(err).Error("data in secret are not found")
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "Data in secret are not found.",
-		}, nil
+		return nil, nil, nil, errors.New("data in secret are not found")
 	}
 
 	cacert = data["ca.cert"]
@@ -122,34 +117,35 @@ func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest)
 	key = data["key.pem"]
 
 	if err := verifyCert(cacert, cert, key); err != nil {
-		log.WithError(err).Error("invalid key/cert")
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "invalid key/cert",
-		}, nil
+		return nil, nil, nil, errors.Wrap(err, "invalid key/cert")
 	}
 
 	// TODO: Sanity check to see if cacert can accept both old and new cert.
 
 	if err := ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCACert), []byte(cacert), 0600); err != nil {
-		log.WithError(err).Error("failed to write cacert")
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "failed to write cacert",
-		}, nil
+		return nil, nil, nil, errors.Wrap(err, "failed to write cacert")
 	}
 	if err := ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCert), []byte(cert), 0600); err != nil {
-		log.WithError(err).Error("failed to write cert")
-		return &share.ReloadResponse{
-			Success: false,
-			Error:   "failed to write cert",
-		}, nil
+		return nil, nil, nil, errors.Wrap(err, "failed to write cert")
 	}
 	if err := ioutil.WriteFile(path.Join(cluster.InternalCertDir, cluster.InternalCertKey), []byte(key), 0600); err != nil {
-		log.WithError(err).Error("failed to write key")
+		return nil, nil, nil, errors.Wrap(err, "failed to write key")
+	}
+	return cacert, cert, key, nil
+}
+
+// TODO: Reload should be called when restart
+func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest) (*share.ReloadResponse, error) {
+	var cacert []byte
+	var cert []byte
+	var key []byte
+	// Make sure only one caller at all time.
+	cacert, cert, key, err := ReloadCert()
+	if err != nil {
+		log.WithError(err).Error("failed to reload certs")
 		return &share.ReloadResponse{
 			Success: false,
-			Error:   "failed to write key",
+			Error:   errors.Wrap(err, "failed to reload certs").Error(),
 		}, nil
 	}
 
