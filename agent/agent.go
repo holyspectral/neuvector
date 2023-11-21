@@ -24,6 +24,7 @@ import (
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/fsmon"
 	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/utils"
 )
@@ -266,6 +267,7 @@ func main() {
 	rtSock := flag.String("u", "", "Container socket URL")
 	lanPort := flag.Uint("lan_port", 0, "Cluster Serf LAN port")
 	grpcPort := flag.Uint("grpc_port", 0, "Cluster GRPC port")
+	migrationGRPCPort := flag.Uint("migration_port", cluster.DefaultMigrationGRPCPort, "Cluster Migration GRPC port")
 	pipeType := flag.String("p", "", "Pipe driver")
 	cnet_type := flag.String("n", "", "Container Network type")
 	skip_nvProtect := flag.Bool("s", false, "Skip NV Protect")
@@ -493,6 +495,18 @@ func main() {
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
+	// TODO: Is this the right place to reload cert?
+	/*
+		if _, _, _, err := migration.ReloadCert(); err != nil {
+			// Failed to reload cert.
+			// TODO: better check
+			if !strings.Contains(err.Error(), "not found") {
+				// TODO: Make sure this is the only way to deal with the error
+				log.WithError(err).Fatal("failed to reload kubernetes secret")
+			}
+		}
+	*/
+
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)
 	evqueue = cluster.NewObjectQueue(eventLogKey, cluster.DefaultMaxQLen)
@@ -642,6 +656,20 @@ func main() {
 		grpcServer, Agent.RPCServerPort = startGRPCServer(uint16(*grpcPort))
 	}, nil)
 
+	migrationGRPCServer, err := migration.StartMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
+		func(cacert []byte, cert []byte, key []byte) error {
+			// TODO: Make sure all gRPC call retries.
+			// TODO: Make sure server can completes normally without resource leak.
+			// TODO: Check race condition
+			grpcServer.GracefulStop()
+			grpcServer, Agent.RPCServerPort = startGRPCServer(uint16(*grpcPort))
+			return nil
+		},
+	})
+	if err != nil {
+		log.WithError(err).Error("failed to start migration gRPC server")
+	}
+
 	// Start container task thread
 	// Start monitoring container events
 	eventMonitorLoop(probeTaskChan, fsmonTaskChan, dpStatusChan)
@@ -716,6 +744,7 @@ func main() {
 
 	releaseAllSniffer()
 
+	migrationGRPCServer.Stop()
 	grpcServer.Stop()
 
 	// Close DP at the last

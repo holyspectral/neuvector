@@ -28,6 +28,7 @@ import (
 	"github.com/neuvector/neuvector/share/cluster"
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/system"
 	"github.com/neuvector/neuvector/share/utils"
@@ -461,7 +462,7 @@ func main() {
 	}
 
 	// TODO: Is this the right place to reload cert?
-	if _, _, _, err := ReloadCert(); err != nil {
+	if _, _, _, err := migration.ReloadCert(); err != nil {
 		// Failed to reload cert.
 		// TODO: better check
 		if !strings.Contains(err.Error(), "not found") {
@@ -756,7 +757,7 @@ func main() {
 	// GRPC should be started after cacher as the handler are cache functions
 	grpcServer, _ = startGRPCServer(uint16(*grpcPort))
 
-	migrationGRPCServer, _ := startMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
+	migrationGRPCServer, _ := migration.StartMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
 		func(cacert []byte, cert []byte, key []byte) error {
 			if err := cluster.Reload(nil); err != nil {
 				return errors.Wrap(err, "failed to reload consul")

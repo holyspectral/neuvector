@@ -1,4 +1,4 @@
-package main
+package migration
 
 import (
 	"context"
@@ -168,7 +168,7 @@ func (ms *MigrationService) Reload(ctx context.Context, in *share.ReloadRequest)
 }
 
 // This function would block if it fails to bind port.  Use a go routine to call it instead.
-func startMigrationGRPCServer(port uint16, reloadFuncs []func([]byte, []byte, []byte) error) (*cluster.GRPCServer, error) {
+func StartMigrationGRPCServer(port uint16, reloadFuncs []func([]byte, []byte, []byte) error) (*cluster.GRPCServer, error) {
 	var grpc *cluster.GRPCServer
 	var err error
 
