@@ -204,7 +204,7 @@ func main() {
 			log.WithError(err).Fatal("failed to convert target secret")
 		}
 
-		// TODO: CreateOrUpdate
+		// TODO: who should clean up this secret?
 		if dstNotFound {
 			_, err = client.Resource(schema.GroupVersionResource{
 				Resource: "secrets",
@@ -258,6 +258,10 @@ func main() {
 			resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
 			if err != nil {
 				log.WithError(err).Error("failed to call reload API")
+				return
+			}
+			if !resp.Success {
+				log.WithField("error", resp.Error).Error("reload API returned error")
 				return
 			}
 			log.WithFields(log.Fields{
