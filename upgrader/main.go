@@ -205,12 +205,15 @@ func main() {
 		}
 
 		// TODO: who should clean up this secret?
-		if dstNotFound {
+
+		// Only create in the first round.
+		if dstNotFound && step == 0 {
 			_, err = client.Resource(schema.GroupVersionResource{
 				Resource: "secrets",
 				Version:  "v1",
 			}).Namespace(*namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
 		} else {
+			log.Info("updating...")
 			_, err = client.Resource(schema.GroupVersionResource{
 				Resource: "secrets",
 				Version:  "v1",
@@ -219,57 +222,84 @@ func main() {
 
 		if err != nil {
 			//return nil, errors.Wrap(err, "failed to convert target secret")
-			log.WithError(err).WithFields(log.Fields{
-				"secret": unstructedSecret,
-			}).Fatal("failed to create/update dst secret")
+			log.WithError(err).Fatal("failed to create/update dst secret")
 		}
 
-		items, err := client.Resource(
-			schema.GroupVersionResource{
-				Resource: "pods",
-				Version:  "v1",
-			},
-		).Namespace(*namespace).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: fields.OneTermEqualSelector("app", "neuvector-controller-pod").String(),
-		})
-
+		// TODO: Find leader of controller.
+		log.Info("Reloading controller's internal certificates")
+		err = ReloadComponent(client, fields.OneTermEqualSelector("app", "neuvector-controller-pod").String())
 		if err != nil {
-			log.WithError(err).Fatal("failed to list pods")
+			// TODO: rollback
+			log.WithError(err).Fatal("failed to reload controller's internal cert. Rolling back.")
+			return
 		}
 
-		// Reload
-		for _, item := range items.Items {
-			var pod corev1.Pod
-			err = runtime.DefaultUnstructuredConverter.
-				FromUnstructured(item.UnstructuredContent(), &pod)
-			// TODO: deal with terminating pods
-			log.WithFields(log.Fields{
-				"pod": pod.Status.PodIP,
-			}).Info("triggering reloads")
-
-			podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpcPort))
-			conn, err := NewGRPCClient(context.TODO(), podAddress, *cacertPath, *certPath, *keyPath, *subjectCN)
-			if err != nil {
-				log.WithError(err).Error("failed to create grpc client")
-				return
-			}
-
-			mgClient := share.NewMigrationServiceClient(conn)
-			resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
-			if err != nil {
-				log.WithError(err).Error("failed to call reload API")
-				return
-			}
-			if !resp.Success {
-				log.WithField("error", resp.Error).Error("reload API returned error")
-				return
-			}
-			log.WithFields(log.Fields{
-				"resp": resp,
-				"pod":  podAddress,
-			}).Info("Certificate is reloaded")
+		log.Info("Reloading enforcer's internal certificates")
+		err = ReloadComponent(client, fields.OneTermEqualSelector("app", "neuvector-enforcer-pod").String())
+		if err != nil {
+			// TODO: rollback
+			log.WithError(err).Fatal("failed to reload enforcer's internal cert. Rolling back.")
+			return
 		}
 	}
+}
+
+// Discover components based on label and call its reload API.
+func ReloadComponent(client dynamic.Interface, selector string) error {
+	item, err := client.Resource(
+		schema.GroupVersionResource{
+			Resource: "pods",
+			Version:  "v1",
+		},
+	).Namespace(*namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: selector,
+	})
+
+	if err != nil {
+		return errors.Wrap(err, "failed to list pod")
+	}
+
+	var pods corev1.PodList
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &pods)
+	if err != nil {
+		return errors.Wrap(err, "failed to read pod list")
+	}
+
+	log.Infof("Reloading %d components", len(pods.Items))
+
+	for _, pod := range pods.Items {
+		// TODO: deal with terminating pods
+		log.WithFields(log.Fields{
+			"pod": pod.Status.PodIP,
+		}).Info("triggering reloads")
+
+		log.Warn("A")
+
+		podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpcPort))
+		// TODO: better way to manage clients
+		conn, err := NewGRPCClient(context.TODO(), podAddress, *cacertPath, *certPath, *keyPath, *subjectCN)
+		if err != nil {
+			return errors.Wrap(err, "failed to create grpc client")
+		}
+		log.Warn("B")
+
+		mgClient := share.NewMigrationServiceClient(conn)
+		resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
+		if err != nil {
+			return errors.Wrap(err, "failed to call reload API")
+		}
+		log.Warn("C")
+		if !resp.Success {
+			return fmt.Errorf("reload API returned error: %s", resp.Error)
+		}
+		log.Warn("D")
+		log.WithFields(log.Fields{
+			"resp": resp,
+			"pod":  podAddress,
+		}).Info("Certificate is reloaded")
+	}
+	return nil
 }
 
 func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*corev1.Secret, error) {
