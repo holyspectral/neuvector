@@ -13,14 +13,16 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 
 	corev1 "github.com/neuvector/k8s/apis/core/v1"
-	"github.com/neuvector/neuvector/controller/common"
-	"github.com/neuvector/neuvector/controller/resource"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/cluster"
-	"github.com/neuvector/neuvector/share/global"
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const DefaultMigrationGRPCStartRetry = 10
@@ -80,32 +82,55 @@ func verifyCert(cacert []byte, cert []byte, key []byte) error {
 	return nil
 }
 
+func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*corev1.Secret, error) {
+	// TODO: Change namespace
+	item, err := client.Resource(
+		schema.GroupVersionResource{
+			Resource: "secrets",
+			Version:  "v1",
+		},
+	).Namespace("neuvector").Get(ctx, name, metav1.GetOptions{})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get secret")
+	}
+
+	var targetSecret corev1.Secret
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &targetSecret)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse target secret")
+	}
+	return &targetSecret, nil
+}
+
 // Reload cert from specified secret
 func ReloadCert() ([]byte, []byte, []byte, error) {
 	reloadLock.Lock()
 	defer reloadLock.Unlock()
 
 	// TODO: Check orchestration
-	var obj interface{}
 	var err error
 	var cacert []byte
 	var cert []byte
 	var key []byte
 	var secret *corev1.Secret
-	var ok bool
-	// 1. Load internal certs
-	if obj, err = global.ORCH.GetResource(resource.RscTypeSecret, resource.NvAdmSvcNamespace, certName); err != nil {
-		log.WithError(err).Error("no internal certificates are available.")
-		// Failed to find internal certs.
-		if err == common.ErrObjectNotFound {
-			return nil, nil, nil, err
-		}
-		return nil, nil, nil, errors.Wrap(err, "no internal certificates are available.")
+
+	// TODO: Use client-go
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "failed to get config")
+	}
+	client, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "failed to get dynamic client")
+	}
+	secret, err = GetK8sSecret(context.TODO(), client, certName)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "failed to get secret")
 	}
 
-	if secret, ok = obj.(*corev1.Secret); !ok || secret == nil {
-		return nil, nil, nil, errors.New("invalid secret")
-	}
+	// 1. Load internal certs
 
 	data := secret.GetData()
 	if data == nil {
@@ -115,6 +140,9 @@ func ReloadCert() ([]byte, []byte, []byte, error) {
 	cacert = data["ca.cert"]
 	cert = data["cert.pem"]
 	key = data["key.pem"]
+
+	// TODO: remove me
+	log.Warn(string(cacert), string(cert), string(key))
 
 	if err := verifyCert(cacert, cert, key); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "invalid key/cert")
