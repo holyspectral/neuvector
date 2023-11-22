@@ -183,8 +183,8 @@ func main() {
 			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], []byte("\n")...)
 			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], srcSecret.Data["ca.cert"]...)
 
-			secret.Data["key.pem"] = dstSecret.Data["key.pem"]
 			secret.Data["cert.pem"] = dstSecret.Data["cert.pem"]
+			secret.Data["key.pem"] = dstSecret.Data["key.pem"]
 		case (1):
 			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], dstSecret.Data["ca.cert"]...)
 			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], []byte("\n")...)
@@ -274,26 +274,21 @@ func ReloadComponent(client dynamic.Interface, selector string) error {
 			"pod": pod.Status.PodIP,
 		}).Info("triggering reloads")
 
-		log.Warn("A")
-
 		podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpcPort))
 		// TODO: better way to manage clients
 		conn, err := NewGRPCClient(context.TODO(), podAddress, *cacertPath, *certPath, *keyPath, *subjectCN)
 		if err != nil {
 			return errors.Wrap(err, "failed to create grpc client")
 		}
-		log.Warn("B")
 
 		mgClient := share.NewMigrationServiceClient(conn)
 		resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
 		if err != nil {
 			return errors.Wrap(err, "failed to call reload API")
 		}
-		log.Warn("C")
 		if !resp.Success {
 			return fmt.Errorf("reload API returned error: %s", resp.Error)
 		}
-		log.Warn("D")
 		log.WithFields(log.Fields{
 			"resp": resp,
 			"pod":  podAddress,

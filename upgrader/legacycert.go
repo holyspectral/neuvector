@@ -23,7 +23,7 @@ ZSdB2nJFM0dnuDzpJT0akR8u5lbz24iFNuWOFWP5T32m/zsWJMv9FDbQni7YTdUl
 ztOYM3AlH81tlNyy/JxJ/DKDInvw                                            
 -----END CERTIFICATE-----`
 
-	LegacyKey = `-----BEGIN CERTIFICATE-----                                             
+	LegacyCert = `-----BEGIN CERTIFICATE-----                                             
 MIIDVTCCAj2gAwIBAgIJAOwrtkGjN0VJMA0GCSqGSIb3DQEBCwUAME8xCzAJBgNV           
 BAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRcwFQYDVQQKDA5OZXVWZWN0b3Ig           
 SW5jLjESMBAGA1UEAwwJTmV1VmVjdG9yMB4XDTIyMTExODE4MjkzNFoXDTMyMTEx        
@@ -43,7 +43,7 @@ ddJSflgVsxxT0D5CQ4vTlh5yIbJ3VDnBQ5M8cNKTCwjpVNY2GPPsDVV0IfOAU+/3
 j/lVgg90UR2qd7eR3VNQjvGutRrkmdgyKVVZylVsk7B6bGCNaKCXL5tTQipdEBsU        
 hGqsHmKIhmOnC0/PQ2+h/Qcdvkd00Cx734VRZSbmfeOUYe6sL7qOSFA=                
 -----END CERTIFICATE-----`
-	LegacyCert = `-----BEGIN PRIVATE KEY-----                                             
+	LegacyKey = `-----BEGIN PRIVATE KEY-----                                             
 MIICdQIBADANBgkqhkiG9w0BAQEFAASCAl8wggJbAgEAAoGBAMIEI/tMw/zk3xG3           
 H2MR7XzkR/PHSHVMQlIHuUuZhB+eEfUgAS44oaRMSC5FFDWzrJ7zHRMgCjXPzaR3           
 baOoUl+nSpamIiAf2Ee6Gor+pUSH3X4KjENXFYvvExFnxA7SiMOwvhqoCk3eICIE        
