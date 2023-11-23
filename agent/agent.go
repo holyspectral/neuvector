@@ -668,6 +668,9 @@ func main() {
 			// TODO: Check race condition
 			grpcServer.GracefulStop()
 			grpcServer, Agent.RPCServerPort = startGRPCServer(uint16(*grpcPort))
+			if err := cluster.PurgeGRPCClient(); err != nil {
+				return errors.Wrap(err, "failed to purge gRPC client cache")
+			}
 			return nil
 		},
 	})

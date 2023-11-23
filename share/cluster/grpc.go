@@ -521,6 +521,18 @@ func GetGRPCClient(key string, isCompressed IsCompressedFunc, cb GRPCCallback) (
 	return nil, fmt.Errorf("Client not found")
 }
 
+// This function removes cache in clientMap[key], so all connections will have to be re-established.
+// The existing client will still be accessible (if it's still accepted), but new client will be created when
+// GetGRPCClient() is called next time.
+func PurgeGRPCClient() error {
+	mtx.Lock()
+	defer mtx.Unlock()
+	for k := range clientMap {
+		delete(clientMap, k)
+	}
+	return nil
+}
+
 func GetGRPCClientEndpoint(key string) string {
 	mtx.Lock()
 	defer mtx.Unlock()

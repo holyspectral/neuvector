@@ -760,6 +760,7 @@ func main() {
 
 	migrationGRPCServer, _ := migration.StartMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
 		func(cacert []byte, cert []byte, key []byte) error {
+			// Reload gRPC server
 			if err := cluster.Reload(nil); err != nil {
 				return errors.Wrap(err, "failed to reload consul")
 			}
@@ -771,6 +772,9 @@ func main() {
 			// TODO: Check race condition
 			grpcServer.GracefulStop()
 			grpcServer, _ = startGRPCServer(uint16(*grpcPort))
+			if err := cluster.PurgeGRPCClient(); err != nil {
+				return errors.Wrap(err, "failed to purge gRPC client cache")
+			}
 			return nil
 		},
 	})
