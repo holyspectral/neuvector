@@ -65,16 +65,6 @@ func main() {
 	flag.Parse()
 	var config *rest.Config
 	var err error
-	/*
-		conn, err := NewGRPCClient(context.TODO(), "TODO", *cacertPath, *certPath, *keyPath, *subjectCN)
-		if err != nil {
-			log.WithError(err).Error("failed to create grpc client")
-			return
-		}
-
-		mgClient := share.NewMigrationServiceClient(conn)
-		mgClient.Reload(context.TODO(), &share.ReloadRequest{})
-	*/
 
 	if len(*kubeconfig) > 0 {
 		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -239,6 +229,14 @@ func main() {
 		if err != nil {
 			// TODO: rollback
 			log.WithError(err).Fatal("failed to reload enforcer's internal cert. Rolling back.")
+			return
+		}
+
+		log.Info("Reloading scanner's internal certificates")
+		err = ReloadComponent(client, fields.OneTermEqualSelector("app", "neuvector-scanner-pod").String())
+		if err != nil {
+			// TODO: rollback
+			log.WithError(err).Fatal("failed to reload scanner's internal cert. Rolling back.")
 			return
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/neuvector/neuvector/agent/dp"
@@ -496,16 +497,14 @@ func main() {
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
 	// TODO: Is this the right place to reload cert?
-	/*
-		if _, _, _, err := migration.ReloadCert(); err != nil {
-			// Failed to reload cert.
-			// TODO: better check
-			if !strings.Contains(err.Error(), "not found") {
-				// TODO: Make sure this is the only way to deal with the error
-				log.WithError(err).Fatal("failed to reload kubernetes secret")
-			}
+	if _, _, _, err := migration.ReloadCert(); err != nil {
+		// Failed to reload cert.
+		// TODO: better check
+		if !strings.Contains(err.Error(), "not found") {
+			// TODO: Make sure this is the only way to deal with the error
+			log.WithError(err).Fatal("failed to reload kubernetes secret")
 		}
-	*/
+	}
 
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)
@@ -657,6 +656,12 @@ func main() {
 	}, nil)
 
 	migrationGRPCServer, err := migration.StartMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
+		func(cacert []byte, cert []byte, key []byte) error {
+			if err := cluster.Reload(nil); err != nil {
+				return errors.Wrap(err, "failed to reload consul")
+			}
+			return nil
+		},
 		func(cacert []byte, cert []byte, key []byte) error {
 			// TODO: Make sure all gRPC call retries.
 			// TODO: Make sure server can completes normally without resource leak.
