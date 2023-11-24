@@ -277,7 +277,6 @@ func newGRPCClientTCPWithCerts(ctx context.Context, key, endpoint string, cacert
 	if err != nil {
 		return nil, err
 	}
-
 	c := &GRPCClient{conn: conn, key: key, server: endpoint, cb: cb}
 
 	// TODO: one go routine per connection, should consider combine them if this is too many.
@@ -521,14 +520,23 @@ func GetGRPCClient(key string, isCompressed IsCompressedFunc, cb GRPCCallback) (
 	return nil, fmt.Errorf("Client not found")
 }
 
-// This function removes cache in clientMap[key], so all connections will have to be re-established.
-// The existing client will still be accessible (if it's still accepted), but new client will be created when
-// GetGRPCClient() is called next time.
-func PurgeGRPCClient() error {
+// This function is used during internal cert reload when internal certificates are changed.
+// It removes gRPC client from clientMap[key], so all connections have to be re-established using new certs.
+// After this function, old client will not be retrievable via GetGRPCClient() API.  Instead, new client will be created.
+// The user of the existing old clients will be able to continue using the client, while it's cancelled and connection is closed.
+//
+// This way, GetGRPCClientEndpoint() can still find correct endpoints while certs used gRPC clients are being reloaded.
+func ReloadAllGRPCClients() error {
 	mtx.Lock()
 	defer mtx.Unlock()
-	for k := range clientMap {
-		delete(clientMap, k)
+	for _, v := range clientMap {
+		if v.client != nil {
+			v.cancel()
+			v.client.Close()
+			v.client = nil
+			v.service = nil
+			v.cancel = nil
+		}
 	}
 	return nil
 }
