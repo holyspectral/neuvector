@@ -117,7 +117,6 @@ func ReloadCert() ([]byte, []byte, []byte, error) {
 	var key []byte
 	var secret *corev1.Secret
 
-	// TODO: Use client-go
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "failed to get config")
@@ -141,9 +140,6 @@ func ReloadCert() ([]byte, []byte, []byte, error) {
 	cacert = data["ca.crt"]
 	cert = data["tls.crt"]
 	key = data["tls.key"]
-
-	// TODO: remove me
-	log.Warn(string(cacert), string(cert), string(key))
 
 	if err := verifyCert(cacert, cert, key); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "invalid key/cert")

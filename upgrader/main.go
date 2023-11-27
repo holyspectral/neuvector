@@ -64,6 +64,12 @@ var (
 )
 
 func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
+	if s1 == nil && s2 == nil {
+		return true
+	}
+	if s1 == nil || s2 == nil {
+		return false
+	}
 	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
 		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
 		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
@@ -75,6 +81,7 @@ func main() {
 	flag.Parse()
 	var config *rest.Config
 	var err error
+	var secret *corev1.Secret
 
 	if len(*kubeconfig) > 0 {
 		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -158,22 +165,25 @@ func main() {
 		}
 	}
 
-	secret := &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: *dstSecretName,
-			//Labels:      map[string]string{}, // TODO: fill these
-			//Annotations: map[string]string{}, // TODO: fill these
-		},
-		Data: map[string][]byte{},
-		Type: "Opaque",
+	if activeSecret == nil {
+		secret = &corev1.Secret{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: *activeSecretName,
+				//Labels:      map[string]string{}, // TODO: fill these
+				//Annotations: map[string]string{}, // TODO: fill these
+			},
+			Data: map[string][]byte{},
+			Type: "Opaque",
+		}
+	} else {
+		secret = activeSecret
 	}
 
 	for step := range []int{0, 1, 2} {
-
 		// state: 0
 		// merged cacert + old cert + old key
 		// state: 1
@@ -239,8 +249,9 @@ func main() {
 	}
 
 	// Write secret in a different name
-	secret.Name = *dstSecretName
-	secret.ResourceVersion = ""
+	dstSecret.Data[CACERT_FILENAME] = secret.Data[CACERT_FILENAME]
+	dstSecret.Data[KEY_FILENAME] = secret.Data[KEY_FILENAME]
+	dstSecret.Data[CERT_FILENAME] = secret.Data[CERT_FILENAME]
 	if _, err := ApplyK8sSecret(context.TODO(), client, secret); err != nil {
 		log.WithError(err).Fatal("failed to write dest secret.")
 	}
