@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"path"
+	"reflect"
 	"strconv"
 
 	"github.com/neuvector/neuvector/share"
@@ -37,27 +39,35 @@ const (
 	TARGET_SECRET_SOURCE_NAME_CACERT = "target-cacert"
 	TARGET_SECRET_SOURCE_NAME_CERT   = "target-cert"
 	TARGET_SECRET_SOURCE_NAME_KEY    = "target-key"
+
+	// TODO: change file name to align with cert-manger default.
+	CACERT_FILENAME = "ca.crt"
+	CERT_FILENAME   = "tls.crt"
+	KEY_FILENAME    = "tls.key"
 )
 
-// Will be built with Go 1.14 at the moment.
-// TODO: Should we use existing library?  Options:
-// 1. Use client-go + Go 1.16 => Need to patch build environment.  How?
-// 2. Use client-go + Go 1.14 => Might work?  Need to figure out which version to use or patch.
-// 3. Use global.ORCH.StartWatchResource + Go 1.14 => Could be complicated since we don't use it this way.
+// Go 1.14 + client-go  We had below options at design stage:
+// 1. Use client-go + Go 1.16 => Need to patch build environment.
+// 2. Use client-go + Go 1.14 => Works since we also include kubectl in this executable.
+// 3. Use global.ORCH.StartWatchResource + Go 1.14 => should work too, but if we want cache support it will be getting complex.
 
 var (
-	// TODO: change file name to align with cert-manger default.
-	cacertPath    = flag.String("cacert", "/etc/neuvector/certs/internal/migration/ca.cert", "CA cert path")
-	certPath      = flag.String("cert", "/etc/neuvector/certs/internal/migration/cert.pem", "cert path")
-	keyPath       = flag.String("key", "/etc/neuvector/certs/internal/migration/key.pem", "key path")
-	subjectCN     = flag.String("subject", "NeuVector", "expected subject name from remote server")
-	kubeconfig    = flag.String("kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
-	namespace     = flag.String("namespace", "neuvector", "Kubernetes namespace that NeuVector is running in.")
-	timeout       = flag.Duration("timeout", 0, "timeout for waiting deployment to complete")
-	grpcPort      = flag.Int("grpc-port", 18500, "the listening port for migration gRPC server")
-	dstSecretName = flag.String("target-secret-name", "neuvector-internal-certs-active", "the target cert name for migration")
-	srcSecretName = flag.String("source-secret-name", "neuvector-internal-certs", "the source secret name for migration")
+	certPath         = flag.String("cert-path", "/etc/neuvector/certs/internal/migration/", "The folder containing internal certs")
+	subjectCN        = flag.String("subject", "NeuVector", "expected subject name from remote server")
+	kubeconfig       = flag.String("kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
+	namespace        = flag.String("namespace", "neuvector", "Kubernetes namespace that NeuVector is running in.")
+	timeout          = flag.Duration("timeout", 0, "timeout for waiting deployment to complete")
+	grpcPort         = flag.Int("grpc-port", 18500, "the listening port for migration gRPC server")
+	activeSecretName = flag.String("active-secret-name", "neuvector-internal-certs-active", "the active secret")
+	dstSecretName    = flag.String("target-secret-name", "neuvector-internal-certs-dest", "the existing secret that have been applied")
+	srcSecretName    = flag.String("source-secret-name", "neuvector-internal-certs", "the new secret to be applied")
 )
+
+func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
+	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
+		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
+		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
+}
 
 func main() {
 	// TODO: Implement a lock, so only one instance will be running.  (Lease?)
@@ -103,9 +113,7 @@ func main() {
 	// 		b. a src secret is present
 	// 2. Update target cert and call each component's reload.
 
-	var srcSecret, dstSecret *corev1.Secret
-	var dstNotFound bool
-	//var srcNotFound bool
+	var srcSecret, dstSecret, activeSecret *corev1.Secret
 
 	if dstSecret, err = GetK8sSecret(context.TODO(), client, *dstSecretName); err != nil {
 		if !k8sError.IsNotFound(err) {
@@ -119,45 +127,53 @@ func main() {
 		}
 	}
 
-	if dstSecret != nil && srcSecret == nil {
-		log.Info("Destination secret is already preset and no source secret is available. Migration completed.")
-		// No need to migration.  Bye.
+	if activeSecret, err = GetK8sSecret(context.TODO(), client, *activeSecretName); err != nil {
+		if !k8sError.IsNotFound(err) {
+			log.WithError(err).Info("failed to find active secret")
+		}
+	}
+
+	if EqualInternalCerts(srcSecret, activeSecret) {
+		// If srcSecret and dstSecret are the same, it doesn't mean it's already rolled out.
+		// For example, activeSecret can be in a intermediate status.
+		// So, only when srcSecret and activeSecret are the same, we exit.
+		log.Info("Certificate is up-to-date.")
 		return
 	}
 
 	// Fill srcSecret and dstSecret so they're not nil
 	if srcSecret == nil {
-		// srcNotFound = true
-		// TODO: Generate one as srcSecret.  Shouldn't be null at this stage.
+		// TODO: We provide the secret all the time during testing, but we should generate one in the future.
+		log.Fatal("Provide a internal cert named: ", *srcSecretName)
 	}
 
+	// When dst secret is absent, that means it's still using default certs.
 	if dstSecret == nil {
-		dstNotFound = true
-		// TODO: Use cert manager's convention
 		dstSecret = &corev1.Secret{
 			Data: map[string][]byte{
-				"ca.cert":  []byte(LegacyCaCert),
-				"cert.pem": []byte(LegacyCert),
-				"key.pem":  []byte(LegacyKey),
+				CACERT_FILENAME: []byte(LegacyCaCert),
+				CERT_FILENAME:   []byte(LegacyCert),
+				KEY_FILENAME:    []byte(LegacyKey),
 			},
 		}
 	}
 
-	// TODO: Update certificate
+	secret := &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: *dstSecretName,
+			//Labels:      map[string]string{}, // TODO: fill these
+			//Annotations: map[string]string{}, // TODO: fill these
+		},
+		Data: map[string][]byte{},
+		Type: "Opaque",
+	}
+
 	for step := range []int{0, 1, 2} {
-		secret := &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Secret",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: *dstSecretName,
-				//Labels:      map[string]string{}, // TODO: fill these
-				//Annotations: map[string]string{}, // TODO: fill these
-			},
-			Data: map[string][]byte{},
-			Type: "Opaque",
-		}
+
 		// state: 0
 		// merged cacert + old cert + old key
 		// state: 1
@@ -169,46 +185,27 @@ func main() {
 		// newcert: {xxx, xxx, xxx}
 		switch step {
 		case (0):
-			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], dstSecret.Data["ca.cert"]...)
-			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], []byte("\n")...)
-			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], srcSecret.Data["ca.cert"]...)
+			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], dstSecret.Data[CACERT_FILENAME]...)
+			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], []byte("\n")...)
+			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], srcSecret.Data[CACERT_FILENAME]...)
 
-			secret.Data["cert.pem"] = dstSecret.Data["cert.pem"]
-			secret.Data["key.pem"] = dstSecret.Data["key.pem"]
+			secret.Data[CERT_FILENAME] = dstSecret.Data[CERT_FILENAME]
+			secret.Data[KEY_FILENAME] = dstSecret.Data[KEY_FILENAME]
 		case (1):
-			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], dstSecret.Data["ca.cert"]...)
-			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], []byte("\n")...)
-			secret.Data["ca.cert"] = append(secret.Data["ca.cert"], srcSecret.Data["ca.cert"]...)
+			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], dstSecret.Data[CACERT_FILENAME]...)
+			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], []byte("\n")...)
+			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], srcSecret.Data[CACERT_FILENAME]...)
 
-			secret.Data["key.pem"] = srcSecret.Data["key.pem"]
-			secret.Data["cert.pem"] = srcSecret.Data["cert.pem"]
+			secret.Data[KEY_FILENAME] = srcSecret.Data[KEY_FILENAME]
+			secret.Data[CERT_FILENAME] = srcSecret.Data[CERT_FILENAME]
 		case (2):
-			secret.Data["ca.cert"] = srcSecret.Data["ca.cert"]
-			secret.Data["key.pem"] = srcSecret.Data["key.pem"]
-			secret.Data["cert.pem"] = srcSecret.Data["cert.pem"]
+			secret.Data[CACERT_FILENAME] = srcSecret.Data[CACERT_FILENAME]
+			secret.Data[KEY_FILENAME] = srcSecret.Data[KEY_FILENAME]
+			secret.Data[CERT_FILENAME] = srcSecret.Data[CERT_FILENAME]
 		}
 
-		unstructedSecret, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
-		if err != nil {
-			//return nil, errors.Wrap(err, "failed to convert target secret")
-			log.WithError(err).Fatal("failed to convert target secret")
-		}
-
-		// TODO: who should clean up this secret?
-
-		// Only create in the first round.
-		if dstNotFound && step == 0 {
-			_, err = client.Resource(schema.GroupVersionResource{
-				Resource: "secrets",
-				Version:  "v1",
-			}).Namespace(*namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
-		} else {
-			log.Info("updating...")
-			_, err = client.Resource(schema.GroupVersionResource{
-				Resource: "secrets",
-				Version:  "v1",
-			}).Namespace(*namespace).Update(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
-		}
+		// Replace secret with what we got from API server.
+		secret, err = ApplyK8sSecret(context.TODO(), client, secret)
 
 		if err != nil {
 			//return nil, errors.Wrap(err, "failed to convert target secret")
@@ -240,6 +237,15 @@ func main() {
 			return
 		}
 	}
+
+	// Write secret in a different name
+	secret.Name = *dstSecretName
+	secret.ResourceVersion = ""
+	if _, err := ApplyK8sSecret(context.TODO(), client, secret); err != nil {
+		log.WithError(err).Fatal("failed to write dest secret.")
+	}
+
+	log.Info("Internal certificates are migrated")
 }
 
 // Discover components based on label and call its reload API.
@@ -274,7 +280,7 @@ func ReloadComponent(client dynamic.Interface, selector string) error {
 
 		podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpcPort))
 		// TODO: better way to manage clients
-		conn, err := NewGRPCClient(context.TODO(), podAddress, *cacertPath, *certPath, *keyPath, *subjectCN)
+		conn, err := NewGRPCClient(context.TODO(), podAddress, path.Join(*certPath, CACERT_FILENAME), path.Join(*certPath, CERT_FILENAME), path.Join(*certPath, KEY_FILENAME), *subjectCN)
 		if err != nil {
 			return errors.Wrap(err, "failed to create grpc client")
 		}
@@ -293,6 +299,35 @@ func ReloadComponent(client dynamic.Interface, selector string) error {
 		}).Info("Certificate is reloaded")
 	}
 	return nil
+}
+
+func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, secret *corev1.Secret) (*corev1.Secret, error) {
+	var err error
+	var item *unstructured.Unstructured
+	var ret corev1.Secret
+	unstructedSecret, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert target secret")
+	}
+
+	if secret.ResourceVersion == "" {
+		item, err = client.Resource(schema.GroupVersionResource{
+			Resource: "secrets",
+			Version:  "v1",
+		}).Namespace(*namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
+	} else {
+		item, err = client.Resource(schema.GroupVersionResource{
+			Resource: "secrets",
+			Version:  "v1",
+		}).Namespace(*namespace).Update(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to update resource")
+	}
+
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &ret)
+	return &ret, err
 }
 
 func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*corev1.Secret, error) {

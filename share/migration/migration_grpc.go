@@ -104,7 +104,8 @@ func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*
 	return &targetSecret, nil
 }
 
-// Reload cert from specified secret
+// Reload cert from specified secret.
+// TODO: Tolerate temporary errors from API server.
 func ReloadCert() ([]byte, []byte, []byte, error) {
 	reloadLock.Lock()
 	defer reloadLock.Unlock()
@@ -137,9 +138,9 @@ func ReloadCert() ([]byte, []byte, []byte, error) {
 		return nil, nil, nil, errors.New("data in secret are not found")
 	}
 
-	cacert = data["ca.cert"]
-	cert = data["cert.pem"]
-	key = data["key.pem"]
+	cacert = data["ca.crt"]
+	cert = data["tls.crt"]
+	key = data["tls.key"]
 
 	// TODO: remove me
 	log.Warn(string(cacert), string(cert), string(key))
