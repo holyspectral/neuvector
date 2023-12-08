@@ -29,11 +29,9 @@ import (
 	"github.com/neuvector/neuvector/share/cluster"
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/global"
-	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/system"
 	"github.com/neuvector/neuvector/share/utils"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -69,7 +67,6 @@ var cacher cache.CacheInterface
 var scanner scan.ScanInterface
 var orchConnector orchConnInterface
 var timerWheel *utils.TimerWheel
-var k8sResLog *log.Logger
 
 const statsInterval uint32 = 5
 const controllerStartGapThreshold = time.Duration(time.Minute * 2)
@@ -202,65 +199,51 @@ func getConfigKvData(key string) ([]byte, bool) {
 	return cacher.GetConfigKvData(key)
 }
 
-func main() {
-	var joinAddr, advAddr, bindAddr string
-	var err error
+var (
+	join                 = flag.String("j", "", "Cluster join address")
+	adv                  = flag.String("a", "", "Cluster advertise address")
+	bind                 = flag.String("b", "", "Cluster bind address")
+	rtSock               = flag.String("u", "", "Container socket URL")
+	debug                = flag.Bool("d", false, "Enable control path debug")
+	restPort             = flag.Uint("p", api.DefaultControllerRESTAPIPort, "REST API server port")
+	fedPort              = flag.Uint("fed_port", 11443, "Fed REST API server port")
+	rpcPort              = flag.Uint("rpc_port", 0, "Cluster server RPC port")
+	lanPort              = flag.Uint("lan_port", 0, "Cluster Serf LAN port")
+	grpcPort             = flag.Uint("grpc_port", 0, "Cluster GRPC port")
+	migrationGRPCPort    = flag.Uint("migration_port", cluster.DefaultMigrationGRPCPort, "Cluster Migration GRPC port")
+	internalSubnets      = flag.String("n", "", "Predefined internal subnets")
+	persistConfig        = flag.Bool("pc", false, "Persist configurations")
+	admctrlPort          = flag.Uint("admctrl_port", 20443, "Admission Webhook server port")
+	crdvalidatectrlPort  = flag.Uint("crdvalidatectrl_port", 30443, "general crd Webhook server port")
+	pwdValidUnit         = flag.Uint("pwd_valid_unit", 1440, "")
+	rancherEP            = flag.String("rancher_ep", "", "Rancher endpoint URL")
+	rancherSSO           = flag.Bool("rancher_sso", false, "Rancher SSO integration")
+	teleNeuvectorEP      = flag.String("telemetry_neuvector_ep", "", "")                        // for testing only
+	teleCurrentVer       = flag.String("telemetry_current_ver", "", "")                         // in the format {major}.{minor}.{patch}[-s{#}], for testing only
+	telemetryFreq        = flag.Uint("telemetry_freq", 60, "")                                  // in minutes, for testing only
+	noDefAdmin           = flag.Bool("no_def_admin", false, "Do not create default admin user") // for new install only
+	cspEnv               = flag.String("csp_env", "", "")                                       // "" or "aws"
+	cspPauseInterval     = flag.Uint("csp_pause_interval", 240, "")                             // in minutes, for testing only
+	noRmNsGrps           = flag.Bool("no_rm_nsgroups", false, "Not to remove groups when namespace was deleted")
+	en_icmp_pol          = flag.Bool("en_icmp_policy", false, "Enable icmp policy learning")
+	autoProfile          = flag.Int("apc", 1, "Enable auto profile collection")
+	custom_check_control = flag.String("cbench", share.CustomCheckControl_Disable, "Custom check control")
 
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.InfoLevel)
-	log.SetFormatter(&utils.LogFormatter{Module: "CTL"})
+	// bootstrap = flag.Bool("b", false, "Bootstrap cluster")
+)
 
-	connLog := log.New()
-	connLog.Out = os.Stdout
-	connLog.Level = log.InfoLevel
-	connLog.Formatter = &utils.LogFormatter{Module: "CTL"}
+var (
+	joinAddr string
+	advAddr  string
+	bindAddr string
 
-	scanLog := log.New()
-	scanLog.Out = os.Stdout
-	scanLog.Level = log.InfoLevel
-	scanLog.Formatter = &utils.LogFormatter{Module: "CTL"}
+	connLog   *log.Logger
+	scanLog   *log.Logger
+	mutexLog  *log.Logger
+	k8sResLog *log.Logger
+)
 
-	mutexLog := log.New()
-	mutexLog.Out = os.Stdout
-	mutexLog.Level = log.InfoLevel
-	mutexLog.Formatter = &utils.LogFormatter{Module: "CTL"}
-
-	k8sResLog = log.New()
-	k8sResLog.Out = os.Stdout
-	k8sResLog.Level = log.InfoLevel
-	k8sResLog.Formatter = &utils.LogFormatter{Module: "CTL"}
-
-	log.WithFields(log.Fields{"version": Version}).Info("START")
-
-	// bootstrap := flag.Bool("b", false, "Bootstrap cluster")
-	join := flag.String("j", "", "Cluster join address")
-	adv := flag.String("a", "", "Cluster advertise address")
-	bind := flag.String("b", "", "Cluster bind address")
-	rtSock := flag.String("u", "", "Container socket URL")
-	debug := flag.Bool("d", false, "Enable control path debug")
-	restPort := flag.Uint("p", api.DefaultControllerRESTAPIPort, "REST API server port")
-	fedPort := flag.Uint("fed_port", 11443, "Fed REST API server port")
-	rpcPort := flag.Uint("rpc_port", 0, "Cluster server RPC port")
-	lanPort := flag.Uint("lan_port", 0, "Cluster Serf LAN port")
-	grpcPort := flag.Uint("grpc_port", 0, "Cluster GRPC port")
-	migrationGRPCPort := flag.Uint("migration_port", cluster.DefaultMigrationGRPCPort, "Cluster Migration GRPC port")
-	internalSubnets := flag.String("n", "", "Predefined internal subnets")
-	persistConfig := flag.Bool("pc", false, "Persist configurations")
-	admctrlPort := flag.Uint("admctrl_port", 20443, "Admission Webhook server port")
-	crdvalidatectrlPort := flag.Uint("crdvalidatectrl_port", 30443, "general crd Webhook server port")
-	pwdValidUnit := flag.Uint("pwd_valid_unit", 1440, "")
-	rancherEP := flag.String("rancher_ep", "", "Rancher endpoint URL")
-	rancherSSO := flag.Bool("rancher_sso", false, "Rancher SSO integration")
-	teleNeuvectorEP := flag.String("telemetry_neuvector_ep", "", "")                   // for testing only
-	teleCurrentVer := flag.String("telemetry_current_ver", "", "")                     // in the format {major}.{minor}.{patch}[-s{#}], for testing only
-	telemetryFreq := flag.Uint("telemetry_freq", 60, "")                               // in minutes, for testing only
-	noDefAdmin := flag.Bool("no_def_admin", false, "Do not create default admin user") // for new install only
-	cspEnv := flag.String("csp_env", "", "")                                           // "" or "aws"
-	cspPauseInterval := flag.Uint("csp_pause_interval", 240, "")                       // in minutes, for testing only
-	noRmNsGrps := flag.Bool("no_rm_nsgroups", false, "Not to remove groups when namespace was deleted")
-	en_icmp_pol := flag.Bool("en_icmp_policy", false, "Enable icmp policy learning")
-	autoProfile := flag.Int("apc", 1, "Enable auto profile collection")
-	custom_check_control := flag.String("cbench", share.CustomCheckControl_Disable, "Custom check control")
+func parseParams() {
 	flag.Parse()
 
 	if *debug {
@@ -293,6 +276,40 @@ func main() {
 		log.Error("Invalid port value. Exit!")
 		os.Exit(-2)
 	}
+	return
+}
+
+func main() {
+	var err error
+	parseParams()
+
+	// Initialize log context
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.InfoLevel)
+	log.SetFormatter(&utils.LogFormatter{Module: "CTL"})
+
+	connLog = log.New()
+	connLog.Out = os.Stdout
+	connLog.Level = log.InfoLevel
+	connLog.Formatter = &utils.LogFormatter{Module: "CTL"}
+
+	scanLog = log.New()
+	scanLog.Out = os.Stdout
+	scanLog.Level = log.InfoLevel
+	scanLog.Formatter = &utils.LogFormatter{Module: "CTL"}
+
+	mutexLog = log.New()
+	mutexLog.Out = os.Stdout
+	mutexLog.Level = log.InfoLevel
+	mutexLog.Formatter = &utils.LogFormatter{Module: "CTL"}
+
+	k8sResLog = log.New()
+	k8sResLog.Out = os.Stdout
+	k8sResLog.Level = log.InfoLevel
+	k8sResLog.Formatter = &utils.LogFormatter{Module: "CTL"}
+
+	log.WithFields(log.Fields{"version": Version}).Info("START")
+
 	ctrlEnv.autoProfieCapture = 1 // default
 	if *autoProfile != 1 {
 		if *autoProfile < 0 {
@@ -462,14 +479,14 @@ func main() {
 		Ctrler: &Ctrler,
 	}
 
-	// TODO: Is this the right place to reload cert?
-	if _, _, _, err := migration.ReloadCert(); err != nil {
-		// Failed to reload cert.
-		// TODO: better check
-		if !strings.Contains(err.Error(), "not found") {
-			// TODO: Make sure this is the only way to deal with the error
-			log.WithError(err).Fatal("failed to reload kubernetes secret")
-		}
+	// Initialize internal certs.
+
+	if err := GetCertReloadManager().Init(); err != nil {
+		log.WithError(err).Fatal("failed initialize internal certificate handler")
+	}
+
+	if err := GetCertReloadManager().Start(); err != nil {
+		log.WithError(err).Fatal("failed start internal certificate handler")
 	}
 
 	eventLogKey := share.CLUSControllerEventLogKey(Host.ID, Ctrler.ID)
@@ -508,7 +525,6 @@ func main() {
 	}
 
 	// get grpc port before put controller info to cluster
-	var grpcServer *cluster.GRPCServer
 	if *grpcPort == 0 {
 		*grpcPort = cluster.DefaultControllerGRPCPort
 	}
@@ -755,29 +771,9 @@ func main() {
 	orchConnector = newOrchConnector(orchObjChan, orchScanChan, Ctrler.Leader)
 	orchConnector.Start(ocImageRegistered, cspType)
 
-	// GRPC should be started after cacher as the handler are cache functions
-	grpcServer, _ = startGRPCServer(uint16(*grpcPort))
-
-	migrationGRPCServer, _ := migration.StartMigrationGRPCServer(uint16(*migrationGRPCPort), []func([]byte, []byte, []byte) error{
-		func(cacert []byte, cert []byte, key []byte) error {
-			// Reload gRPC server
-			if err := cluster.Reload(nil); err != nil {
-				return errors.Wrap(err, "failed to reload consul")
-			}
-			return nil
-		},
-		func(cacert []byte, cert []byte, key []byte) error {
-			// TODO: Make sure all gRPC call retries.
-			// TODO: Make sure server can completes normally without resource leak.
-			// TODO: Check race condition
-			grpcServer.GracefulStop()
-			grpcServer, _ = startGRPCServer(uint16(*grpcPort))
-			if err := cluster.ReloadAllGRPCClients(); err != nil {
-				return errors.Wrap(err, "failed to purge gRPC client cache")
-			}
-			return nil
-		},
-	})
+	if err := GetCertReloadManager().GetGRPCServer("controller").Start(); err != nil {
+		log.WithError(err).Fatal("failed to start controller grpc service")
+	}
 
 	// init rest server context before listening KV object store, as federation server can be started from there.
 	rctx := rest.Context{
@@ -906,8 +902,7 @@ func main() {
 	orchConnector.Close()
 	ctrlDeleteLocalInfo()
 	cluster.LeaveCluster(true)
-	migrationGRPCServer.Stop()
-	grpcServer.Stop()
+	GetCertReloadManager().Shutdown()
 }
 
 func amendStubRtInfo() error {

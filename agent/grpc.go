@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
@@ -263,8 +264,8 @@ func sendConnections(conns []*share.CLUSConnection) (*share.CLUSReportResponse, 
 
 	resp, err := client.ReportConnections(ctx, connArray)
 	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Debug("Fail to report connections to controller")
-		return resp, fmt.Errorf("Fail to report connections to controller")
+		log.WithError(err).Debug("Fail to report connections to controller")
+		return resp, errors.Wrap(err, "Fail to report connections to controller")
 	}
 	return resp, nil
 }
