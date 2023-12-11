@@ -64,6 +64,7 @@ var (
 	dstSecretName    = flag.String("target-secret-name", "neuvector-internal-certs-dest", "the existing secret that have been applied")
 	srcSecretName    = flag.String("source-secret-name", "neuvector-internal-certs", "the new secret to be applied")
 	forceUpdate      = flag.Bool("force-update", false, "force update internal certs by generating another one")
+	rsaKeySize       = flag.Int("rsa-key-size", 4096, "rsa key size used in internal certs")
 )
 
 var (
@@ -164,29 +165,40 @@ func containLegacyDefaultInternalCerts(client dynamic.Interface) (bool, error) {
 	return false, nil
 }
 
-func main() {
-	// TODO: Implement a lock, so only one instance will be running.  (Lease?)
-
-	flag.Parse()
-	var config *rest.Config
+func NewK8sClient(kubeconfig string) (dynamic.Interface, error) {
 	var err error
-	var secret *corev1.Secret
-
-	if len(*kubeconfig) > 0 {
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	var config *rest.Config
+	if len(kubeconfig) > 0 {
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
-			log.WithError(err).Panic("failed to build config from kubeconfig")
+			return nil, errors.Wrap(err, "failed to build config from kubeconfig")
 		}
 	} else {
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			log.WithError(err).Fatal("failed to read in-cluster config")
+			return nil, errors.Wrap(err, "failed to read in-cluster config")
 		}
 	}
 
-	client, err := dynamic.NewForConfig(config)
+	return dynamic.NewForConfig(config)
+}
+
+func main() {
+	// TODO: Implement a lock, so only one instance will be running.  (Lease?)
+	flag.Parse()
+
+	var err error
+	var secret *corev1.Secret
+
+	client, err := NewK8sClient(*kubeconfig)
 	if err != nil {
 		return
+	}
+
+	if legacy, err := containLegacyDefaultInternalCerts(client); err != nil {
+		log.WithError(err).Error("failed to get remote internal certs")
+	} else {
+		log.WithError(err).Info(legacy)
 	}
 
 	// 1. Wait until deployment completes
@@ -401,6 +413,8 @@ func ReloadComponent(client dynamic.Interface, selector string) error {
 	return nil
 }
 
+// Apply k8s secret.
+// Make ResourceVersion empty if you don't want to overwrite existing data.
 func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, secret *corev1.Secret) (*corev1.Secret, error) {
 	var err error
 	var item *unstructured.Unstructured
