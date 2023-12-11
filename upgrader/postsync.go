@@ -13,6 +13,7 @@ import (
 	"github.com/neuvector/neuvector/share"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	appv1 "k8s.io/api/apps/v1"
@@ -31,13 +32,17 @@ import (
 )
 
 // Discover components based on label and call its reload API.
-func ReloadComponent(client dynamic.Interface, selector string) error {
+func ReloadComponent(ctx *cli.Context, client dynamic.Interface, namespace string, selector string) error {
+	grpcPort := ctx.Int("migration-grpc-port")
+	certPath := ctx.String("migration-cert-path")
+	subjectCN := ctx.String("certificate-cn")
+
 	item, err := client.Resource(
 		schema.GroupVersionResource{
 			Resource: "pods",
 			Version:  "v1",
 		},
-	).Namespace(*namespace).List(context.TODO(), metav1.ListOptions{
+	).Namespace(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: selector,
 	})
 
@@ -60,9 +65,9 @@ func ReloadComponent(client dynamic.Interface, selector string) error {
 			"pod": pod.Status.PodIP,
 		}).Info("triggering reloads")
 
-		podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(*grpcPort))
+		podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(grpcPort))
 		// TODO: better way to manage clients
-		conn, err := NewGRPCClient(context.TODO(), podAddress, path.Join(*certPath, CACERT_FILENAME), path.Join(*certPath, CERT_FILENAME), path.Join(*certPath, KEY_FILENAME), *subjectCN)
+		conn, err := NewGRPCClient(context.TODO(), podAddress, path.Join(certPath, CACERT_FILENAME), path.Join(certPath, CERT_FILENAME), path.Join(certPath, KEY_FILENAME), subjectCN)
 		if err != nil {
 			return errors.Wrap(err, "failed to create grpc client")
 		}
@@ -85,7 +90,7 @@ func ReloadComponent(client dynamic.Interface, selector string) error {
 
 // Apply k8s secret.
 // Make ResourceVersion empty if you don't want to overwrite existing data.
-func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, secret *corev1.Secret) (*corev1.Secret, error) {
+func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, secret *corev1.Secret) (*corev1.Secret, error) {
 	var err error
 	var item *unstructured.Unstructured
 	var ret corev1.Secret
@@ -98,12 +103,12 @@ func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, secret *corev
 		item, err = client.Resource(schema.GroupVersionResource{
 			Resource: "secrets",
 			Version:  "v1",
-		}).Namespace(*namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
+		}).Namespace(namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
 	} else {
 		item, err = client.Resource(schema.GroupVersionResource{
 			Resource: "secrets",
 			Version:  "v1",
-		}).Namespace(*namespace).Update(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
+		}).Namespace(namespace).Update(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to update resource")
@@ -114,13 +119,13 @@ func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, secret *corev
 	return &ret, err
 }
 
-func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*corev1.Secret, error) {
+func GetK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, name string) (*corev1.Secret, error) {
 	item, err := client.Resource(
 		schema.GroupVersionResource{
 			Resource: "secrets",
 			Version:  "v1",
 		},
-	).Namespace(*namespace).Get(ctx, name, metav1.GetOptions{})
+	).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get secret")
@@ -135,13 +140,13 @@ func GetK8sSecret(ctx context.Context, client dynamic.Interface, name string) (*
 	return &targetSecret, nil
 }
 
-func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, name string, client dynamic.Interface) error {
+func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, client dynamic.Interface, namespace string, name string) error {
 	// Implement kubectl rollout status
 	// See https://github.com/kubernetes/kubectl/blob/master/pkg/cmd/rollout/rollout_status.go
 	// TODO: kubectl plugin?
 
 	// 1. Get controller deployment.
-	item, err := client.Resource(gr).Namespace(*namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	item, err := client.Resource(gr).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		// something wrong to get the deployment.  Give up.
 		return errors.Wrap(err, "failed to get neuvector-controller-pod deployment")
@@ -239,28 +244,37 @@ func NewGRPCClient(ctx context.Context, endpoint string, cacertPath string, cert
 	)
 }
 
-func PostSyncHook() error {
+func PostSyncHook(ctx *cli.Context) error {
+	namespace := ctx.String("namespace")
+	kubeconfig := ctx.String("kube-config")
+	timeout := ctx.Duration("rollout-timeout")
+	dstSecretName := ctx.String("dest-secret-name")
+	newSecretName := ctx.String("new-secret-name")
+	activeSecretName := ctx.String("active-secret-name")
+
 	var secret *corev1.Secret
 
-	client, err := NewK8sClient(*kubeconfig)
+	client, err := NewK8sClient(kubeconfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create k8s client")
 	}
 
 	// TODO
-	if legacy, err := containLegacyDefaultInternalCerts(client); err != nil {
+	if legacy, err := containLegacyDefaultInternalCerts(client, namespace); err != nil {
 		return errors.Wrap(err, "failed to get remote internal certs")
 	} else {
 		log.WithError(err).Info(legacy)
 	}
 
 	// 1. Wait until deployment completes
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), *timeout)
+	timeoutCtx, cancel := watchtools.ContextWithOptionalTimeout(ctx.Context, timeout)
 	defer cancel()
-	err = WaitUntilRolledOut(ctx,
+	err = WaitUntilRolledOut(timeoutCtx,
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		client,
+		namespace,
 		"neuvector-controller-pod",
-		client)
+	)
 
 	// Flow:
 	// src secret => target secret.  Eventually src and target will be the same.
@@ -276,19 +290,19 @@ func PostSyncHook() error {
 
 	var srcSecret, dstSecret, activeSecret *corev1.Secret
 
-	if dstSecret, err = GetK8sSecret(context.TODO(), client, *dstSecretName); err != nil {
+	if dstSecret, err = GetK8sSecret(context.TODO(), client, namespace, dstSecretName); err != nil {
 		if !k8sError.IsNotFound(err) {
 			log.WithError(err).Fatal("failed to find destination secret")
 		}
 	}
 
-	if srcSecret, err = GetK8sSecret(context.TODO(), client, *newSecretName); err != nil {
+	if srcSecret, err = GetK8sSecret(context.TODO(), client, namespace, newSecretName); err != nil {
 		if !k8sError.IsNotFound(err) {
 			log.WithError(err).Fatal("failed to find source secret")
 		}
 	}
 
-	if activeSecret, err = GetK8sSecret(context.TODO(), client, *activeSecretName); err != nil {
+	if activeSecret, err = GetK8sSecret(context.TODO(), client, namespace, activeSecretName); err != nil {
 		if !k8sError.IsNotFound(err) {
 			log.WithError(err).Info("failed to find active secret")
 		}
@@ -305,7 +319,7 @@ func PostSyncHook() error {
 	// Fill srcSecret and dstSecret so they're not nil
 	if srcSecret == nil {
 		// TODO: We provide the secret all the time during testing, but we should generate one in the future.
-		log.Fatal("Provide a internal cert named: ", *newSecretName)
+		log.Fatal("Provide a internal cert named: ", newSecretName)
 	}
 
 	// When dst secret is absent, that means it's still using default certs.
@@ -326,7 +340,7 @@ func PostSyncHook() error {
 				APIVersion: "v1",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name: *activeSecretName,
+				Name: activeSecretName,
 				//Labels:      map[string]string{}, // TODO: fill these
 				//Annotations: map[string]string{}, // TODO: fill these
 			},
@@ -369,7 +383,7 @@ func PostSyncHook() error {
 		}
 
 		// Replace secret with what we got from API server.
-		secret, err = ApplyK8sSecret(context.TODO(), client, secret)
+		secret, err = ApplyK8sSecret(context.TODO(), client, namespace, secret)
 
 		if err != nil {
 			//return nil, errors.Wrap(err, "failed to convert target secret")
@@ -378,21 +392,21 @@ func PostSyncHook() error {
 
 		// TODO: Find leader of controller.
 		log.Info("Reloading controller's internal certificates")
-		err = ReloadComponent(client, ControllerPodSelector)
+		err = ReloadComponent(ctx, client, namespace, ControllerPodSelector)
 		if err != nil {
 			// TODO: rollback
 			return errors.Wrap(err, "failed to reload controller's internal cert. Rolling back.")
 		}
 
 		log.Info("Reloading enforcer's internal certificates")
-		err = ReloadComponent(client, EnforcerPodSelector)
+		err = ReloadComponent(ctx, client, namespace, EnforcerPodSelector)
 		if err != nil {
 			// TODO: rollback
 			return errors.Wrap(err, "failed to reload enforcer's internal cert. Rolling back.")
 		}
 
 		log.Info("Reloading scanner's internal certificates")
-		err = ReloadComponent(client, ScannerPodSelector)
+		err = ReloadComponent(ctx, client, namespace, ScannerPodSelector)
 		if err != nil {
 			// TODO: rollback
 			return errors.Wrap(err, "failed to reload scanner's internal cert. Rolling back.")
@@ -403,7 +417,7 @@ func PostSyncHook() error {
 	dstSecret.Data[CACERT_FILENAME] = secret.Data[CACERT_FILENAME]
 	dstSecret.Data[KEY_FILENAME] = secret.Data[KEY_FILENAME]
 	dstSecret.Data[CERT_FILENAME] = secret.Data[CERT_FILENAME]
-	if _, err := ApplyK8sSecret(context.TODO(), client, secret); err != nil {
+	if _, err := ApplyK8sSecret(context.TODO(), client, namespace, secret); err != nil {
 		log.WithError(err).Fatal("failed to write dest secret.")
 	}
 
