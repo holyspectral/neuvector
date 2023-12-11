@@ -276,7 +276,8 @@ github.com/hashicorp/golang-lru/simplelru
 # github.com/hashicorp/serf v0.9.7
 ## explicit
 github.com/hashicorp/serf/coordinate
-# github.com/imdario/mergo v0.3.7
+# github.com/imdario/mergo v0.3.9
+## explicit
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
@@ -287,6 +288,9 @@ github.com/jmespath/go-jmespath
 github.com/jonboulle/clockwork
 # github.com/josharian/intern v1.0.0
 github.com/josharian/intern
+# github.com/jrhouston/k8slock v0.1.1
+## explicit
+github.com/jrhouston/k8slock
 # github.com/json-iterator/go v1.1.11
 github.com/json-iterator/go
 # github.com/julienschmidt/httprouter v1.3.0
@@ -841,10 +845,11 @@ k8s.io/kubectl/pkg/util/storage
 k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
 k8s.io/kubectl/pkg/validation
-# k8s.io/utils v0.0.0-20211116205334-6203023598ed
+# k8s.io/utils v0.0.0-20211116205334-6203023598ed => k8s.io/utils v0.0.0-20211116205334-6203023598ed
 k8s.io/utils/buffer
 k8s.io/utils/exec
 k8s.io/utils/integer
+k8s.io/utils/pointer
 k8s.io/utils/trace
 # lukechampine.com/uint128 v1.1.1
 lukechampine.com/uint128
@@ -1014,3 +1019,4 @@ sigs.k8s.io/yaml
 # k8s.io/mount-utils => k8s.io/mount-utils v0.20.14
 # k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.22.5
 # k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.20.15
+# k8s.io/utils => k8s.io/utils v0.0.0-20211116205334-6203023598ed

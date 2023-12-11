@@ -43,6 +43,7 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.20.14
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.22.5
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.20.15
+	k8s.io/utils => k8s.io/utils v0.0.0-20211116205334-6203023598ed
 )
 
 require (
@@ -70,7 +71,9 @@ require (
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-version v1.4.0
 	github.com/hashicorp/serf v0.9.7
+	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jonboulle/clockwork v0.3.0
+	github.com/jrhouston/k8slock v0.1.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/knqyf263/go-rpmdb v0.0.0-20220209103220-0f7a6d951a6d
 	github.com/kr/pretty v0.3.1 // indirect

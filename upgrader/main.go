@@ -3,12 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
-	"net"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -65,6 +63,7 @@ var (
 	ScannerGRPCPort      = "18402"
 )
 
+// We should just verify its cert signer
 func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
 	if s1 == nil && s2 == nil {
 		return true
@@ -75,25 +74,6 @@ func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
 	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
 		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
 		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
-}
-
-func GetRemoteCert(host string, port string) (*x509.Certificate, error) {
-	conf := &tls.Config{
-		InsecureSkipVerify: true,
-	}
-
-	addr := net.JoinHostPort(host, port)
-
-	conn, err := tls.Dial("tcp", addr, conf)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to dial host: %s", host)
-	}
-	defer conn.Close()
-	certs := conn.ConnectionState().PeerCertificates
-	if len(certs) == 0 {
-		return nil, errors.New("no remote certificate is available")
-	}
-	return certs[0], nil
 }
 
 // Check if a legacy internal cert is still being used.
@@ -208,10 +188,30 @@ func main() {
 					Value: false,
 					Usage: "Force to create new internal certificates",
 				},
+				&cli.BoolFlag{
+					Name:  "user-managed-cert",
+					Value: false,
+					Usage: "Whether user manages on their own",
+				},
 				&cli.IntFlag{
 					Name:  "rsa-key-length",
 					Value: 4096,
-					Usage: "rsa key length when creating certificates",
+					Usage: "RSA key length when creating new internal key and certificate",
+				},
+				&cli.DurationFlag{
+					Name:  "expiry-cert-threshold",
+					Value: 30 * 24 * time.Hour,
+					Usage: "The threshold to automatically upgrade an internal cert",
+				},
+				&cli.IntFlag{
+					Name:  "ca-cert-validity-days",
+					Value: 365 * 5, // 5 years
+					Usage: "The ca cert's validity period in days",
+				},
+				&cli.IntFlag{
+					Name:  "cert-validity-days",
+					Value: 365 * 2, // 2 years
+					Usage: "The cert's validity period in days",
 				},
 			},
 			Action: PreSyncHook,
@@ -246,7 +246,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.WithError(err).Fatal(err, "failed to run the command")
+		log.WithError(err).Fatal("failed to run the command")
 		os.Exit(1)
 	}
 	return
