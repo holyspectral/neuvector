@@ -87,6 +87,7 @@ require (
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/streadway/simpleuuid v0.0.0-20130420165545-6617b501e485
 	github.com/stretchr/testify v1.7.1
+	github.com/urfave/cli/v2 v2.4.1
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed // indirect
@@ -100,8 +101,8 @@ require (
 	gopkg.in/square/go-jose.v2 v2.2.2
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5
-	k8s.io/client-go v0.22.5 // indirect
+	k8s.io/client-go v0.22.5
 	k8s.io/cri-api v0.0.0
-	k8s.io/kubectl v0.21.14 // indirect
+	k8s.io/kubectl v0.21.14
 	sigs.k8s.io/yaml v1.3.0
 )
