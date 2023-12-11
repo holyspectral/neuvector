@@ -144,7 +144,7 @@ func InitializeInternalSecret(ctx context.Context, client dynamic.Interface) err
 		return nil
 	}
 	// Upgrade
-	secret.Name = *srcSecretName
+	secret.Name = *newSecretName
 	if _, err := ApplyK8sSecret(ctx, client, secret); err != nil {
 		return errors.Wrap(err, "failed to write src secret")
 	}
