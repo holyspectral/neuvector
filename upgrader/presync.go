@@ -359,10 +359,15 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 }
 
 func PreSyncHook(ctx *cli.Context) error {
-
-	// Arguments
 	namespace := ctx.String("namespace")
 	kubeconfig := ctx.String("kube-config")
+
+	locker, err := CreateLocker(namespace)
+
+	locker.Lock()
+	log.Info("lock is acquired.")
+
+	defer locker.Unlock()
 
 	client, err := NewK8sClient(kubeconfig)
 	if err != nil {

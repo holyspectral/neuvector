@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/jrhouston/k8slock"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -146,6 +147,16 @@ func NewK8sClient(kubeconfig string) (dynamic.Interface, error) {
 	}
 
 	return dynamic.NewForConfig(config)
+}
+
+func CreateLocker(namespace string, holdername string) (*k8slock.Locker, error) {
+	return k8slock.NewLocker(
+		"internal-cert-migration-lock",
+		k8slock.RetryWaitDuration(time.Second*30),
+		k8slock.Namespace(namespace),
+		k8slock.TTL(time.Hour*2),
+		k8slock.ClientID(holdername),
+	)
 }
 
 func main() {
