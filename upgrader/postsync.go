@@ -88,6 +88,17 @@ func ReloadComponent(ctx *cli.Context, client dynamic.Interface, namespace strin
 	return nil
 }
 
+func DeleteK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, secretName string) error {
+	err := client.Resource(schema.GroupVersionResource{
+		Resource: "secrets",
+		Version:  "v1",
+	}).Namespace(namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete secret: ", secretName)
+	}
+	return nil
+}
+
 // Apply k8s secret.
 // Make ResourceVersion empty if you don't want to overwrite existing data.
 func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, secret *corev1.Secret) (*corev1.Secret, error) {
@@ -399,21 +410,21 @@ func PostSyncHook(ctx *cli.Context) error {
 
 		// TODO: Find leader of controller.
 		log.Info("Reloading controller's internal certificates")
-		err = ReloadComponent(ctx, client, namespace, ControllerPodSelector)
+		err = ReloadComponent(ctx, client, namespace, ControllerPodLabelSelector)
 		if err != nil {
 			// TODO: rollback
 			return errors.Wrap(err, "failed to reload controller's internal cert. Rolling back.")
 		}
 
 		log.Info("Reloading enforcer's internal certificates")
-		err = ReloadComponent(ctx, client, namespace, EnforcerPodSelector)
+		err = ReloadComponent(ctx, client, namespace, EnforcerPodLabelSelector)
 		if err != nil {
 			// TODO: rollback
 			return errors.Wrap(err, "failed to reload enforcer's internal cert. Rolling back.")
 		}
 
 		log.Info("Reloading scanner's internal certificates")
-		err = ReloadComponent(ctx, client, namespace, ScannerPodSelector)
+		err = ReloadComponent(ctx, client, namespace, ScannerPodLabelSelector)
 		if err != nil {
 			// TODO: rollback
 			return errors.Wrap(err, "failed to reload scanner's internal cert. Rolling back.")

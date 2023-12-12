@@ -52,9 +52,10 @@ var (
 )
 
 var (
-	ControllerPodSelector = fields.OneTermEqualSelector("app", "neuvector-controller-pod").String()
-	ScannerPodSelector    = fields.OneTermEqualSelector("app", "neuvector-scanner-pod").String()
-	EnforcerPodSelector   = fields.OneTermEqualSelector("app", "neuvector-enforcer-pod").String()
+	ControllerPodLabelSelector = fields.OneTermEqualSelector("app", "neuvector-controller-pod").String()
+	ScannerPodLabelSelector    = fields.OneTermEqualSelector("app", "neuvector-scanner-pod").String()
+	EnforcerPodLabelSelector   = fields.OneTermEqualSelector("app", "neuvector-enforcer-pod").String()
+	RunningPodFieldSelector    = fields.OneTermEqualSelector("status.phase", "Running").String()
 )
 
 var (
@@ -87,7 +88,7 @@ func containLegacyDefaultInternalCerts(client dynamic.Interface, namespace strin
 			Version:  "v1",
 		},
 	).Namespace(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: ControllerPodSelector,
+		LabelSelector: ControllerPodLabelSelector,
 	})
 	if err != nil {
 		return false, errors.Wrap(err, "failed to find controller pods")
