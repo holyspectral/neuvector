@@ -71,6 +71,7 @@ func ResourceExists(ctx *cli.Context, client dynamic.Interface, resource schema.
 }
 
 func GetRemoteCert(host string, port string) (*x509.Certificate, error) {
+	// #nosec G402 InsecureSkipVerify is required to get remote cert anonymously.
 	conf := &tls.Config{
 		InsecureSkipVerify: true,
 	}

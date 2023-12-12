@@ -94,7 +94,7 @@ func DeleteK8sSecret(ctx context.Context, client dynamic.Interface, namespace st
 		Version:  "v1",
 	}).Namespace(namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "failed to delete secret: ", secretName)
+		return errors.Wrapf(err, "failed to delete secret: %v", secretName)
 	}
 	return nil
 }
@@ -217,14 +217,8 @@ func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, cli
 	return err
 }
 
-func Reload(conn *grpc.ClientConn) {
-	// TODO: call reload
-	// TODO: Should we depend on share?
-	client := share.NewMigrationServiceClient(conn)
-	client.Reload(context.TODO(), &share.ReloadRequest{})
-}
-
 func NewGRPCClient(ctx context.Context, endpoint string, cacertPath string, certPath string, keyPath string, subject string) (*grpc.ClientConn, error) {
+	// #nosec G304 this is by design.
 	caCert, err := ioutil.ReadFile(cacertPath)
 	if err != nil {
 		return nil, err
@@ -244,6 +238,7 @@ func NewGRPCClient(ctx context.Context, endpoint string, cacertPath string, cert
 		RootCAs:      caCertPool,
 		Certificates: []tls.Certificate{cert},
 		ServerName:   subject,
+		MinVersion:   tls.VersionTLS12,
 	}
 	creds := credentials.NewTLS(config)
 
