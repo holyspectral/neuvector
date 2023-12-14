@@ -53,10 +53,11 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 		path.Join(InternalCertDir, InternalCACert),
 		path.Join(InternalCertDir, InternalCert),
 		path.Join(InternalCertDir, InternalCertKey),
+		tls.VersionTLS11,
 	)
 }
 
-func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath string, keyPath string) (*GRPCServer, error) {
+func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath string, keyPath string, minTLSVersion uint16) (*GRPCServer, error) {
 	// CA cert
 	caCert, err := ioutil.ReadFile(cacertPath)
 	if err != nil {
@@ -74,11 +75,12 @@ func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath stri
 	config := &tls.Config{
 		ClientCAs:                caCertPool,
 		Certificates:             []tls.Certificate{cert},
-		MinVersion:               tls.VersionTLS11,
 		PreferServerCipherSuites: true,
 		CipherSuites:             utils.GetSupportedTLSCipherSuites(),
 		ClientAuth:               tls.RequireAndVerifyClientCert,
 	}
+	config.MinVersion = minTLSVersion
+
 	creds := credentials.NewTLS(config)
 
 	opts := []grpc.ServerOption{

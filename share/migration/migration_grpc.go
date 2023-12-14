@@ -207,7 +207,9 @@ func StartMigrationGRPCServer(port uint16, reloadFuncs []func([]byte, []byte, []
 		grpc, err = cluster.NewGRPCServerTCPWithCerts(endpoint,
 			"/etc/neuvector/certs/internal/migration/ca.cert",
 			"/etc/neuvector/certs/internal/migration/cert.pem",
-			"/etc/neuvector/certs/internal/migration/key.pem")
+			"/etc/neuvector/certs/internal/migration/key.pem",
+			tls.VersionTLS12,
+		)
 		if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Fail to create GRPC server")
 			// Sometimes port is not ready for reuse.  Retry.

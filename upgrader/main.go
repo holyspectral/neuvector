@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/pem"
+	"net"
 	"os"
 	"reflect"
 	"time"
@@ -32,6 +35,10 @@ const (
 	CACERT_FILENAME = "ca.crt"
 	CERT_FILENAME   = "tls.crt"
 	KEY_FILENAME    = "tls.key"
+
+	NEW_SECRET_PREFIX    = "new-"
+	DEST_SECRET_PREFIX   = "dest-"
+	ACTIVE_SECRET_PREFIX = "active-"
 )
 
 // Go 1.14 + client-go  We had below options at design stage:
@@ -76,6 +83,26 @@ func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
 	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
 		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
 		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
+}
+
+func GetRemoteCert(host string, port string) (*x509.Certificate, error) {
+	// #nosec G402 InsecureSkipVerify is required to get remote cert anonymously.
+	conf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	addr := net.JoinHostPort(host, port)
+
+	conn, err := tls.Dial("tcp", addr, conf)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to dial host: %s", host)
+	}
+	defer conn.Close()
+	certs := conn.ConnectionState().PeerCertificates
+	if len(certs) == 0 {
+		return nil, errors.New("no remote certificate is available")
+	}
+	return certs[0], nil
 }
 
 // Check if a legacy internal cert is still being used.
@@ -175,17 +202,7 @@ func main() {
 			Usage: "The k8s namespace where NeuVector is running in",
 		},
 		&cli.StringFlag{
-			Name:  "active-secret-name",
-			Value: "neuvector-internal-certs-active",
-			Usage: "the active secret used by containers",
-		},
-		&cli.StringFlag{
-			Name:  "dest-secret-name",
-			Value: "neuvector-internal-certs-dest",
-			Usage: "the storage of internal certs",
-		},
-		&cli.StringFlag{
-			Name:  "new-secret-name",
+			Name:  "internal-secret-name",
 			Value: "neuvector-internal-certs",
 			Usage: "the new secret to be applied",
 		},
@@ -196,7 +213,7 @@ func main() {
 			Usage: "Run neuvector pre sync hook",
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
-					Name:  "force-create-cert",
+					Name:  "force-update-cert",
 					Value: false,
 					Usage: "Force to create new internal certificates",
 				},
@@ -261,5 +278,5 @@ func main() {
 		log.WithError(err).Fatal("failed to run the command")
 		os.Exit(1)
 	}
-	return
+
 }

@@ -165,6 +165,9 @@ func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, cli
 	var deployment appv1.Deployment
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(item.UnstructuredContent(), &deployment)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert deployment")
+	}
 
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", deployment.Name).String()
 	lw := &cache.ListWatch{
@@ -244,9 +247,9 @@ func NewGRPCClient(ctx context.Context, endpoint string, cacertPath string, cert
 
 	return grpc.DialContext(ctx, endpoint,
 		grpc.WithTransportCredentials(creds),
-		grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
-		grpc.WithCompressor(grpc.NewGZIPCompressor()),
-		grpc.WithDefaultCallOptions(grpc.FailFast(true)),
+		grpc.WithDecompressor(grpc.NewGZIPDecompressor()), //lint:ignore SA1019 match with controller side code.
+		grpc.WithCompressor(grpc.NewGZIPCompressor()),     //lint:ignore SA1019 match with controller side code.
+		grpc.WithDefaultCallOptions(grpc.FailFast(true)),  //lint:ignore SA1019 match with controller side code.
 	)
 }
 
@@ -259,6 +262,9 @@ func PostSyncHook(ctx *cli.Context) error {
 	activeSecretName := ctx.String("active-secret-name")
 
 	locker, err := CreateLocker(namespace, "postsync-hook")
+	if err != nil {
+		return errors.Wrap(err, "failed to create cluster-wise lock")
+	}
 
 	locker.Lock()
 	log.Info("lock is acquired.")
@@ -288,6 +294,11 @@ func PostSyncHook(ctx *cli.Context) error {
 		namespace,
 		"neuvector-controller-pod",
 	)
+	if err != nil {
+		return errors.Wrap(err, "failed to wait controller to rollout")
+	}
+
+	// 2. NOTE: we don't wait for enforcer and scanner because their certs don't have to be changed at the same time.
 
 	// Flow:
 	// src secret => target secret.  Eventually src and target will be the same.
