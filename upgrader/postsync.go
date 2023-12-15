@@ -261,16 +261,6 @@ func PostSyncHook(ctx *cli.Context) error {
 	newSecretName := ctx.String("new-secret-name")
 	activeSecretName := ctx.String("active-secret-name")
 
-	locker, err := CreateLocker(namespace, "postsync-hook")
-	if err != nil {
-		return errors.Wrap(err, "failed to create cluster-wise lock")
-	}
-
-	locker.Lock()
-	log.Info("lock is acquired.")
-
-	defer locker.Unlock()
-
 	var secret *corev1.Secret
 
 	client, err := NewK8sClient(kubeconfig)

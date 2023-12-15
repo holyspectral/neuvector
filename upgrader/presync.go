@@ -24,6 +24,10 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+const (
+	UPGRADER_JOB_NAME = "neuvector-upgrader-job"
+)
+
 func GetInternalCACertTemplate(validDays int) *x509.Certificate {
 	return &x509.Certificate{
 		SerialNumber: big.NewInt(5029),
@@ -99,7 +103,7 @@ func GetPodOwnerUID(ctx *cli.Context, client dynamic.Interface, namespace string
 
 // Check if all controller pods belonging to the same replica set.
 // If yes, it's a fresh install.  If no, it's during a rolling update.
-func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string) (bool, error) {
+func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string, ownerUID string) (bool, error) {
 
 	item, err := client.Resource(
 		schema.GroupVersionResource{
@@ -112,11 +116,6 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 	})
 	if err != nil {
 		return false, errors.Wrap(err, "failed to find controller pods")
-	}
-
-	ownerUID, err := GetPodOwnerUID(ctx, client, namespace)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get this pod's owner UID")
 	}
 
 	var pods corev1.PodList
@@ -177,7 +176,7 @@ func ShouldUpgradeInternalCert(ctx *cli.Context, secret *corev1.Secret) (bool, e
 // If it's a fresh-install, create an internal certificate that we can use directly.
 // If it's a upgrade, leave it as it is.
 // Post-upgrade/post-sync hook should deal with it.
-func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namespace string) error {
+func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namespace string, ownerUID string) error {
 	if ctx.Bool("user-managed-cert") {
 		// We should never update user-specified cert, so nothing to do here.
 		log.Info("User has specified internal certs")
@@ -194,7 +193,7 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 		}
 	}
 
-	freshInstall, err := IsFreshInstall(ctx, client, namespace)
+	freshInstall, err := IsFreshInstall(ctx, client, namespace, ownerUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to check if this is fresh install or rolling update")
 	}
@@ -216,7 +215,7 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 		}
 		if !shouldUpgradeCert {
 			// Nothing to do
-			log.Info("No need to upgrade internal cert.  Finishing.")
+			log.Info("No need to upgrade internal cert.")
 			return nil
 		}
 	} else {
@@ -342,8 +341,14 @@ func PreSyncHook(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create k8s client")
 	}
+
+	ownerUID, err := GetPodOwnerUID(ctx, client, namespace)
+	if err != nil {
+		return errors.Wrap(err, "failed to get this pod's owner UID")
+	}
+
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		if err := InitializeInternalSecret(ctx, client, namespace); err != nil {
+		if err := InitializeInternalSecret(ctx, client, namespace, ownerUID); err != nil {
 			return errors.Wrap(err, "failed to initialize internal secret")
 		}
 		return nil
@@ -354,7 +359,9 @@ func PreSyncHook(ctx *cli.Context) error {
 		}
 		return err
 	}
-	log.Info("Command completes")
+	if err := CreatePostSyncJob(ctx, client, namespace, ownerUID); err != nil {
+		return errors.Wrap(err, "failed to create post sync job")
+	}
 
 	return nil
 }

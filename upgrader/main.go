@@ -182,7 +182,7 @@ func CreateLocker(namespace string, holdername string) (*k8slock.Locker, error) 
 		"internal-cert-migration-lock",
 		k8slock.RetryWaitDuration(time.Second*30),
 		k8slock.Namespace(namespace),
-		k8slock.TTL(time.Hour*2),
+		k8slock.TTL(time.Minute*15),
 		k8slock.ClientID(holdername),
 	)
 }
