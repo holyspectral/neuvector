@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"path"
+	"reflect"
 	"strconv"
 
 	"github.com/neuvector/neuvector/share"
@@ -28,8 +31,96 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
+
+// We should just verify its cert signer
+func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
+	if s1 == nil && s2 == nil {
+		return true
+	}
+	if s1 == nil || s2 == nil {
+		return false
+	}
+	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
+		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
+		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
+}
+
+func GetRemoteCert(host string, port string) (*x509.Certificate, error) {
+	// #nosec G402 InsecureSkipVerify is required to get remote cert anonymously.
+	conf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	addr := net.JoinHostPort(host, port)
+
+	conn, err := tls.Dial("tcp", addr, conf)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to dial host: %s", host)
+	}
+	defer conn.Close()
+	certs := conn.ConnectionState().PeerCertificates
+	if len(certs) == 0 {
+		return nil, errors.New("no remote certificate is available")
+	}
+	return certs[0], nil
+}
+
+// Check if a legacy internal cert is still being used.
+// TODO: Only call this during pre-install hook.
+// TODO: Consider argocd and operator-sdk
+func containLegacyDefaultInternalCerts(client dynamic.Interface, namespace string) (bool, error) {
+	item, err := client.Resource(
+		schema.GroupVersionResource{
+			Resource: "pods",
+			Version:  "v1",
+		},
+	).Namespace(namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: ControllerPodLabelSelector,
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "failed to find controller pods")
+	}
+
+	var pods corev1.PodList
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &pods)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to read pod list")
+	}
+
+	for _, pod := range pods.Items {
+		log.WithFields(log.Fields{
+			"pod": pod.Status.PodIP,
+		}).Info("Getting gRPC and consul certs")
+
+		cert, err := GetRemoteCert(pod.Status.PodIP, ControllerConsulPort)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to get remote certs from: %s", pod.Status.PodIP)
+		}
+
+		// Convert cert back to pem for comparison
+		var b bytes.Buffer
+		err = pem.Encode(&b, &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: cert.Raw,
+		})
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to convert remote cert to PEM")
+		}
+
+		log.Infof("Issuer Name: %s\n", cert.Issuer)
+		log.Infof("Expiry: %s \n", cert.NotAfter.Format("2006-January-02"))
+		log.Infof("Common Name: %s \n", cert.Issuer.CommonName)
+		if b.String() == LegacyCert {
+			log.Info("Matched.")
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // Discover components based on label and call its reload API.
 func ReloadComponent(ctx *cli.Context, client dynamic.Interface, namespace string, selector string) error {
@@ -257,22 +348,13 @@ func PostSyncHook(ctx *cli.Context) error {
 	namespace := ctx.String("namespace")
 	kubeconfig := ctx.String("kube-config")
 	timeout := ctx.Duration("rollout-timeout")
-	dstSecretName := ctx.String("dest-secret-name")
-	newSecretName := ctx.String("new-secret-name")
-	activeSecretName := ctx.String("active-secret-name")
+	secretName := ctx.String("internal-secret-name")
 
 	var secret *corev1.Secret
 
 	client, err := NewK8sClient(kubeconfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create k8s client")
-	}
-
-	// TODO
-	if legacy, err := containLegacyDefaultInternalCerts(client, namespace); err != nil {
-		return errors.Wrap(err, "failed to get remote internal certs")
-	} else {
-		log.WithError(err).Info(legacy)
 	}
 
 	// 1. Wait until deployment completes
@@ -288,6 +370,21 @@ func PostSyncHook(ctx *cli.Context) error {
 		return errors.Wrap(err, "failed to wait controller to rollout")
 	}
 
+	// Check remote certificate and make sure that these servers are up.
+	retry.OnError(retry.DefaultBackoff, func(err error) bool {
+		log.WithError(err).Warn("failed to get remote internal cert.")
+		return true
+	}, func() error {
+		containsLegacyCerts, err := containLegacyDefaultInternalCerts(client, namespace)
+		if err != nil {
+			return errors.Wrap(err, "failed to get remote internal certs")
+		}
+		if containsLegacyCerts {
+			log.Info("Legacy cert is detected")
+		}
+		return nil
+	})
+
 	// 2. NOTE: we don't wait for enforcer and scanner because their certs don't have to be changed at the same time.
 
 	// Flow:
@@ -302,67 +399,32 @@ func PostSyncHook(ctx *cli.Context) error {
 	// 		b. a src secret is present
 	// 2. Update target cert and call each component's reload.
 
-	var srcSecret, dstSecret, activeSecret *corev1.Secret
-
-	if dstSecret, err = GetK8sSecret(context.TODO(), client, namespace, dstSecretName); err != nil {
+	if secret, err = GetK8sSecret(context.TODO(), client, namespace, secretName); err != nil {
 		if !k8sError.IsNotFound(err) {
-			log.WithError(err).Fatal("failed to find destination secret")
+			return errors.Wrap(err, "failed to find source secret")
 		}
+		log.WithError(err).Info("no internal secret is created.  Nothing to do")
+		return nil
 	}
 
-	if srcSecret, err = GetK8sSecret(context.TODO(), client, namespace, newSecretName); err != nil {
-		if !k8sError.IsNotFound(err) {
-			log.WithError(err).Fatal("failed to find source secret")
-		}
+	if !IsCertPresent(secret, NEW_SECRET_PREFIX) {
+		// init container decided that it doesn't need new internal cert.
+		log.Info("No new certificate is specified")
+		return nil
 	}
 
-	if activeSecret, err = GetK8sSecret(context.TODO(), client, namespace, activeSecretName); err != nil {
-		if !k8sError.IsNotFound(err) {
-			log.WithError(err).Info("failed to find active secret")
-		}
-	}
-
-	if EqualInternalCerts(srcSecret, activeSecret) {
-		// If srcSecret and dstSecret are the same, it doesn't mean it's already rolled out.
-		// For example, activeSecret can be in a intermediate status.
-		// So, only when srcSecret and activeSecret are the same, we exit.
+	if !IsUpgradeInProgress(ctx, secret) {
+		// When everything is in sync, no need to perform rollout.
 		log.Info("Certificate is up-to-date.")
 		return nil
 	}
 
-	// Fill srcSecret and dstSecret so they're not nil
-	if srcSecret == nil {
-		// TODO: We provide the secret all the time during testing, but we should generate one in the future.
-		log.Fatal("Provide a internal cert named: ", newSecretName)
-	}
-
-	// When dst secret is absent, that means it's still using default certs.
-	if dstSecret == nil {
-		dstSecret = &corev1.Secret{
-			Data: map[string][]byte{
-				CACERT_FILENAME: []byte(LegacyCaCert),
-				CERT_FILENAME:   []byte(LegacyCert),
-				KEY_FILENAME:    []byte(LegacyKey),
-			},
-		}
-	}
-
-	if activeSecret == nil {
-		secret = &corev1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Secret",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name: activeSecretName,
-				//Labels:      map[string]string{}, // TODO: fill these
-				//Annotations: map[string]string{}, // TODO: fill these
-			},
-			Data: map[string][]byte{},
-			Type: "Opaque",
-		}
-	} else {
-		secret = activeSecret
+	if !IsCertPresent(secret, DEST_SECRET_PREFIX) {
+		// TODO: Move to init container?
+		// No destination secret is specified.  Fill legacy cert in.
+		secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME] = []byte(LegacyCaCert)
+		secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] = []byte(LegacyCert)
+		secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] = []byte(LegacyKey)
 	}
 
 	for step := range []int{0, 1, 2} {
@@ -377,23 +439,30 @@ func PostSyncHook(ctx *cli.Context) error {
 		// newcert: {xxx, xxx, xxx}
 		switch step {
 		case (0):
-			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], dstSecret.Data[CACERT_FILENAME]...)
-			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], []byte("\n")...)
-			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], srcSecret.Data[CACERT_FILENAME]...)
+			// Combined CA
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = nil
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = append(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME]...)
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = append(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], []byte("\n")...)
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = append(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME]...)
 
-			secret.Data[CERT_FILENAME] = dstSecret.Data[CERT_FILENAME]
-			secret.Data[KEY_FILENAME] = dstSecret.Data[KEY_FILENAME]
+			// Old cert/key
+			secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME] = secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME]
+			secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME] = secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME]
 		case (1):
-			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], dstSecret.Data[CACERT_FILENAME]...)
-			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], []byte("\n")...)
-			secret.Data[CACERT_FILENAME] = append(secret.Data[CACERT_FILENAME], srcSecret.Data[CACERT_FILENAME]...)
+			// Combined CA
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = nil
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = append(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME]...)
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = append(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], []byte("\n")...)
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = append(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME]...)
 
-			secret.Data[KEY_FILENAME] = srcSecret.Data[KEY_FILENAME]
-			secret.Data[CERT_FILENAME] = srcSecret.Data[CERT_FILENAME]
+			// New cert/key
+			secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]
+			secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME] = secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]
 		case (2):
-			secret.Data[CACERT_FILENAME] = srcSecret.Data[CACERT_FILENAME]
-			secret.Data[KEY_FILENAME] = srcSecret.Data[KEY_FILENAME]
-			secret.Data[CERT_FILENAME] = srcSecret.Data[CERT_FILENAME]
+			// New CA/cert/key
+			secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME]
+			secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]
+			secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME] = secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]
 		}
 
 		// Replace secret with what we got from API server.
@@ -427,10 +496,11 @@ func PostSyncHook(ctx *cli.Context) error {
 		}
 	}
 
-	// Write secret in a different name
-	dstSecret.Data[CACERT_FILENAME] = secret.Data[CACERT_FILENAME]
-	dstSecret.Data[KEY_FILENAME] = secret.Data[KEY_FILENAME]
-	dstSecret.Data[CERT_FILENAME] = secret.Data[CERT_FILENAME]
+	// Write dest secret and finish the rollout
+	secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME]
+	secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]
+	secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] = secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]
+
 	if _, err := ApplyK8sSecret(context.TODO(), client, namespace, secret); err != nil {
 		log.WithError(err).Fatal("failed to write dest secret.")
 	}

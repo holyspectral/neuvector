@@ -25,7 +25,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const DefaultMigrationGRPCStartRetry = 10
+const (
+	DefaultMigrationGRPCStartRetry = 10
+
+	ACTIVE_CACERT_FILENAME = "active-ca.crt"
+	ACTIVE_CERT_FILENAME   = "active-tls.crt"
+	ACTIVE_KEY_FILENAME    = "active-tls.key"
+)
 
 var reloadLock sync.Mutex
 
@@ -137,9 +143,9 @@ func ReloadCert() ([]byte, []byte, []byte, error) {
 		return nil, nil, nil, errors.New("data in secret are not found")
 	}
 
-	cacert = data["ca.crt"]
-	cert = data["tls.crt"]
-	key = data["tls.key"]
+	cacert = data[ACTIVE_CACERT_FILENAME]
+	cert = data[ACTIVE_CERT_FILENAME]
+	key = data[ACTIVE_KEY_FILENAME]
 
 	if err := verifyCert(cacert, cert, key); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "invalid key/cert")

@@ -31,7 +31,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 			Version:  "v1",
 			Group:    "batch",
 		},
-	).Namespace(namespace).Get(ctx.Context, UPGRADER_JOB_NAME, metav1.GetOptions{})
+	).Namespace(namespace).Get(ctx.Context, "neuvector-upgrader-job", metav1.GetOptions{})
 
 	if err != nil {
 		if !k8sError.IsNotFound(err) {
@@ -55,13 +55,16 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 		}
 
 		log.Info("Old job is detected...Will delete it.")
+		foreground := metav1.DeletePropagationForeground
 		err := client.Resource(
 			schema.GroupVersionResource{
 				Resource: "jobs",
 				Version:  "v1",
 				Group:    "batch",
 			},
-		).Namespace(namespace).Delete(ctx.Context, UPGRADER_JOB_NAME, metav1.DeleteOptions{})
+		).Namespace(namespace).Delete(ctx.Context, UPGRADER_JOB_NAME, metav1.DeleteOptions{
+			PropagationPolicy: &foreground,
+		})
 		if err != nil {
 			return errors.Wrap(err, "failed to delete old upgrade job")
 		}

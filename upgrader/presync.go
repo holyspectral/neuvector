@@ -63,6 +63,19 @@ func GetInternalCertTemplate(validDays int) *x509.Certificate {
 	}
 }
 
+func IsCertPresent(secret *corev1.Secret, prefix string) bool {
+	if _, ok := secret.Data[prefix+CACERT_FILENAME]; !ok {
+		return false
+	}
+	if _, ok := secret.Data[prefix+CERT_FILENAME]; !ok {
+		return false
+	}
+	if _, ok := secret.Data[prefix+KEY_FILENAME]; !ok {
+		return false
+	}
+	return true
+}
+
 func IsSameCert(secret *corev1.Secret, prefix1 string, prefix2 string) bool {
 	return reflect.DeepEqual(secret.Data[prefix1+CACERT_FILENAME], secret.Data[prefix2+CACERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[prefix1+CERT_FILENAME], secret.Data[prefix2+CERT_FILENAME]) &&
@@ -72,7 +85,7 @@ func IsSameCert(secret *corev1.Secret, prefix1 string, prefix2 string) bool {
 // The upgrader will be working on moving newSecret to activeSecret and finally destSecret.
 // That means, after upgrade, these three secrets should be the same.
 // If they're the same, return false, otherwise, return true.
-func IsBeingUpgraded(ctx *cli.Context, secret *corev1.Secret) bool {
+func IsUpgradeInProgress(ctx *cli.Context, secret *corev1.Secret) bool {
 	return !IsSameCert(secret, NEW_SECRET_PREFIX, DEST_SECRET_PREFIX) || !IsSameCert(secret, NEW_SECRET_PREFIX, ACTIVE_SECRET_PREFIX)
 }
 
@@ -202,7 +215,7 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 		log.Info("Internal secret is found.")
 
 		// Check if upgrader should still need to do its job.  If so, exit.
-		beingUpgraded := IsBeingUpgraded(ctx, secret)
+		beingUpgraded := IsUpgradeInProgress(ctx, secret)
 		if beingUpgraded {
 			log.Info("Cert rollout is still in progress.  We shouldn't change internal cert.")
 			return nil
@@ -322,31 +335,33 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 }
 
 func PreSyncHook(ctx *cli.Context) error {
+	skip := ctx.Bool("skip-cert-creation")
+
+	if skip {
+		log.Info("skipping certificate creation")
+		return nil
+	}
+
 	namespace := ctx.String("namespace")
 	kubeconfig := ctx.String("kube-config")
 
-	/*
-		locker, err := CreateLocker(namespace, "pre-sync-hook")
-		if err != nil {
-			return errors.Wrap(err, "failed to create cluster-wise lock")
-		}
-
-		locker.Lock()
-		log.Info("cluster-wise lock is acquired.")
-
-		defer locker.Unlock()
-	*/
+	log.Info("Creating k8s client")
 
 	client, err := NewK8sClient(kubeconfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to create k8s client")
 	}
 
+	log.Info("Getting this pod's owner UID")
+
 	ownerUID, err := GetPodOwnerUID(ctx, client, namespace)
 	if err != nil {
 		return errors.Wrap(err, "failed to get this pod's owner UID")
 	}
 
+	log.WithField("uid", ownerUID).Info("retrieved owner UID successfully")
+
+	log.Info("Initializing internal secrets")
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		if err := InitializeInternalSecret(ctx, client, namespace, ownerUID); err != nil {
 			return errors.Wrap(err, "failed to initialize internal secret")
@@ -359,9 +374,12 @@ func PreSyncHook(ctx *cli.Context) error {
 		}
 		return err
 	}
+
+	log.Info("Creating cert upgrade job")
 	if err := CreatePostSyncJob(ctx, client, namespace, ownerUID); err != nil {
 		return errors.Wrap(err, "failed to create post sync job")
 	}
 
+	log.Info("Completed")
 	return nil
 }

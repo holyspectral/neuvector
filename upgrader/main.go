@@ -1,14 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
-	"net"
 	"os"
-	"reflect"
 	"time"
 
 	"github.com/jrhouston/k8slock"
@@ -16,11 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -72,93 +61,6 @@ var (
 	ScannerGRPCPort      = "18402"
 )
 
-// We should just verify its cert signer
-func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
-	if s1 == nil && s2 == nil {
-		return true
-	}
-	if s1 == nil || s2 == nil {
-		return false
-	}
-	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
-		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
-		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
-}
-
-func GetRemoteCert(host string, port string) (*x509.Certificate, error) {
-	// #nosec G402 InsecureSkipVerify is required to get remote cert anonymously.
-	conf := &tls.Config{
-		InsecureSkipVerify: true,
-	}
-
-	addr := net.JoinHostPort(host, port)
-
-	conn, err := tls.Dial("tcp", addr, conf)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to dial host: %s", host)
-	}
-	defer conn.Close()
-	certs := conn.ConnectionState().PeerCertificates
-	if len(certs) == 0 {
-		return nil, errors.New("no remote certificate is available")
-	}
-	return certs[0], nil
-}
-
-// Check if a legacy internal cert is still being used.
-// TODO: Only call this during pre-install hook.
-// TODO: Consider argocd and operator-sdk
-func containLegacyDefaultInternalCerts(client dynamic.Interface, namespace string) (bool, error) {
-	item, err := client.Resource(
-		schema.GroupVersionResource{
-			Resource: "pods",
-			Version:  "v1",
-		},
-	).Namespace(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: ControllerPodLabelSelector,
-	})
-	if err != nil {
-		return false, errors.Wrap(err, "failed to find controller pods")
-	}
-
-	var pods corev1.PodList
-	err = runtime.DefaultUnstructuredConverter.
-		FromUnstructured(item.UnstructuredContent(), &pods)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to read pod list")
-	}
-
-	for _, pod := range pods.Items {
-		log.WithFields(log.Fields{
-			"pod": pod.Status.PodIP,
-		}).Info("Getting gRPC and consul certs")
-
-		cert, err := GetRemoteCert(pod.Status.PodIP, ControllerConsulPort)
-		if err != nil {
-			return false, errors.Wrapf(err, "failed to get remote certs from: %s", pod.Status.PodIP)
-		}
-
-		// Convert cert back to pem for comparison
-		var b bytes.Buffer
-		err = pem.Encode(&b, &pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: cert.Raw,
-		})
-		if err != nil {
-			return false, errors.Wrapf(err, "failed to convert remote cert to PEM")
-		}
-
-		log.Infof("Issuer Name: %s\n", cert.Issuer)
-		log.Infof("Expiry: %s \n", cert.NotAfter.Format("2006-January-02"))
-		log.Infof("Common Name: %s \n", cert.Issuer.CommonName)
-		if b.String() == LegacyCert {
-			log.Info("Matched.")
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func NewK8sClient(kubeconfig string) (dynamic.Interface, error) {
 	var err error
 	var config *rest.Config
@@ -205,6 +107,11 @@ func main() {
 			Name:  "internal-secret-name",
 			Value: "neuvector-internal-certs",
 			Usage: "the new secret to be applied",
+		},
+		&cli.BoolFlag{
+			Name:  "skip-cert-creation",
+			Value: false,
+			Usage: "skip cert creation",
 		},
 	}
 	app.Commands = cli.Commands{
