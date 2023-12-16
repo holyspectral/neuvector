@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -40,20 +39,7 @@ type MigrationService struct {
 }
 
 // TODO: Change me
-const certName = "neuvector-internal-certs-active"
-
-// This function rejects empty data.
-func decodeBase64(data []byte) ([]byte, error) {
-	if len(data) == 0 {
-		return nil, errors.New("empty data")
-	}
-
-	if cert, err := base64.StdEncoding.DecodeString(string(data)); err != nil {
-		return nil, err
-	} else {
-		return cert, nil
-	}
-}
+const certName = "neuvector-internal-certs"
 
 func verifyCert(cacert []byte, cert []byte, key []byte) error {
 
@@ -147,6 +133,10 @@ func ReloadCert() ([]byte, []byte, []byte, error) {
 	cert = data[ACTIVE_CERT_FILENAME]
 	key = data[ACTIVE_KEY_FILENAME]
 
+	if len(cacert) == 0 || len(cert) == 0 || len(key) == 0 {
+		// No active certs
+		return nil, nil, nil, nil
+	}
 	if err := verifyCert(cacert, cert, key); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "invalid key/cert")
 	}

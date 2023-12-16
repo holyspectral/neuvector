@@ -55,7 +55,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 		}
 
 		log.Info("Old job is detected...Will delete it.")
-		foreground := metav1.DeletePropagationForeground
+		background := metav1.DeletePropagationBackground
 		err := client.Resource(
 			schema.GroupVersionResource{
 				Resource: "jobs",
@@ -63,7 +63,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 				Group:    "batch",
 			},
 		).Namespace(namespace).Delete(ctx.Context, UPGRADER_JOB_NAME, metav1.DeleteOptions{
-			PropagationPolicy: &foreground,
+			PropagationPolicy: &background,
 		})
 		if err != nil {
 			return errors.Wrap(err, "failed to delete old upgrade job")

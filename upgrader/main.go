@@ -36,18 +36,6 @@ const (
 // 3. Use global.ORCH.StartWatchResource + Go 1.14 => should work too, but if we want cache support it will be getting complex.
 
 var (
-// certPath         = flag.String("cert-path", "/etc/neuvector/certs/internal/migration/", "The folder containing internal certs")
-// subjectCN        = flag.String("subject", "NeuVector", "expected subject name from remote server")
-// kubeconfig       = flag.String("kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
-// namespace        = flag.String("namespace", "neuvector", "Kubernetes namespace that NeuVector is running in.")
-// timeout          = flag.Duration("timeout", 0, "timeout for waiting deployment to complete")
-// grpcPort         = flag.Int("grpc-port", 18500, "the listening port for migration gRPC server")
-// activeSecretName = flag.String("active-secret-name", "neuvector-internal-certs-active", "the active secret used by containers")
-// dstSecretName    = flag.String("dest-secret-name", "neuvector-internal-certs-dest", "the secret location to be applied")
-// newSecretName    = flag.String("new-secret-name", "neuvector-internal-certs", "the new secret to be applied")
-)
-
-var (
 	ControllerPodLabelSelector = fields.OneTermEqualSelector("app", "neuvector-controller-pod").String()
 	ScannerPodLabelSelector    = fields.OneTermEqualSelector("app", "neuvector-scanner-pod").String()
 	EnforcerPodLabelSelector   = fields.OneTermEqualSelector("app", "neuvector-enforcer-pod").String()
