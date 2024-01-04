@@ -455,6 +455,7 @@ func putHotSyncRequest() int {
 }
 
 var lastSyncAt time.Time
+
 const GraphNodeCountSmall uint32 = 500
 const GraphNodeCountMedium uint32 = 1500
 const GraphNodeCountLarge uint32 = 3000
@@ -484,10 +485,10 @@ func syncCheck(isLeader bool) {
 	if len(ss.Mismatches) > 0 && !syncInProcess {
 
 		log.WithFields(log.Fields{
-			"graphcnt": ss.GraphNodeCount,
+			"graphcnt":   ss.GraphNodeCount,
 			"lastSyncAt": api.RESTTimeString(lastSyncAt),
-			"now": api.RESTTimeString(time.Now().UTC()),
-			}).Debug("")
+			"now":        api.RESTTimeString(time.Now().UTC()),
+		}).Debug("")
 		//sync consumes large memory, when cluster has large number of
 		//groups it affects cluster ramping up performance, so we ratelimit
 		//sync frequence based on number of GraphNodeCount
@@ -519,7 +520,7 @@ func syncCheck(isLeader bool) {
 				}
 			}
 		}
-		log.WithFields(log.Fields{"ss": ss}).Error("Detected sync error")
+		log.WithFields(log.Fields{"ss": ss}).Warn("Detected sync error")
 
 		if ctrls != nil {
 			// When cluster lose lead, anyone can be elected as the new lead, not necessarily

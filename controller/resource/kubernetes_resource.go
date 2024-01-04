@@ -1557,11 +1557,13 @@ func (d *kubernetes) startWatchResource(rt, ns string, wcb orchAPI.WatchCallback
 					atomic.StoreInt32(&watchFailedFlag, 1)
 				}
 
-				if scb != nil {
-					scb(ConnStateDisconnected, e)
-				}
+				// Ignore EOF, which is normal when calling Watch().  https://github.com/kubernetes/client-go/issues/623
 				if !strings.HasSuffix(e.Error(), io.EOF.Error()) {
 					log.WithFields(log.Fields{"resource": rt, "error": e}).Error("Watch failure")
+
+					if scb != nil {
+						scb(ConnStateDisconnected, e)
+					}
 					time.Sleep(kubeWatchRetry)
 				}
 			case <-ctx.Done():
@@ -1869,7 +1871,8 @@ func (d *kubernetes) SetFlavor(flavor string) error {
 }
 
 // revertCount: how many times the ValidatingWebhookConfiguration resource has been reverted by this controller.
-//              if it's >= 1, do not revert the ValidatingWebhookConfiguration resource just becuase of unknown matchExpressions keys
+//
+//	if it's >= 1, do not revert the ValidatingWebhookConfiguration resource just becuase of unknown matchExpressions keys
 func IsK8sNvWebhookConfigured(whName, failurePolicy string, wh *K8sAdmRegWebhook, checkNsSelector bool, revertCount *uint32,
 	unexpectedMatchKeys utils.Set) bool {
 
