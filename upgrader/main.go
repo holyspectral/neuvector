@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/jrhouston/k8slock"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
@@ -20,7 +20,7 @@ const (
 	TARGET_SECRET_SOURCE_NAME_CERT   = "target-cert"
 	TARGET_SECRET_SOURCE_NAME_KEY    = "target-key"
 
-	// TODO: change file name to align with cert-manger default.
+	// TODO: change file name to align with cert-manger default?
 	CACERT_FILENAME = "ca.crt"
 	CERT_FILENAME   = "tls.crt"
 	KEY_FILENAME    = "tls.key"
@@ -55,12 +55,12 @@ func NewK8sClient(kubeconfig string) (dynamic.Interface, error) {
 	if len(kubeconfig) > 0 {
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to build config from kubeconfig")
+			return nil, fmt.Errorf("failed to build config from kubeconfig: %w", err)
 		}
 	} else {
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to read in-cluster config")
+			return nil, fmt.Errorf("failed to read in-cluster config: %w", err)
 		}
 	}
 
@@ -72,7 +72,7 @@ func CreateLocker(namespace string, holdername string) (*k8slock.Locker, error) 
 		"internal-cert-migration-lock",
 		k8slock.RetryWaitDuration(time.Second*30),
 		k8slock.Namespace(namespace),
-		k8slock.TTL(time.Minute*15),
+		k8slock.TTL(time.Minute*5),
 		k8slock.ClientID(holdername),
 	)
 }
@@ -117,6 +117,11 @@ func main() {
 					Value: false,
 					Usage: "Whether user manages on their own",
 				},
+				&cli.StringFlag{
+					Name:  "image",
+					Value: "",
+					Usage: "The image path used by upgrader job",
+				},
 			},
 			Action: PreSyncHook,
 		},
@@ -153,6 +158,11 @@ func main() {
 					Name:  "cert-validity-days",
 					Value: 365 * 2, // 2 years
 					Usage: "The cert's validity period in days",
+				},
+				&cli.BoolFlag{
+					Name:  "fresh-install",
+					Value: false,
+					Usage: "Whether it's a fresh install.  When in fresh install mode, upgrader will create certs and bypass the rolling update flow.",
 				},
 			},
 			Action: PostSyncHook,

@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"reflect"
 	"time"
 
-	"github.com/pkg/errors"
+	"errors"
+
+	"github.com/neuvector/neuvector/controller/kv"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
@@ -35,26 +36,13 @@ import (
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
 
-// We should just verify its cert signer
-func EqualInternalCerts(s1 *corev1.Secret, s2 *corev1.Secret) bool {
-	if s1 == nil && s2 == nil {
-		return true
-	}
-	if s1 == nil || s2 == nil {
-		return false
-	}
-	return reflect.DeepEqual(s1.Data[CACERT_FILENAME], s2.Data[CACERT_FILENAME]) &&
-		reflect.DeepEqual(s1.Data[CERT_FILENAME], s2.Data[CERT_FILENAME]) &&
-		reflect.DeepEqual(s1.Data[KEY_FILENAME], s2.Data[KEY_FILENAME])
-}
-
 func GetRemoteCert(host string, port string, config *tls.Config) (*x509.Certificate, error) {
 	// #nosec G402 InsecureSkipVerify is required to get remote cert anonymously.
 	addr := net.JoinHostPort(host, port)
 
 	conn, err := tls.Dial("tcp", addr, config)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to dial host: %s", host)
+		return nil, fmt.Errorf("failed to dial host %s: %w", host, err)
 	}
 	defer conn.Close()
 	certs := conn.ConnectionState().PeerCertificates
@@ -64,69 +52,36 @@ func GetRemoteCert(host string, port string, config *tls.Config) (*x509.Certific
 	return certs[0], nil
 }
 
-func CheckRemoteServerAcceptsCerts(host string, port string) (bool, error) {
-
-	cert, err := GetRemoteCert(host, port, &tls.Config{
-		InsecureSkipVerify: true,
-	})
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to get remote certs from: %s", host)
-	}
-
-	//
-
-	// Convert cert back to pem for comparison
-	var b bytes.Buffer
-	err = pem.Encode(&b, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: cert.Raw,
-	})
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to convert remote cert to PEM")
-	}
-
-	log.Infof("Issuer Name: %s\n", cert.Issuer)
-	log.Infof("Expiry: %s \n", cert.NotAfter.Format("2006-January-02"))
-	log.Infof("Common Name: %s \n", cert.Issuer.CommonName)
-	if b.String() == LegacyCert {
-		log.Info("Matched.")
-		return true, nil
-	}
-	// TODO
-	return true, nil
-}
-
 // Check if a legacy internal cert is still being used.
-// TODO: Only call this during pre-install hook.
-// TODO: Consider argocd and operator-sdk
-func containLegacyDefaultInternalCerts(client dynamic.Interface, namespace string) (bool, error) {
+func containLegacyDefaultInternalCerts(ctx *cli.Context, client dynamic.Interface, namespace string) (bool, error) {
 	item, err := client.Resource(
 		schema.GroupVersionResource{
 			Resource: "pods",
 			Version:  "v1",
 		},
-	).Namespace(namespace).List(context.TODO(), metav1.ListOptions{
+	).Namespace(namespace).List(ctx.Context, metav1.ListOptions{
 		LabelSelector: ControllerPodLabelSelector,
 	})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to find controller pods")
+		return false, fmt.Errorf("failed to find controller pods: %w", err)
 	}
 
 	var pods corev1.PodList
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(item.UnstructuredContent(), &pods)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to read pod list")
+		return false, fmt.Errorf("failed to read pod list: %w", err)
 	}
 
 	for _, pod := range pods.Items {
 		log.WithFields(log.Fields{
 			"pod": pod.Status.PodIP,
-		}).Info("Getting gRPC and consul certs")
+		}).Info("Getting consul certs")
 
+		// Check consul port to make sure consul is already up.
 		cert, err := GetRemoteCert(pod.Status.PodIP, ControllerConsulPort, &tls.Config{InsecureSkipVerify: true})
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to get remote certs from: %s", pod.Status.PodIP)
+			return false, fmt.Errorf("failed to get remote certs from %s: %w", pod.Status.PodIP, err)
 		}
 
 		// Convert cert back to pem for comparison
@@ -136,86 +91,27 @@ func containLegacyDefaultInternalCerts(client dynamic.Interface, namespace strin
 			Bytes: cert.Raw,
 		})
 		if err != nil {
-			return false, errors.Wrapf(err, "failed to convert remote cert to PEM")
+			return false, fmt.Errorf("failed to convert remote cert to PEM: %w", err)
 		}
 
 		log.Infof("Issuer Name: %s\n", cert.Issuer)
 		log.Infof("Expiry: %s \n", cert.NotAfter.Format("2006-January-02"))
 		log.Infof("Common Name: %s \n", cert.Issuer.CommonName)
 		if b.String() == LegacyCert {
-			log.Info("Matched.")
+			log.Info("It's legacy cert.")
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-/*
-// Discover components based on label and call its reload API.
-
-	func ReloadComponent(ctx *cli.Context, client dynamic.Interface, namespace string, selector string) error {
-		grpcPort := ctx.Int("migration-grpc-port")
-		certPath := ctx.String("migration-cert-path")
-		subjectCN := ctx.String("certificate-cn")
-
-		item, err := client.Resource(
-			schema.GroupVersionResource{
-				Resource: "pods",
-				Version:  "v1",
-			},
-		).Namespace(namespace).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: selector,
-		})
-
-		if err != nil {
-			return errors.Wrap(err, "failed to list pod")
-		}
-
-		var pods corev1.PodList
-		err = runtime.DefaultUnstructuredConverter.
-			FromUnstructured(item.UnstructuredContent(), &pods)
-		if err != nil {
-			return errors.Wrap(err, "failed to read pod list")
-		}
-
-		log.Infof("Reloading %d components", len(pods.Items))
-
-		for _, pod := range pods.Items {
-			// TODO: deal with terminating pods
-			log.WithFields(log.Fields{
-				"pod": pod.Status.PodIP,
-			}).Info("triggering reloads")
-
-			podAddress := net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(grpcPort))
-			// TODO: better way to manage clients
-			conn, err := NewGRPCClient(context.TODO(), podAddress, path.Join(certPath, CACERT_FILENAME), path.Join(certPath, CERT_FILENAME), path.Join(certPath, KEY_FILENAME), subjectCN)
-			if err != nil {
-				return errors.Wrap(err, "failed to create grpc client")
-			}
-
-			mgClient := share.NewMigrationServiceClient(conn)
-			resp, err := mgClient.Reload(context.TODO(), &share.ReloadRequest{})
-			if err != nil {
-				return errors.Wrap(err, "failed to call reload API")
-			}
-			if !resp.Success {
-				return fmt.Errorf("reload API returned error: %s", resp.Error)
-			}
-			log.WithFields(log.Fields{
-				"resp": resp,
-				"pod":  podAddress,
-			}).Info("Certificate is reloaded")
-		}
-		return nil
-	}
-*/
 func DeleteK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, secretName string) error {
 	err := client.Resource(schema.GroupVersionResource{
 		Resource: "secrets",
 		Version:  "v1",
-	}).Namespace(namespace).Delete(context.TODO(), secretName, metav1.DeleteOptions{})
+	}).Namespace(namespace).Delete(ctx, secretName, metav1.DeleteOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "failed to delete secret: %v", secretName)
+		return fmt.Errorf("failed to delete secret %v: %w", secretName, err)
 	}
 	return nil
 }
@@ -228,22 +124,22 @@ func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, namespace str
 	var ret corev1.Secret
 	unstructedSecret, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert target secret")
+		return nil, fmt.Errorf("failed to convert target secret: %w", err)
 	}
 
 	if secret.ResourceVersion == "" {
 		item, err = client.Resource(schema.GroupVersionResource{
 			Resource: "secrets",
 			Version:  "v1",
-		}).Namespace(namespace).Create(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
+		}).Namespace(namespace).Create(ctx, &unstructured.Unstructured{Object: unstructedSecret}, metav1.CreateOptions{})
 	} else {
 		item, err = client.Resource(schema.GroupVersionResource{
 			Resource: "secrets",
 			Version:  "v1",
-		}).Namespace(namespace).Update(context.TODO(), &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
+		}).Namespace(namespace).Update(ctx, &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to update resource")
+		return nil, fmt.Errorf("failed to update resource: %w", err)
 	}
 
 	err = runtime.DefaultUnstructuredConverter.
@@ -260,34 +156,33 @@ func GetK8sSecret(ctx context.Context, client dynamic.Interface, namespace strin
 	).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get secret")
+		return nil, fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	var targetSecret corev1.Secret
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(item.UnstructuredContent(), &targetSecret)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse target secret")
+		return nil, fmt.Errorf("failed to parse target secret: %w", err)
 	}
 	return &targetSecret, nil
 }
 
 func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, client dynamic.Interface, namespace string, name string) error {
-	// Implemented kubectl rollout status
+	// kubectl rollout status
 	// See https://github.com/kubernetes/kubectl/blob/master/pkg/cmd/rollout/rollout_status.go
-	// TODO: kubectl plugin?
 
 	// 1. Get controller deployment.
 	item, err := client.Resource(gr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		// something wrong to get the deployment.  Give up.
-		return errors.Wrap(err, "failed to get neuvector-controller-pod deployment")
+		return fmt.Errorf("failed to get neuvector-controller-pod deployment: %w", err)
 	}
 	var deployment appv1.Deployment
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(item.UnstructuredContent(), &deployment)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert deployment")
+		return fmt.Errorf("failed to convert deployment: %w", err)
 	}
 
 	fieldSelector := fields.OneTermEqualSelector("metadata.name", deployment.Name).String()
@@ -304,7 +199,7 @@ func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, cli
 
 	statusViewer, err := polymorphichelpers.StatusViewerFor(deployment.GroupVersionKind().GroupKind())
 	if err != nil {
-		return errors.Wrap(err, "failed to find status viewer")
+		return fmt.Errorf("failed to find status viewer: %w", err)
 	}
 
 	// Wait until deployment finishes.  Note: this could last forever if some of pods can't be deployed.
@@ -316,7 +211,6 @@ func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, cli
 		}
 		switch t := e.Type; t {
 		case watch.Added, watch.Modified:
-			// TODO: examine if revision=0 is appropriate.
 			status, done, err := statusViewer.Status(e.Object.(runtime.Unstructured), 0)
 			if err != nil {
 				return false, err
@@ -396,12 +290,18 @@ func WaitUntilDeployed(ctx context.Context,
 				Info("The resource is not found.  This is normal when the components are not deployed.")
 			return nil
 		}
-		return errors.Wrap(err, "failed to wait controller to rollout")
+		return fmt.Errorf("failed to wait controller to rollout: %w", err)
 	}
 	return nil
 }
 
 func RestartResource(ctx *cli.Context, client dynamic.Interface, resourceGroup schema.GroupVersionResource, namespace string, resourceName string) error {
+	log.WithFields(log.Fields{
+		"resource":  resourceGroup,
+		"namespace": namespace,
+		"name":      resourceName,
+	}).Info("restarting resource")
+
 	switch resourceGroup.Resource {
 	case "daemonsets":
 	case "deployments":
@@ -409,12 +309,23 @@ func RestartResource(ctx *cli.Context, client dynamic.Interface, resourceGroup s
 		return fmt.Errorf("not supported resource type: %v", resourceGroup)
 	}
 
-	patch := map[string]interface{}{"Op": "replace", "Path": "/spec/template/metadata/labels/restartedAt", "Value": time.Now().Format(time.RFC3339)}
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"labels": map[string]interface{}{
+						"restartedAt": time.Now().Format("2006-01-02-15-04-05"),
+					},
+				},
+			},
+		},
+	}
+
 	patchBytes, _ := json.Marshal(patch)
 
-	_, err := client.Resource(resourceGroup).Namespace(namespace).Patch(ctx.Context, resourceName, types.JSONPatchType, patchBytes, metav1.PatchOptions{})
+	_, err := client.Resource(resourceGroup).Namespace(namespace).Patch(ctx.Context, resourceName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
 	if err != nil {
-		return errors.Wrap(err, "failed to update resource")
+		return fmt.Errorf("failed to update resource: %w", err)
 	}
 
 	return nil
@@ -431,7 +342,7 @@ func waitForContainersStart(ctx *cli.Context, client dynamic.Interface, namespac
 		"neuvector-controller-pod",
 		timeout)
 	if err != nil {
-		return errors.Wrap(err, "failed to wait controller to rollout")
+		return fmt.Errorf("failed to wait controller to rollout: %w", err)
 	}
 
 	err = WaitUntilDeployed(ctx.Context,
@@ -441,7 +352,7 @@ func waitForContainersStart(ctx *cli.Context, client dynamic.Interface, namespac
 		"neuvector-enforcer-pod",
 		timeout)
 	if err != nil {
-		return errors.Wrap(err, "failed to wait enforcer to rollout")
+		return fmt.Errorf("failed to wait enforcer to rollout: %w", err)
 	}
 
 	err = WaitUntilDeployed(ctx.Context,
@@ -451,7 +362,7 @@ func waitForContainersStart(ctx *cli.Context, client dynamic.Interface, namespac
 		"neuvector-scanner-pod",
 		timeout)
 	if err != nil {
-		return errors.Wrap(err, "failed to wait controller to rollout")
+		return fmt.Errorf("failed to wait controller to rollout: %w", err)
 	}
 
 	err = WaitUntilDeployed(ctx.Context,
@@ -461,47 +372,25 @@ func waitForContainersStart(ctx *cli.Context, client dynamic.Interface, namespac
 		"neuvector-registry-adapter-pod",
 		timeout)
 	if err != nil {
-		return errors.Wrap(err, "failed to wait controller to rollout")
+		return fmt.Errorf("failed to wait controller to rollout: %w", err)
 	}
 
+	// TODO: do we need this?
 	// Check remote certificate and make sure that these servers are up.
-	err = retry.OnError(retry.DefaultBackoff, func(err error) bool {
-		log.WithError(err).Warn("failed to get remote internal cert.")
-		return true
-	}, func() error {
-		containsLegacyCerts, err := containLegacyDefaultInternalCerts(client, namespace)
-		if err != nil {
-			return errors.Wrap(err, "failed to get remote internal certs")
-		}
-		if containsLegacyCerts {
-			log.Info("Legacy cert is detected")
-		}
-		return nil
-	})
+	_, err = containLegacyDefaultInternalCerts(ctx, client, namespace)
 	if err != nil {
-		return errors.Wrap(err, "failed to check existing certificate")
+		return fmt.Errorf("failed to get remote internal certs: %w", err)
 	}
 	return nil
 }
 
-func UpgradeInternalCerts(ctx *cli.Context) error {
-	namespace := ctx.String("namespace")
-	kubeconfig := ctx.String("kube-config")
-	secretName := ctx.String("internal-secret-name")
-
-	var secret *corev1.Secret
-
-	client, err := NewK8sClient(kubeconfig)
-	if err != nil {
-		return errors.Wrap(err, "failed to create k8s client")
+func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *corev1.Secret) error {
+	if secret == nil {
+		return errors.New("invalid secret")
 	}
 
-	log.Info("Waiting other containers to start")
-
-	//err = waitForContainersStart(ctx, client, namespace)
-	//if err != nil {
-	//	return errors.Wrap(err, "failed to wait for other containers start")
-	//}
+	namespace := ctx.String("namespace")
+	var err error
 
 	// 2. NOTE: we don't wait for enforcer and scanner because their certs don't have to be changed at the same time.
 
@@ -517,33 +406,6 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 	// 		b. a src secret is present
 	// 2. Update target cert and call each component's reload.
 
-	if secret, err = GetK8sSecret(ctx.Context, client, namespace, secretName); err != nil {
-		if !k8sError.IsNotFound(err) {
-			return errors.Wrap(err, "failed to find source secret")
-		}
-		log.WithError(err).Info("no internal secret is created.  Nothing to do")
-		return nil
-	}
-
-	if !IsCertPresent(secret, NEW_SECRET_PREFIX) {
-		// init container decided that it doesn't need new internal cert.
-		log.Info("No new certificate is specified")
-		return nil
-	}
-
-	if !IsUpgradeInProgress(ctx, secret) {
-		// When everything is in sync, no need to perform rollout.
-		log.Info("Certificate is up-to-date.")
-		return nil
-	}
-
-	if !IsCertPresent(secret, DEST_SECRET_PREFIX) {
-		// No destination secret is specified.  Fill legacy cert in.
-		secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME] = []byte(LegacyCaCert)
-		secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] = []byte(LegacyCert)
-		secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] = []byte(LegacyKey)
-	}
-
 	for step := range []int{0, 1, 2} {
 		// state: 0
 		// merged cacert + old cert + old key
@@ -551,9 +413,6 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 		// merged cacert + new cert + new key
 		// state: 2
 		// new cacert + new cert + new key
-		// TODO: CRD?
-		// oldcert: {xxx, xxx, xxx}
-		// newcert: {xxx, xxx, xxx}
 		switch step {
 		case (0):
 			// Combined CA
@@ -584,11 +443,8 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 
 		// Replace secret with what we got from API server.
 		secret, err = ApplyK8sSecret(ctx.Context, client, namespace, secret)
-
 		if err != nil {
-			// TODO: retry
-			//return nil, errors.Wrap(err, "failed to convert target secret")
-			log.WithError(err).Fatal("failed to create/update dst secret")
+			return fmt.Errorf("failed to create/update dst secret: %w", err)
 		}
 
 		// TODO: Find leader of controller.
@@ -599,8 +455,7 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 			namespace,
 			"neuvector-controller-pod")
 		if err != nil {
-			// TODO: rollback
-			return errors.Wrap(err, "failed to reload controller's internal cert. Rolling back.")
+			return fmt.Errorf("failed to reload controller's internal cert: %w", err)
 		}
 
 		log.Info("Reloading enforcer's internal certificates")
@@ -610,8 +465,7 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 			namespace,
 			"neuvector-enforcer-pod")
 		if err != nil {
-			// TODO: rollback
-			return errors.Wrap(err, "failed to reload enforcer's internal cert. Rolling back.")
+			return fmt.Errorf("failed to reload enforcer's internal cert: %w", err)
 		}
 
 		log.Info("Reloading scanner's internal certificates")
@@ -621,8 +475,7 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 			namespace,
 			"neuvector-scanner-pod")
 		if err != nil {
-			// TODO: rollback
-			return errors.Wrap(err, "failed to reload scanner's internal cert. Rolling back.")
+			return fmt.Errorf("failed to reload scanner's internal cert: %w", err)
 		}
 
 		log.Info("Reloading registry's internal certificates")
@@ -632,8 +485,12 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 			namespace,
 			"neuvector-registry-adapter-pod")
 		if err != nil {
-			// TODO: rollback
-			return errors.Wrap(err, "failed to reload scanner's internal cert. Rolling back.")
+			return fmt.Errorf("failed to reload scanner's internal cert: %w", err)
+		}
+
+		err = waitForContainersStart(ctx, client, namespace)
+		if err != nil {
+			return fmt.Errorf("failed to wait for other containers start: %w", err)
 		}
 	}
 
@@ -642,7 +499,7 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 	secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]
 	secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] = secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]
 
-	if _, err := ApplyK8sSecret(context.TODO(), client, namespace, secret); err != nil {
+	if _, err := ApplyK8sSecret(ctx.Context, client, namespace, secret); err != nil {
 		log.WithError(err).Fatal("failed to write dest secret.")
 	}
 
@@ -650,43 +507,253 @@ func UpgradeInternalCerts(ctx *cli.Context) error {
 	return nil
 }
 
+// Check if we should upgrade internal certs
+func ShouldUpgradeInternalCert(ctx *cli.Context, secret *corev1.Secret) (bool, error) {
+	if secret == nil {
+		// No internal certificate.  We should upgrade it.
+		return true, nil
+	}
+	renewThreshold := ctx.Duration("expiry-cert-threshold")
+
+	block, _ := pem.Decode(secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME])
+	if block == nil || block.Type != "CERTIFICATE" {
+		return false, errors.New("failed to decode certificate")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse x509 certificate: %w", err)
+	}
+	if time.Now().After(cert.NotAfter.Add(-renewThreshold)) {
+		log.WithFields(log.Fields{
+			"expiry":    cert.NotAfter,
+			"threshold": renewThreshold,
+		}).Info("Nearly expired certificate is detected")
+		return true, nil
+	}
+	return false, nil
+}
+
+// This function is meant to be called during pre-install/pre-upgrade/pre-sync hook.
+// If it's a fresh-install, create an internal certificate that we can use directly.
+// If it's a upgrade, leave it as it is.
+// Post-upgrade/post-sync hook should deal with it.
+func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namespace string, freshInstall bool, secret *corev1.Secret) (*corev1.Secret, error) {
+	var err error
+	secretName := ctx.String("internal-secret-name")
+
+	if secret != nil {
+		log.Info("Updating internal secret.")
+	} else {
+		log.Info("Creating internal secret.")
+		// Default secret is initialized using default certs. It will be updated later.
+		secret = &corev1.Secret{
+
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: secretName,
+				//Labels:      map[string]string{}, // TODO: fill these
+				//Annotations: map[string]string{}, // TODO: fill these
+			},
+			Data: map[string][]byte{
+				NEW_SECRET_PREFIX + CACERT_FILENAME: []byte(LegacyCaCert),
+				NEW_SECRET_PREFIX + CERT_FILENAME:   []byte(LegacyCert),
+				NEW_SECRET_PREFIX + KEY_FILENAME:    []byte(LegacyKey),
+
+				DEST_SECRET_PREFIX + CACERT_FILENAME: []byte(LegacyCaCert),
+				DEST_SECRET_PREFIX + CERT_FILENAME:   []byte(LegacyCert),
+				DEST_SECRET_PREFIX + KEY_FILENAME:    []byte(LegacyKey),
+
+				ACTIVE_SECRET_PREFIX + CACERT_FILENAME: []byte(LegacyCaCert),
+				ACTIVE_SECRET_PREFIX + CERT_FILENAME:   []byte(LegacyCert),
+				ACTIVE_SECRET_PREFIX + KEY_FILENAME:    []byte(LegacyKey),
+			},
+			Type: "Opaque",
+		}
+	}
+
+	log.WithFields(log.Fields{
+		"validity_days":  ctx.Int("ca-cert-validity-days"),
+		"rsa-key-length": ctx.Int("rsa-key-length"),
+	}).Info("creating/updating new certs...")
+
+	caValidityDays := ctx.Int("ca-cert-validity-days")
+	cacert, cakey, err := kv.GenerateCAWithRSAKey(GetInternalCACertTemplate(caValidityDays), ctx.Int("rsa-key-length"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ca cert: %w", err)
+	}
+	capair, err := tls.X509KeyPair(cacert, cakey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load ca key pair: %w", err)
+	}
+
+	log.WithFields(log.Fields{
+		"cert":          string(cacert),
+		"validity_days": caValidityDays,
+	}).Debug("New cacert is created.")
+
+	ca, err := x509.ParseCertificate(capair.Certificate[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ca cert: %w", err)
+	}
+
+	certValidityDays := ctx.Int("cert-validity-days")
+	cert, key, err := kv.GenerateTLSCertWithRSAKey(GetInternalCertTemplate(certValidityDays), ctx.Int("rsa-key-length"), ca, capair.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate TLS certificate: %w", err)
+	}
+
+	log.WithFields(log.Fields{
+		"cert":          string(cert),
+		"validity_days": certValidityDays,
+	}).Debug("New cert is created.")
+
+	// At this point, we have these keys/certs in PEM format:
+	// 1. cacert in cacert, cakey
+	// 2. internal certs in cert/key.
+	if freshInstall {
+		// Fresh install case.  We should apply to NEW_SECRET_NAME, DEST_SECRET_NAME and ACTIVE_SECRET_NAME
+
+		secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME] = cacert
+		secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME] = cert
+		secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME] = key
+
+		secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME] = cacert
+		secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] = cert
+		secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] = key
+
+		secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] = cacert
+		secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME] = cert
+		secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME] = key
+	} else {
+		// Upgrade case.  We should only provide NEW_SECRET and keep others intact
+		secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME] = cacert
+		secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME] = cert
+		secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME] = key
+	}
+
+	// TODO: Make sure that every operation will update the secret's label, so it's well synchronized.
+	// TODO: Use PATCH instead of CREATE/UPDATE.
+
+	// If there is other instance running at the same time, this function is expected to cause conflict.
+	var ret *corev1.Secret
+	if ret, err = ApplyK8sSecret(ctx.Context, client, namespace, secret); err != nil {
+		return nil, fmt.Errorf("failed to write dst secret: %w", err)
+	}
+	log.WithFields(log.Fields{
+		"secret": secretName,
+	}).Info("secret is created/updated")
+
+	return ret, nil
+}
+
+// In post sync hook, we did a few things.
+// 1. Check if the internal certs is already created.
+// 2. Create it if it doesn't exist, trigger a rolling update on controller and exit. (fresh install case)
+// 3. If it exists, examine the content.  If it's ok, just exit.  (upgrade from old, upgrade from new and reinstall)
+// 4. If the cert is in the progress of upgrade, try to finish it. (Interrupted upgrade)
+// 5. If the cert is not in progress, but its content is not ok, update it and trigger upgrade. (upgrade from old, upgrade from new and reinstall)
+//
+// Note: It's supposed to be only one upgrader job (post sync job) running at all time.
+//
+// empty => create secret => if secret is created and this is for fresh install, trigger rolling update and exit.
+// not empty => do rolling update per its state.
 func PostSyncHook(ctx *cli.Context) error {
 	namespace := ctx.String("namespace")
 	kubeconfig := ctx.String("kube-config")
+	secretName := ctx.String("internal-secret-name")
+	freshInstall := ctx.Bool("fresh-install")
 
 	log.Info("Creating k8s client")
 
 	client, err := NewK8sClient(kubeconfig)
 	if err != nil {
-		return errors.Wrap(err, "failed to create k8s client")
+		return fmt.Errorf("failed to create k8s client: %w", err)
 	}
 
-	log.Info("Getting this pod's owner UID")
+	// Initialization phase.
 
-	ownerUID, err := GetPodOwnerUID(ctx, client, namespace)
-	if err != nil {
-		return errors.Wrap(err, "failed to get this pod's owner UID")
-	}
-
-	log.WithField("uid", ownerUID).Info("retrieved owner UID successfully")
-
-	log.Info("Initializing internal secrets")
-	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		if err := InitializeInternalSecret(ctx, client, namespace, ownerUID); err != nil {
-			return errors.Wrap(err, "failed to initialize internal secret")
+	// 1. Check if internal cert exists.  Create it if not exists.
+	var secret *corev1.Secret
+	var retSecret *corev1.Secret
+	if secret, err = GetK8sSecret(ctx.Context, client, namespace, secretName); err != nil {
+		if !k8sError.IsNotFound(err) {
+			return fmt.Errorf("failed to find source secret: %w", err)
 		}
-		return nil
-	})
+	}
+
+	// Check if we should update cert.  If not, exit
+
+	// We create/update the secret in below scenario:
+	// 1. Secret is not there.
+	// 2. An option is given to force update the secret.
+	// 3. Secret is not up-to-date, say it's expired, and no upgrade is in progress.
+	if ctx.Bool("force-create-cert") {
+		// If user doesn't specify cert and force-cert-cert is true, we create new cert regardless it's expired or legacy or not.
+		log.Info("force-create-cert is true.  Will upgrade internal certs")
+	} else {
+		// Check if upgrader should still need to do its job.  If so, exit.
+		if inprogress := IsUpgradeInProgress(ctx, secret); inprogress {
+			log.Info("Cert rollout is still in progress.  Nothing to do here.")
+			return nil
+		}
+		if shouldUpgrade, err := ShouldUpgradeInternalCert(ctx, secret); err != nil {
+			return fmt.Errorf("failed to check if we should upgrade internal cert: %w", err)
+		} else if !shouldUpgrade {
+			log.Info("certificate is up-to-date")
+			return nil
+		} else {
+			log.Info("we should update internal certificate")
+		}
+	}
+
+	if retSecret, err = InitializeInternalSecret(ctx, client, namespace, freshInstall, secret); err != nil {
+		return fmt.Errorf("failed to initialize internal secret: %w", err)
+	}
+
+	// Now we can create/update internal certs.
+	log.Infof("Initializing internal secrets with retry: %+v", retry.DefaultRetry)
+	err = retry.OnError(retry.DefaultRetry,
+		func(error) bool {
+			// Retry on all errors...k8s job will make it retry anyway.
+			return true
+		},
+		func() error {
+			// TODO: make this controller pattern.
+			// The main logic.
+
+			// Fastpath. If it's a fresh install, no secret exists and the secret is created, it's a fresh install.
+			// We just trigger controller's rolling update and exit.
+			// Otherwise, go through the full rolling update.
+			if secret == nil && retSecret != nil && freshInstall {
+				err = RestartResource(ctx,
+					client,
+					schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+					namespace,
+					"neuvector-controller-pod")
+				if err != nil {
+					return fmt.Errorf("failed to restart controller pod: %w", err)
+				}
+				// Everything is good now.  Exit.
+				return nil
+			}
+
+			// Now we have certs ready. It's time to do rolling update.
+			err = UpgradeInternalCerts(ctx, client, retSecret)
+			if err != nil {
+				return fmt.Errorf("failed to upgrade internal certs: %w", err)
+			}
+
+			return nil
+		})
 	if err != nil {
 		if k8sError.IsAlreadyExists(err) {
 			log.WithError(err).Debug("failed to create resource. Other init container created it. Can be safely ignored.")
 		}
-		return err
+		return fmt.Errorf("failed to create internal certs: %w", err)
 	}
 
-	err = UpgradeInternalCerts(ctx)
-	if err != nil {
-		return errors.Wrap(err, "failed to upgrade internal certs")
-	}
 	return nil
 }
