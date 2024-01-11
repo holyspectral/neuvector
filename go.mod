@@ -106,7 +106,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5
-	k8s.io/client-go v0.22.5
+	k8s.io/client-go v1.5.2
 	k8s.io/cri-api v0.0.0
 	k8s.io/kubectl v0.21.14
 	sigs.k8s.io/yaml v1.3.0
