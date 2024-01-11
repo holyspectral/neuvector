@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"time"
 
 	"errors"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
@@ -35,6 +37,8 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
+
+type ContainerStatus map[string]string
 
 func GetRemoteCert(host string, port string, config *tls.Config) (*x509.Certificate, error) {
 	// #nosec G402 InsecureSkipVerify is required to get remote cert anonymously.
@@ -384,6 +388,75 @@ func waitForContainersStart(ctx *cli.Context, client dynamic.Interface, namespac
 	return nil
 }
 
+func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespace string, rev string, selector string) (bool, error) {
+	item, err := client.Resource(
+		schema.GroupVersionResource{
+			Resource: "pods",
+			Version:  "v1",
+		},
+	).Namespace(namespace).List(ctx.Context, metav1.ListOptions{
+		LabelSelector: selector,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to find controller pods: %w", err)
+	}
+
+	var pods corev1.PodList
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &pods)
+	if err != nil {
+		return false, fmt.Errorf("failed to read pod list: %w", err)
+	}
+
+	for _, pod := range pods.Items {
+		log.WithFields(log.Fields{
+			"pod": pod.Status.PodIP,
+		}).Info("Getting container status")
+
+		var status ContainerStatus
+		// TODO: timeout?
+		res, err := http.Get(fmt.Sprintf("http://%s:%d/healthz", pod.Status.PodIP, 18500))
+		if err != nil {
+			return false, fmt.Errorf("failed to connect to healthz endpoint: %w", err)
+		}
+		err = json.NewDecoder(res.Body).Decode(&status)
+		if err != nil {
+			return false, fmt.Errorf("failed to unmarshal healthz response: %w", err)
+		}
+
+		if status["cert.revision"] != rev {
+			log.WithFields(log.Fields{
+				"rev":     rev,
+				"pod":     pod.Status.PodIP,
+				"podName": pod.Name,
+			}).Info("container is not ready yet")
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func IsAllCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespace string, rev string) (bool, error) {
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, ControllerPodLabelSelector); err != nil {
+		return false, fmt.Errorf("failed to check controller pods: %w", err)
+	} else if !uptodate {
+		return false, nil
+	}
+
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, EnforcerPodLabelSelector); err != nil {
+		return false, fmt.Errorf("failed to check enforcer pods: %w", err)
+	} else if !uptodate {
+		return false, nil
+	}
+
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, ScannerPodLabelSelector); err != nil {
+		return false, fmt.Errorf("failed to check scanner pods: %w", err)
+	} else if !uptodate {
+		return false, nil
+	}
+	return true, nil
+}
+
 func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *corev1.Secret) error {
 	if secret == nil {
 		return errors.New("invalid secret")
@@ -447,51 +520,35 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *co
 			return fmt.Errorf("failed to create/update dst secret: %w", err)
 		}
 
-		// TODO: Find leader of controller.
-		log.Info("Reloading controller's internal certificates")
-		err = RestartResource(ctx,
-			client,
-			schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-			namespace,
-			"neuvector-controller-pod")
+		// Wait until all containers have the right revision.
+		log.WithField("revision", secret.ResourceVersion).Info("secret is created/updated")
+
+		uptodate := false
+		err := wait.ExponentialBackoff(wait.Backoff{
+			Steps:    10,
+			Duration: 100 * time.Millisecond,
+			Factor:   1.0,
+			Jitter:   0.1,
+		},
+			func() (bool, error) {
+				uptodate, err = IsAllCertRevisionUpToDate(ctx, client, namespace, secret.ResourceVersion)
+				switch {
+				case err == nil && uptodate:
+					// complete
+					return true, nil
+				case !uptodate:
+					// retry
+					return false, nil
+				default:
+					// return error
+					return false, err
+				}
+			})
 		if err != nil {
-			return fmt.Errorf("failed to reload controller's internal cert: %w", err)
+			log.WithError(err).Error("failed to wait for secret adopted")
+			return fmt.Errorf("failed to wait for secret adopted: %w", err)
 		}
 
-		log.Info("Reloading enforcer's internal certificates")
-		err = RestartResource(ctx,
-			client,
-			schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"},
-			namespace,
-			"neuvector-enforcer-pod")
-		if err != nil {
-			return fmt.Errorf("failed to reload enforcer's internal cert: %w", err)
-		}
-
-		log.Info("Reloading scanner's internal certificates")
-		err = RestartResource(ctx,
-			client,
-			schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-			namespace,
-			"neuvector-scanner-pod")
-		if err != nil {
-			return fmt.Errorf("failed to reload scanner's internal cert: %w", err)
-		}
-
-		log.Info("Reloading registry's internal certificates")
-		err = RestartResource(ctx,
-			client,
-			schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-			namespace,
-			"neuvector-registry-adapter-pod")
-		if err != nil {
-			return fmt.Errorf("failed to reload scanner's internal cert: %w", err)
-		}
-
-		err = waitForContainersStart(ctx, client, namespace)
-		if err != nil {
-			return fmt.Errorf("failed to wait for other containers start: %w", err)
-		}
 	}
 
 	// Write dest secret and finish the rollout
@@ -721,21 +778,12 @@ func PostSyncHook(ctx *cli.Context) error {
 			return true
 		},
 		func() error {
-			// TODO: make this controller pattern.
 			// The main logic.
 
 			// Fastpath. If it's a fresh install, no secret exists and the secret is created, it's a fresh install.
 			// We just trigger controller's rolling update and exit.
 			// Otherwise, go through the full rolling update.
 			if secret == nil && retSecret != nil && freshInstall {
-				err = RestartResource(ctx,
-					client,
-					schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-					namespace,
-					"neuvector-controller-pod")
-				if err != nil {
-					return fmt.Errorf("failed to restart controller pod: %w", err)
-				}
 				// Everything is good now.  Exit.
 				return nil
 			}

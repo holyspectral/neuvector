@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -496,7 +497,8 @@ func main() {
 
 	// Add cert reload
 	// TODO: Initialize those services too?
-	migration.InitializeInternalSecretController([]func([]byte, []byte, []byte) error{
+	ctx, controllerCancel := context.WithCancel(context.Background())
+	err = migration.InitializeInternalSecretController(ctx, []func([]byte, []byte, []byte) error{
 		// Reload consul
 		func(cacert []byte, cert []byte, key []byte) error {
 			if err := cluster.Reload(nil); err != nil {
@@ -523,6 +525,11 @@ func main() {
 			return nil
 		},
 	})
+	if err != nil {
+		// TODO: Error handling. Consider docker or other orchestration.
+		log.WithError(err).Error("failed to initialize internal secret controller")
+		os.Exit(-2)
+	}
 
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)
@@ -729,6 +736,8 @@ func main() {
 	if walkerTask != nil {
 		walkerTask.Close()
 	}
+
+	controllerCancel()
 
 	prober.Close() // both file monitors should be released at first
 	fileWatcher.Close()

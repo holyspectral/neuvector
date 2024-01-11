@@ -30,11 +30,13 @@ import (
 	"github.com/neuvector/neuvector/share/cluster"
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/healthz"
 	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/system"
 	"github.com/neuvector/neuvector/share/utils"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 var Host share.CLUSHost = share.CLUSHost{
@@ -482,14 +484,22 @@ func main() {
 
 	var grpcServer *cluster.GRPCServer
 
-	// Add cert reload
-	// TODO: Initialize those services too?
-	migration.InitializeInternalSecretController([]func([]byte, []byte, []byte) error{
+	go func() {
+		if err := healthz.StartHealthzServer(); err != nil {
+			log.WithError(err).Warn("failed to start healthz server")
+		}
+	}()
+
+	log.Info("start initializing internal secret controller and wait for internal secret creation if it's not created")
+	ctx, controllerCancel := context.WithCancel(context.Background())
+	// Initialize secrets.  Most of services are not running at this moment, so skip their reload functions.
+	err = migration.InitializeInternalSecretController(ctx, []func([]byte, []byte, []byte) error{
 		// Reload consul
 		func(cacert []byte, cert []byte, key []byte) error {
 			if err := cluster.Reload(nil); err != nil {
 				return fmt.Errorf("failed to reload consul: %w", err)
 			}
+
 			return nil
 		},
 		// Reload grpc server
@@ -511,6 +521,12 @@ func main() {
 			return nil
 		},
 	})
+	if err != nil {
+		// TODO: Error handling. Consider docker or other orchestration.
+		log.WithError(err).Error("failed to initialize internal secret controller")
+		os.Exit(-2)
+	}
+	log.Info("internal certificate is initialized")
 
 	eventLogKey := share.CLUSControllerEventLogKey(Host.ID, Ctrler.ID)
 	evqueue = cluster.NewObjectQueue(eventLogKey, cluster.DefaultMaxQLen)
@@ -931,6 +947,7 @@ func main() {
 	log.Info("Exiting ...")
 	atomic.StoreInt32(&exitingFlag, 1)
 
+	controllerCancel()
 	cache.Close()
 	orchConnector.Close()
 	ctrlDeleteLocalInfo()
