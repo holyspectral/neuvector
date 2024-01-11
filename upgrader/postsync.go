@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
@@ -295,95 +294,6 @@ func WaitUntilDeployed(ctx context.Context,
 			return nil
 		}
 		return fmt.Errorf("failed to wait controller to rollout: %w", err)
-	}
-	return nil
-}
-
-func RestartResource(ctx *cli.Context, client dynamic.Interface, resourceGroup schema.GroupVersionResource, namespace string, resourceName string) error {
-	log.WithFields(log.Fields{
-		"resource":  resourceGroup,
-		"namespace": namespace,
-		"name":      resourceName,
-	}).Info("restarting resource")
-
-	switch resourceGroup.Resource {
-	case "daemonsets":
-	case "deployments":
-	default:
-		return fmt.Errorf("not supported resource type: %v", resourceGroup)
-	}
-
-	patch := map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"metadata": map[string]interface{}{
-					"labels": map[string]interface{}{
-						"restartedAt": time.Now().Format("2006-01-02-15-04-05"),
-					},
-				},
-			},
-		},
-	}
-
-	patchBytes, _ := json.Marshal(patch)
-
-	_, err := client.Resource(resourceGroup).Namespace(namespace).Patch(ctx.Context, resourceName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to update resource: %w", err)
-	}
-
-	return nil
-}
-
-func waitForContainersStart(ctx *cli.Context, client dynamic.Interface, namespace string) error {
-	timeout := ctx.Duration("rollout-timeout")
-
-	// Wait until the rollout of deployments/daemonsets completes.
-	err := WaitUntilDeployed(ctx.Context,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-		client,
-		namespace,
-		"neuvector-controller-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait controller to rollout: %w", err)
-	}
-
-	err = WaitUntilDeployed(ctx.Context,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"},
-		client,
-		namespace,
-		"neuvector-enforcer-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait enforcer to rollout: %w", err)
-	}
-
-	err = WaitUntilDeployed(ctx.Context,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-		client,
-		namespace,
-		"neuvector-scanner-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait controller to rollout: %w", err)
-	}
-
-	err = WaitUntilDeployed(ctx.Context,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-		client,
-		namespace,
-		"neuvector-registry-adapter-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait controller to rollout: %w", err)
-	}
-
-	// TODO: do we need this?
-	// Check remote certificate and make sure that these servers are up.
-	_, err = containLegacyDefaultInternalCerts(ctx, client, namespace)
-	if err != nil {
-		return fmt.Errorf("failed to get remote internal certs: %w", err)
 	}
 	return nil
 }
