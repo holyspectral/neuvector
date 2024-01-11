@@ -25,6 +25,7 @@ import (
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/fsmon"
 	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/healthz"
 	"github.com/neuvector/neuvector/share/migration"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/utils"
@@ -494,23 +495,29 @@ func main() {
 	log.WithFields(log.Fields{"hostIPs": gInfo.hostIPs}).Info("")
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
+	go func() {
+		if err := healthz.StartHealthzServer(); err != nil {
+			log.WithError(err).Warn("failed to start healthz server")
+		}
+	}()
 
-	// Add cert reload
-	// TODO: Initialize those services too?
+	log.Info("start initializing internal secret controller and wait for internal secret creation if it's not created")
 	ctx, controllerCancel := context.WithCancel(context.Background())
+	// Initialize secrets.  Most of services are not running at this moment, so skip their reload functions.
 	err = migration.InitializeInternalSecretController(ctx, []func([]byte, []byte, []byte) error{
 		// Reload consul
 		func(cacert []byte, cert []byte, key []byte) error {
 			if err := cluster.Reload(nil); err != nil {
 				return fmt.Errorf("failed to reload consul: %w", err)
 			}
+
 			return nil
 		},
 		// Reload grpc server
 		func(cacert []byte, cert []byte, key []byte) error {
 			if grpcServer != nil {
 				grpcServer.GracefulStop()
-				grpcServer, Agent.RPCServerPort = startGRPCServer(uint16(*grpcPort))
+				grpcServer, _ = startGRPCServer(uint16(*grpcPort))
 			}
 			return nil
 		},
@@ -530,6 +537,7 @@ func main() {
 		log.WithError(err).Error("failed to initialize internal secret controller")
 		os.Exit(-2)
 	}
+	log.Info("internal certificate is initialized")
 
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)

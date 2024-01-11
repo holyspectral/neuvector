@@ -373,7 +373,49 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *co
 	}
 
 	namespace := ctx.String("namespace")
-	var err error
+	timeout := ctx.Duration("rollout-timeout")
+
+	// Make sure all components are deployed
+
+	err := WaitUntilDeployed(ctx.Context,
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		client,
+		namespace,
+		"neuvector-controller-pod",
+		timeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait controller to rollout: %w", err)
+	}
+
+	err = WaitUntilDeployed(ctx.Context,
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		client,
+		namespace,
+		"neuvector-enforcer-pod",
+		timeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait enforcer to rollout: %w", err)
+	}
+
+	err = WaitUntilDeployed(ctx.Context,
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		client,
+		namespace,
+		"neuvector-scanner-pod",
+		timeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait scanner to rollout: %w", err)
+	}
+
+	err = WaitUntilDeployed(ctx.Context,
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		client,
+		namespace,
+		"neuvector-registry-adapter-pod",
+		timeout)
+	if err != nil {
+		return fmt.Errorf("failed to wait registry to rollout: %w", err)
+	}
 
 	// 2. NOTE: we don't wait for enforcer and scanner because their certs don't have to be changed at the same time.
 
