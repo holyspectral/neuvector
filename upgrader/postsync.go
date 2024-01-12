@@ -318,6 +318,8 @@ func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespac
 		return false, fmt.Errorf("failed to read pod list: %w", err)
 	}
 
+	num := len(pods.Items)
+
 	for _, pod := range pods.Items {
 		log.WithFields(log.Fields{
 			"pod": pod.Status.PodIP,
@@ -343,6 +345,11 @@ func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespac
 			return false, nil
 		}
 	}
+	log.WithFields(log.Fields{
+		"rev":      rev,
+		"podNum":   num,
+		"selector": selector,
+	}).Info("containers are uo to date")
 	return true, nil
 }
 
@@ -364,6 +371,13 @@ func IsAllCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, names
 	} else if !uptodate {
 		return false, nil
 	}
+
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, RegistryPodLabelSelector); err != nil {
+		return false, fmt.Errorf("failed to check registry pods: %w", err)
+	} else if !uptodate {
+		return false, nil
+	}
+
 	return true, nil
 }
 
@@ -500,7 +514,6 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *co
 			log.WithError(err).Error("failed to wait for secret adopted")
 			return fmt.Errorf("failed to wait for secret adopted: %w", err)
 		}
-
 	}
 
 	// Write dest secret and finish the rollout

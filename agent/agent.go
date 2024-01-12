@@ -501,43 +501,56 @@ func main() {
 		}
 	}()
 
-	log.Info("start initializing internal secret controller and wait for internal secret creation if it's not created")
-	ctx, controllerCancel := context.WithCancel(context.Background())
-	// Initialize secrets.  Most of services are not running at this moment, so skip their reload functions.
-	err = migration.InitializeInternalSecretController(ctx, []func([]byte, []byte, []byte) error{
-		// Reload consul
-		func(cacert []byte, cert []byte, key []byte) error {
-			if err := cluster.Reload(nil); err != nil {
-				return fmt.Errorf("failed to reload consul: %w", err)
-			}
+	var controllerCancel context.CancelFunc
+	var ctx context.Context
 
-			return nil
-		},
-		// Reload grpc server
-		func(cacert []byte, cert []byte, key []byte) error {
-			if grpcServer != nil {
-				grpcServer.GracefulStop()
-				grpcServer, _ = startGRPCServer(uint16(*grpcPort))
+	if os.Getenv("AUTO_INTERNAL_CERT") != "" {
+
+		log.Info("start initializing k8s internal secret controller and wait for internal secret creation if it's not created")
+
+		go func() {
+			if err := healthz.StartHealthzServer(); err != nil {
+				log.WithError(err).Warn("failed to start healthz server")
 			}
-			return nil
-		},
-		// Reload grpc client
-		func(cacert []byte, cert []byte, key []byte) error {
-			// TODO: Make sure all gRPC call retries.
-			// TODO: Make sure server can completes normally without resource leak.
-			// TODO: Add lock on grpcServer.
-			if err := cluster.ReloadAllGRPCClients(); err != nil {
-				return fmt.Errorf("failed to purge gRPC client cache: %w", err)
-			}
-			return nil
-		},
-	})
-	if err != nil {
-		// TODO: Error handling. Consider docker or other orchestration.
-		log.WithError(err).Error("failed to initialize internal secret controller")
-		os.Exit(-2)
+		}()
+
+		ctx, controllerCancel = context.WithCancel(context.Background())
+		// Initialize secrets.  Most of services are not running at this moment, so skip their reload functions.
+		err = migration.InitializeInternalSecretController(ctx, []func([]byte, []byte, []byte) error{
+			// Reload consul
+			func(cacert []byte, cert []byte, key []byte) error {
+				if err := cluster.Reload(nil); err != nil {
+					return fmt.Errorf("failed to reload consul: %w", err)
+				}
+
+				return nil
+			},
+			// Reload grpc server
+			func(cacert []byte, cert []byte, key []byte) error {
+				if grpcServer != nil {
+					grpcServer.GracefulStop()
+					grpcServer, _ = startGRPCServer(uint16(*grpcPort))
+				}
+				return nil
+			},
+			// Reload grpc client
+			func(cacert []byte, cert []byte, key []byte) error {
+				// TODO: Make sure all gRPC call retries.
+				// TODO: Make sure server can completes normally without resource leak.
+				// TODO: Add lock on grpcServer.
+				if err := cluster.ReloadAllGRPCClients(); err != nil {
+					return fmt.Errorf("failed to purge gRPC client cache: %w", err)
+				}
+				return nil
+			},
+		})
+		if err != nil {
+			// TODO: Error handling. Consider docker or other orchestration.
+			log.WithError(err).Error("failed to initialize internal secret controller")
+			os.Exit(-2)
+		}
+		log.Info("internal certificate is initialized")
 	}
-	log.Info("internal certificate is initialized")
 
 	// Other objects
 	eventLogKey := share.CLUSAgentEventLogKey(Host.ID, Agent.ID)

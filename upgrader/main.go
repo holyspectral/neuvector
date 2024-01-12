@@ -39,7 +39,7 @@ var (
 	ControllerPodLabelSelector = fields.OneTermEqualSelector("app", "neuvector-controller-pod").String()
 	ScannerPodLabelSelector    = fields.OneTermEqualSelector("app", "neuvector-scanner-pod").String()
 	EnforcerPodLabelSelector   = fields.OneTermEqualSelector("app", "neuvector-enforcer-pod").String()
-	RunningPodFieldSelector    = fields.OneTermEqualSelector("status.phase", "Running").String()
+	RegistryPodLabelSelector   = fields.OneTermEqualSelector("app", "neuvector-registry-adapter-pod").String()
 )
 
 var (
