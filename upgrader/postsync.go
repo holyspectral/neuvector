@@ -179,7 +179,7 @@ func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, cli
 	item, err := client.Resource(gr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		// something wrong to get the deployment.  Give up.
-		return fmt.Errorf("failed to get neuvector-controller-pod deployment: %w", err)
+		return fmt.Errorf("failed to get deployment: %w", err)
 	}
 	var deployment appv1.Deployment
 	err = runtime.DefaultUnstructuredConverter.
@@ -388,7 +388,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *co
 	}
 
 	err = WaitUntilDeployed(ctx.Context,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
+		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"},
 		client,
 		namespace,
 		"neuvector-enforcer-pod",

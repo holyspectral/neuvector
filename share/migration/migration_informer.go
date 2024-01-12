@@ -199,7 +199,7 @@ func NewInternalSecretController(informerFactory informers.SharedInformerFactory
 		reloadFuncs:     reloadFuncs,
 	}
 
-	secretInformer.Informer().AddEventHandler(
+	secretInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			// Called on creation
 			AddFunc: c.secretAdd,
@@ -208,6 +208,7 @@ func NewInternalSecretController(informerFactory informers.SharedInformerFactory
 			// Called on resource deletion.
 			DeleteFunc: c.secretDelete,
 		},
+		time.Minute*30,
 	)
 
 	return c, nil
