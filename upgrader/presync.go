@@ -174,6 +174,10 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 									Name:  "OVERRIDE_CHECKSUM",
 									Value: os.Getenv("OVERRIDE_CHECKSUM"),
 								},
+								corev1.EnvVar{
+									Name:  "EXPIRY_CERT_THRESHOLD",
+									Value: os.Getenv("EXPIRY_CERT_THRESHOLD"),
+								},
 							},
 						},
 					},

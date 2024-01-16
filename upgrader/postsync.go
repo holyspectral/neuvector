@@ -346,33 +346,34 @@ func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespac
 		}
 	}
 	log.WithFields(log.Fields{
-		"rev":      rev,
-		"podNum":   num,
-		"selector": selector,
+		"rev":       rev,
+		"podNum":    num,
+		"namespace": namespace,
+		"selector":  selector,
 	}).Info("containers are uo to date")
 	return true, nil
 }
 
 func IsAllCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespace string, rev string) (bool, error) {
-	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, ControllerPodLabelSelector); err != nil {
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, namespace, rev, ControllerPodLabelSelector); err != nil {
 		return false, fmt.Errorf("failed to check controller pods: %w", err)
 	} else if !uptodate {
 		return false, nil
 	}
 
-	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, EnforcerPodLabelSelector); err != nil {
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, namespace, rev, EnforcerPodLabelSelector); err != nil {
 		return false, fmt.Errorf("failed to check enforcer pods: %w", err)
 	} else if !uptodate {
 		return false, nil
 	}
 
-	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, ScannerPodLabelSelector); err != nil {
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, namespace, rev, ScannerPodLabelSelector); err != nil {
 		return false, fmt.Errorf("failed to check scanner pods: %w", err)
 	} else if !uptodate {
 		return false, nil
 	}
 
-	if uptodate, err := IsCertRevisionUpToDate(ctx, client, rev, namespace, RegistryPodLabelSelector); err != nil {
+	if uptodate, err := IsCertRevisionUpToDate(ctx, client, namespace, rev, RegistryPodLabelSelector); err != nil {
 		return false, fmt.Errorf("failed to check registry pods: %w", err)
 	} else if !uptodate {
 		return false, nil
@@ -502,7 +503,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface, secret *co
 				case err == nil && uptodate:
 					// complete
 					return true, nil
-				case !uptodate:
+				case err == nil && !uptodate:
 					// retry
 					return false, nil
 				default:
@@ -536,6 +537,9 @@ func ShouldUpgradeInternalCert(ctx *cli.Context, secret *corev1.Secret) (bool, e
 		return true, nil
 	}
 	renewThreshold := ctx.Duration("expiry-cert-threshold")
+	log.WithFields(log.Fields{
+		"threshold": renewThreshold,
+	}).Info("Checking the current active certificate")
 
 	block, _ := pem.Decode(secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME])
 	if block == nil || block.Type != "CERTIFICATE" {
@@ -599,7 +603,7 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 	log.WithFields(log.Fields{
 		"validity_days":  ctx.Int("ca-cert-validity-days"),
 		"rsa-key-length": ctx.Int("rsa-key-length"),
-	}).Info("creating/updating new certs...")
+	}).Info("Creating new cert/key...")
 
 	caValidityDays := ctx.Int("ca-cert-validity-days")
 	cacert, cakey, err := kv.GenerateCAWithRSAKey(GetInternalCACertTemplate(caValidityDays), ctx.Int("rsa-key-length"))
@@ -666,7 +670,7 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 	}
 	log.WithFields(log.Fields{
 		"secret": secretName,
-	}).Info("secret is created/updated")
+	}).Info("Secret is created/updated")
 
 	return ret, nil
 }
@@ -724,10 +728,10 @@ func PostSyncHook(ctx *cli.Context) error {
 		if shouldUpgrade, err := ShouldUpgradeInternalCert(ctx, secret); err != nil {
 			return fmt.Errorf("failed to check if we should upgrade internal cert: %w", err)
 		} else if !shouldUpgrade {
-			log.Info("certificate is up-to-date")
+			log.Info("Certificate is up-to-date")
 			return nil
 		} else {
-			log.Info("we should update internal certificate")
+			log.Info("We should update internal certificate")
 		}
 	}
 
@@ -736,7 +740,7 @@ func PostSyncHook(ctx *cli.Context) error {
 	}
 
 	// Now we can create/update internal certs.
-	log.Infof("Initializing internal secrets with retry: %+v", retry.DefaultRetry)
+	log.Infof("Deploying internal secrets with retry: %+v", retry.DefaultRetry)
 	err = retry.OnError(retry.DefaultRetry,
 		func(error) bool {
 			// Retry on all errors...k8s job will make it retry anyway.
@@ -749,6 +753,7 @@ func PostSyncHook(ctx *cli.Context) error {
 			// We just trigger controller's rolling update and exit.
 			// Otherwise, go through the full rolling update.
 			if secret == nil && retSecret != nil && freshInstall {
+				log.Info("This is fresh install.  Everything is done.")
 				// Everything is good now.  Exit.
 				return nil
 			}
