@@ -526,24 +526,11 @@ func main() {
 
 				return nil
 			},
-			// Reload grpc server
+			// Reload grpc servers/clients
 			func(cacert []byte, cert []byte, key []byte) error {
-				log.Info("Reloading gRPC server")
-				if grpcServer != nil {
-					// Revisit here when we don't want downtime.
-					// grpcServer.GracefulStop()
-					grpcServer.Stop()
-					grpcServer, _ = startGRPCServer(uint16(*grpcPort))
-				}
-				return nil
-			},
-			// Reload grpc client
-			func(cacert []byte, cert []byte, key []byte) error {
-				// TODO: Make sure all gRPC calls retry.
-				// TODO: Make sure server can complete normally without resource leak.
-				log.Info("Reloading gRPC clients")
-				if err := cluster.ReloadAllGRPCClients(); err != nil {
-					return fmt.Errorf("failed to purge gRPC client cache: %w", err)
+				log.Info("Reloading gRPC servers/clients")
+				if err := cluster.ReloadInternalCert(); err != nil {
+					return fmt.Errorf("failed to reload gRPC's certificate: %w", err)
 				}
 				return nil
 			},
@@ -553,6 +540,11 @@ func main() {
 			os.Exit(-2)
 		}
 		log.Info("internal certificate is initialized")
+	}
+
+	err = cluster.ReloadInternalCert()
+	if err != nil {
+		log.WithError(err).Fatal("failed to reload internal certificate")
 	}
 
 	// Other objects

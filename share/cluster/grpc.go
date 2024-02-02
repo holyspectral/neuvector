@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -16,10 +17,15 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/utils"
+
+	"google.golang.org/grpc/security/advancedtls"
+)
+
+var (
+	shouldReload int32
 )
 
 const GRPCMaxMsgSize = 1024 * 1024 * 32
@@ -49,42 +55,51 @@ type GRPCServer struct {
 }
 
 func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
-	return NewGRPCServerTCPWithCerts(endpoint,
-		path.Join(InternalCertDir, InternalCACert),
-		path.Join(InternalCertDir, InternalCert),
-		path.Join(InternalCertDir, InternalCertKey),
-		tls.VersionTLS11,
-	)
-}
+	options := &advancedtls.ServerOptions{
+		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			log.Info("Server getting certificates")
+			_, cert, _ := GetInternalCert()
 
-func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath string, keyPath string, minTLSVersion uint16) (*GRPCServer, error) {
-	// CA cert
-	caCert, err := ioutil.ReadFile(cacertPath)
+			return cert, nil
+		},
+		RootCertificateOptions: advancedtls.RootCertificateOptions{
+			GetRootCAs: func(params *advancedtls.GetRootCAsParams) (*advancedtls.GetRootCAsResults, error) {
+				log.Info("Server getting root CAs")
+				caCertPool, _, _ := GetInternalCert()
+
+				return &advancedtls.GetRootCAsResults{
+					TrustCerts: caCertPool,
+				}, nil
+			},
+		},
+		VerifyPeer: func(params *advancedtls.VerificationFuncParams) (*advancedtls.VerificationResults, error) {
+			log.Info("Server checking CN")
+			_, _, cn := GetInternalCert()
+			if params.Leaf == nil || len(params.Leaf.DNSNames) == 0 {
+				return nil, errors.New("no valid certificate")
+			}
+
+			if params.Leaf.DNSNames[0] != cn {
+				log.Warnf("server name is invalid: %s", params.Leaf.DNSNames[0])
+				return nil, fmt.Errorf("server name is invalid: %s", params.Leaf.DNSNames[0])
+			}
+			return &advancedtls.VerificationResults{}, nil
+		},
+		RequireClientCert: true,
+		VType:             advancedtls.CertVerification,
+		MinVersion:        tls.VersionTLS11,
+		MaxVersion:        tls.VersionTLS13,
+		CipherSuites:      utils.GetSupportedTLSCipherSuites(),
+	}
+
+	ct, err := advancedtls.NewServerCreds(options)
 	if err != nil {
-		return nil, err
+		log.WithError(err).Warn("failed to create new server credentials")
+		return nil, fmt.Errorf("failed to create new server credentials: %w", err)
 	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	// public/private keys
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	config := &tls.Config{
-		ClientCAs:                caCertPool,
-		Certificates:             []tls.Certificate{cert},
-		PreferServerCipherSuites: true,
-		CipherSuites:             utils.GetSupportedTLSCipherSuites(),
-		ClientAuth:               tls.RequireAndVerifyClientCert,
-	}
-	config.MinVersion = minTLSVersion
-
-	creds := credentials.NewTLS(config)
 
 	opts := []grpc.ServerOption{
-		grpc.Creds(creds),
+		grpc.Creds(ct),
 		grpc.UnaryInterceptor(middlefunc),
 		grpc.RPCCompressor(grpc.NewGZIPCompressor()),
 		grpc.RPCDecompressor(grpc.NewGZIPDecompressor()),
@@ -96,12 +111,61 @@ func NewGRPCServerTCPWithCerts(endpoint string, cacertPath string, certPath stri
 		return nil, err
 	}
 
+	fmt.Println(options)
+
 	s := GRPCServer{
 		stopped: true,
 		listen:  listen,
 		server:  grpc.NewServer(opts...),
 	}
 	return &s, nil
+}
+
+var (
+	internalCACertPoolCache *x509.CertPool
+	internalCertCache       *tls.Certificate
+	internalCN              string
+	certCacheLock           sync.RWMutex
+)
+
+func GetInternalCert() (*x509.CertPool, *tls.Certificate, string) {
+	certCacheLock.RLock()
+	defer certCacheLock.RUnlock()
+
+	return internalCACertPoolCache, internalCertCache, internalCN
+}
+
+func ReloadInternalCert() error {
+	certCacheLock.Lock()
+	defer certCacheLock.Unlock()
+	var err error
+	caCert, err := ioutil.ReadFile(path.Join(InternalCertDir, InternalCACert))
+	if err != nil {
+		return err
+	}
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(caCert)
+
+	cert, err := tls.LoadX509KeyPair(path.Join(InternalCertDir, InternalCert), path.Join(InternalCertDir, InternalCertKey))
+	if err != nil {
+		return err
+	}
+
+	for _, certData := range cert.Certificate {
+		if cert, err := x509.ParseCertificate(certData); err == nil {
+			subjectCN = cert.Subject.CommonName
+			break
+		}
+	}
+
+	if subjectCN == "" {
+		subjectCN = InternalCertCN
+	}
+
+	internalCACertPoolCache = pool
+	internalCertCache = &cert
+	internalCN = subjectCN
+	return nil
 }
 
 func NewGRPCServerUnix(socket string) (*GRPCServer, error) {
@@ -206,70 +270,59 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 
 // For backward compatibity.  Use internal certs.
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
-	return newGRPCClientTCPWithCerts(ctx,
-		key,
-		endpoint,
-		path.Join(InternalCertDir, InternalCACert),
-		path.Join(InternalCertDir, InternalCert),
-		path.Join(InternalCertDir, InternalCertKey),
-		cb,
-		compress,
-	)
-}
+	options := &advancedtls.ClientOptions{
+		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			log.Info("Client getting certificates")
+			_, cert, _ := GetInternalCert()
 
-func newGRPCClientTCPWithCerts(ctx context.Context, key, endpoint string, cacertPath string, certPath string, keyPath string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
-	// CA cert
-	caCert, err := ioutil.ReadFile(cacertPath)
-	if err != nil {
-		return nil, err
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+			return cert, nil
+		},
+		RootCertificateOptions: advancedtls.RootCertificateOptions{
+			GetRootCAs: func(params *advancedtls.GetRootCAsParams) (*advancedtls.GetRootCAsResults, error) {
+				log.Info("Client getting root CAs")
+				caCertPool, _, _ := GetInternalCert()
 
-	// public/private keys
-	cert, err := tls.LoadX509KeyPair(
-		certPath,
-		keyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// The assumption is the server and client will use the same set of keys,
-	// so we can use CN in the local public key to get the server name.
-	if subjectCN == "" {
-		for _, certData := range cert.Certificate {
-			if cert, err := x509.ParseCertificate(certData); err == nil {
-				subjectCN = cert.Subject.CommonName
-				break
+				return &advancedtls.GetRootCAsResults{
+					TrustCerts: caCertPool,
+				}, nil
+			},
+		},
+		VerifyPeer: func(params *advancedtls.VerificationFuncParams) (*advancedtls.VerificationResults, error) {
+			log.Info("Client checking CN")
+			_, _, cn := GetInternalCert()
+			if params.Leaf == nil || len(params.Leaf.DNSNames) == 0 {
+				return nil, errors.New("no valid certificate")
 			}
-		}
-
-		if subjectCN == "" {
-			subjectCN = InternalCertCN
-		}
-
-		log.WithFields(log.Fields{"cn": subjectCN}).Info("Expected server name")
+			if params.Leaf.DNSNames[0] != cn {
+				log.Warnf("server name is invalid: %s", params.Leaf.DNSNames[0])
+				return &advancedtls.VerificationResults{}, fmt.Errorf("server name is invalid: %s", params.Leaf.DNSNames[0])
+			}
+			return nil, nil
+		},
+		VType:        advancedtls.CertVerification, // Custom check is performed in VerifyPeer().
+		MinVersion:   tls.VersionTLS11,
+		MaxVersion:   tls.VersionTLS13,
+		CipherSuites: utils.GetSupportedTLSCipherSuites(),
 	}
 
-	config := &tls.Config{
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{cert},
-		ServerName:   subjectCN,
+	ct, err := advancedtls.NewClientCreds(options)
+	if err != nil {
+		log.WithError(err).Warn("failed to create new client credentials")
+		return nil, fmt.Errorf("failed to create client credential: %w", err)
 	}
-	creds := credentials.NewTLS(config)
 
 	// This is to be compatible with pre-3.2 grpc server that doesn't install decompressor.
 	var opts []grpc.DialOption
 	if compress {
 		opts = []grpc.DialOption{
-			grpc.WithTransportCredentials(creds),
+			grpc.WithTransportCredentials(ct),
 			grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
 			grpc.WithCompressor(grpc.NewGZIPCompressor()),
 			grpc.WithDefaultCallOptions(grpc.FailFast(true)),
 		}
 	} else {
 		opts = []grpc.DialOption{
-			grpc.WithTransportCredentials(creds),
+			grpc.WithTransportCredentials(ct),
 			grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
 			grpc.WithDefaultCallOptions(grpc.FailFast(true)),
 		}
