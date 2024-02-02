@@ -5,9 +5,11 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"net"
 	"net/http"
 	"reflect"
@@ -629,7 +631,20 @@ func InitializeInternalSecret(ctx context.Context,
 		"RSAKeyLength":       config.RSAKeyLength,
 	}).Info("Creating new cert/key...")
 
-	cacert, cakey, err := kv.GenerateCAWithRSAKey(GetInternalCACertTemplate(config.CACertValidityDays), config.RSAKeyLength)
+	cacert, cakey, err := kv.GenerateCAWithRSAKey(
+		&x509.Certificate{
+			SerialNumber: big.NewInt(5029),
+			Subject: pkix.Name{
+				Country:      []string{"US"},
+				Province:     []string{"California"},
+				Organization: []string{"NeuVector Inc."},
+				CommonName:   "NeuVector",
+			},
+			NotBefore:             time.Now().Add(time.Hour * -1), // Give it some room for timing skew.
+			NotAfter:              time.Now().AddDate(0, 0, config.CACertValidityDays),
+			IsCA:                  true,
+			BasicConstraintsValid: true,
+		}, config.RSAKeyLength)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ca cert: %w", err)
 	}
@@ -648,7 +663,27 @@ func InitializeInternalSecret(ctx context.Context,
 		return nil, fmt.Errorf("failed to parse ca cert: %w", err)
 	}
 
-	cert, key, err := kv.GenerateTLSCertWithRSAKey(GetInternalCertTemplate(config.CertValidityDays), config.RSAKeyLength, ca, capair.PrivateKey)
+	cert, key, err := kv.GenerateTLSCertWithRSAKey(
+		&x509.Certificate{
+			SerialNumber: big.NewInt(5030),
+			Subject: pkix.Name{
+				Country:            []string{"US"},
+				Locality:           []string{"San Jose"},
+				Province:           []string{"California"},
+				Organization:       []string{"NeuVector Inc."},
+				OrganizationalUnit: []string{"NeuVector"},
+				CommonName:         "NeuVector",
+			},
+			NotBefore:             time.Now().Add(time.Hour * -1), // Give it some room for timing skew.
+			NotAfter:              time.Now().AddDate(0, 0, config.CertValidityDays),
+			SubjectKeyId:          []byte{1, 2, 3, 4, 6},
+			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment,
+			IsCA:                  false,
+			BasicConstraintsValid: true,
+			DNSNames:              []string{"NeuVector"},
+		}, config.RSAKeyLength, ca, capair.PrivateKey)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate TLS certificate: %w", err)
 	}
@@ -727,6 +762,30 @@ func PostSyncHook(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create k8s client: %w", err)
 	}
+
+	// Start watcher, so when `neuvector-internal-certs` secret is deleted, upgrader will stop
+	watcher, err := client.Resource(schema.GroupVersionResource{
+		Resource: "secrets",
+		Version:  "v1",
+	}).Namespace(namespace).Watch(timeoutCtx, metav1.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector(metav1.ObjectNameField, secretName).String(),
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to watch secret (%s): %w", secretName, err)
+	}
+
+	go func() {
+		for event := range watcher.ResultChan() {
+			switch event.Type {
+			case watch.Deleted:
+				log.Info("Internal cert is deleted. Upgrader should stop.")
+				cancel()
+				return
+			default:
+			}
+		}
+	}()
 
 	// Initialization phase.
 

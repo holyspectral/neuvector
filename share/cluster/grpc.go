@@ -268,7 +268,7 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 	}
 }
 
-// For backward compatibity.  Use internal certs.
+// For backward compatibility.  Use internal certs.
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
 	options := &advancedtls.ClientOptions{
 		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
