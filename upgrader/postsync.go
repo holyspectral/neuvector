@@ -229,6 +229,13 @@ func IsCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, names
 	num := len(pods.Items)
 
 	for _, pod := range pods.Items {
+		select {
+		case <-ctx.Done():
+			return false, context.Canceled
+		default:
+			// not canceled, continue
+		}
+
 		if pod.Status.PodIP == "" {
 			// Still initializing.
 			continue
@@ -239,11 +246,20 @@ func IsCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, names
 		}).Info("Getting container status")
 
 		var status ContainerStatus
-		// TODO: timeout?
-		res, err := http.Get(fmt.Sprintf("http://%s:%d/healthz", pod.Status.PodIP, 18500))
+
+		timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(timeoutCtx, "GET", fmt.Sprintf("http://%s:%d/healthz", pod.Status.PodIP, 18500), nil)
+		if err != nil {
+			return false, fmt.Errorf("failed to create HTTP request: %w", err)
+		}
+
+		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return false, fmt.Errorf("failed to connect to healthz endpoint: %w", err)
 		}
+
 		err = json.NewDecoder(res.Body).Decode(&status)
 		if err != nil {
 			return false, fmt.Errorf("failed to unmarshal healthz response: %w", err)
