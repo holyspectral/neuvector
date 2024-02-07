@@ -305,8 +305,7 @@ func InitializeInternalSecretController(ctx context.Context, reloadFuncs []func(
 
 	factory := informers.NewSharedInformerFactoryWithOptions(clientset, time.Hour*24, informers.WithNamespace("neuvector"))
 
-	// TODO: Not hardcode these
-	controller, err := NewInternalSecretController(factory, "neuvector", "neuvector-internal-certs", reloadFuncs)
+	controller, err := NewInternalSecretController(factory, os.Getenv("POD_NAMESPACE"), "neuvector-internal-certs", reloadFuncs)
 	if err != nil {
 		return fmt.Errorf("failed to create internal secret controller: %w", err)
 	}

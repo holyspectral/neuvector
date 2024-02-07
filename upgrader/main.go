@@ -21,7 +21,6 @@ const (
 	TARGET_SECRET_SOURCE_NAME_CERT   = "target-cert"
 	TARGET_SECRET_SOURCE_NAME_KEY    = "target-key"
 
-	// TODO: change file name to align with cert-manger default?
 	CACERT_FILENAME = "ca.crt"
 	CERT_FILENAME   = "tls.crt"
 	KEY_FILENAME    = "tls.key"
