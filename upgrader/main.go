@@ -84,7 +84,7 @@ func main() {
 		&cli.StringFlag{
 			Name:  "kube-config",
 			Value: "",
-			Usage: "the active secret used by containers",
+			Usage: "the active secret used by containers.  For testing only.",
 		},
 		&cli.StringFlag{
 			Name:    "namespace",
@@ -93,33 +93,17 @@ func main() {
 			EnvVars: []string{"POD_NAMESPACE"},
 		},
 		&cli.StringFlag{
-			Name:  "internal-secret-name",
-			Value: "neuvector-internal-certs",
-			Usage: "the new secret to be applied",
-		},
-		&cli.BoolFlag{
-			Name:  "skip-cert-creation",
-			Value: false,
-			Usage: "skip cert creation",
+			Name:    "internal-secret-name",
+			Value:   "neuvector-internal-certs",
+			Usage:   "the new secret to be applied",
+			EnvVars: []string{"INTERNAL_SECRET_NAME"},
 		},
 	}
 	app.Commands = cli.Commands{
 		&cli.Command{
-			Name:  "pre-sync-hook",
-			Usage: "Run neuvector pre sync hook",
+			Name:  "create-upgrader-job",
+			Usage: "This command creates upgrader job in a not racey way.",
 			Flags: []cli.Flag{
-				&cli.BoolFlag{
-					Name:    "force-update-cert",
-					Value:   false,
-					Usage:   "Force to create new internal certificates",
-					EnvVars: []string{"FORCE_UPDATE_CERT"},
-				},
-				&cli.BoolFlag{
-					Name:    "user-managed-cert",
-					Value:   false,
-					Usage:   "Whether user manages on their own",
-					EnvVars: []string{"FORCE_UPDATE_CERT"},
-				},
 				&cli.StringFlag{
 					Name:    "image",
 					Value:   "",
@@ -142,19 +126,19 @@ func main() {
 			Action: PreSyncHook,
 		},
 		&cli.Command{
-			Name:  "post-sync-hook",
-			Usage: "Run neuvector post sync hook",
+			Name:  "upgrader-job",
+			Usage: "Run neuvector upgrader",
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    "certificate-cn",
-					Value:   "NeuVector",
-					Usage:   "The common name field in internal certificate",
-					EnvVars: []string{"CERT_COMMON_NAME"},
+				&cli.DurationFlag{
+					Name:    "timeout",
+					Value:   time.Minute * 30,
+					Usage:   "The timeout for this job to complete",
+					EnvVars: []string{"TIMEOUT"},
 				},
 				&cli.DurationFlag{
 					Name:    "rollout-timeout",
 					Value:   0,
-					Usage:   "The timeout for waiting deployment to complete",
+					Usage:   "The timeout for waiting deployment to complete.  0: no timeout.",
 					EnvVars: []string{"ROLLOUT_TIMEOUT"},
 				},
 				&cli.IntFlag{
@@ -196,5 +180,4 @@ func main() {
 		log.WithError(err).Fatal("Failed to run the command")
 		os.Exit(1)
 	}
-
 }

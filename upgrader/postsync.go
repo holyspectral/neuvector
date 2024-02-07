@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"reflect"
@@ -19,8 +18,6 @@ import (
 	"github.com/neuvector/neuvector/controller/kv"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sError "k8s.io/apimachinery/pkg/api/errors"
@@ -109,74 +106,9 @@ func containLegacyDefaultInternalCerts(ctx *cli.Context, client dynamic.Interfac
 	return false, nil
 }
 
-func DeleteK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, secretName string) error {
-	err := client.Resource(schema.GroupVersionResource{
-		Resource: "secrets",
-		Version:  "v1",
-	}).Namespace(namespace).Delete(ctx, secretName, metav1.DeleteOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to delete secret %v: %w", secretName, err)
-	}
-	return nil
-}
-
-// TODO: We probably don't need to create the secret.
-// Apply k8s secret.
-// Make ResourceVersion empty if you don't want to overwrite existing data.
-func ApplyK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, secret *corev1.Secret) (*corev1.Secret, error) {
-	var err error
-	var item *unstructured.Unstructured
-	var ret corev1.Secret
-	if secret.Labels == nil {
-		secret.Labels = make(map[string]string)
-	}
-	secret.Labels["last-modified"] = time.Now().Format("2006-01-02-15-04-05")
-
-	unstructedSecret, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert target secret: %w", err)
-	}
-
-	// We don't create secret here.  It should be created by helm.
-	item, err = client.Resource(schema.GroupVersionResource{
-		Resource: "secrets",
-		Version:  "v1",
-	}).Namespace(namespace).Update(ctx, &unstructured.Unstructured{Object: unstructedSecret}, metav1.UpdateOptions{})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to update resource: %w", err)
-	}
-
-	err = runtime.DefaultUnstructuredConverter.
-		FromUnstructured(item.UnstructuredContent(), &ret)
-	return &ret, err
-}
-
-func GetK8sSecret(ctx context.Context, client dynamic.Interface, namespace string, name string) (*corev1.Secret, error) {
-	item, err := client.Resource(
-		schema.GroupVersionResource{
-			Resource: "secrets",
-			Version:  "v1",
-		},
-	).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret: %w", err)
-	}
-
-	var targetSecret corev1.Secret
-	err = runtime.DefaultUnstructuredConverter.
-		FromUnstructured(item.UnstructuredContent(), &targetSecret)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse target secret: %w", err)
-	}
-	return &targetSecret, nil
-}
-
+// Wait until a resource rolls out completely.
+// See https://github.com/kubernetes/kubectl/blob/master/pkg/cmd/rollout/rollout_status.go
 func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, client dynamic.Interface, namespace string, name string) error {
-	// kubectl rollout status
-	// See https://github.com/kubernetes/kubectl/blob/master/pkg/cmd/rollout/rollout_status.go
-
 	// 1. Get controller deployment.
 	item, err := client.Resource(gr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
@@ -240,39 +172,7 @@ func WaitUntilRolledOut(ctx context.Context, gr schema.GroupVersionResource, cli
 	return err
 }
 
-func NewGRPCClient(ctx context.Context, endpoint string, cacertPath string, certPath string, keyPath string, subject string) (*grpc.ClientConn, error) {
-	// #nosec G304 this is by design.
-	caCert, err := ioutil.ReadFile(cacertPath)
-	if err != nil {
-		return nil, err
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	// public/private keys
-	cert, err := tls.LoadX509KeyPair(
-		certPath,
-		keyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	config := &tls.Config{
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{cert},
-		ServerName:   subject,
-		MinVersion:   tls.VersionTLS12,
-	}
-	creds := credentials.NewTLS(config)
-
-	return grpc.DialContext(ctx, endpoint,
-		grpc.WithTransportCredentials(creds),
-		grpc.WithDecompressor(grpc.NewGZIPDecompressor()), //lint:ignore SA1019 match with controller side code.
-		grpc.WithCompressor(grpc.NewGZIPCompressor()),     //lint:ignore SA1019 match with controller side code.
-		grpc.WithDefaultCallOptions(grpc.FailFast(true)),  //lint:ignore SA1019 match with controller side code.
-	)
-}
-
+// WaitUntilRolledOut with timeout
 func WaitUntilDeployed(ctx context.Context,
 	resource schema.GroupVersionResource,
 	client dynamic.Interface,
@@ -300,7 +200,8 @@ func WaitUntilDeployed(ctx context.Context,
 	return nil
 }
 
-func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespace string, rev string, selector string) (bool, error) {
+// Go through all NeuVector pods to see if they're all up-to-date by checking its healthz endpoint.
+func IsCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, namespace string, rev string, selector string) (bool, error) {
 	// Get all running pods first.
 	// Even if some pods are not in running status, e.g., ContainerStatusUnknown, they can catch up from neuvector-internal certs secret.
 	item, err := client.Resource(
@@ -308,7 +209,7 @@ func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespac
 			Resource: "pods",
 			Version:  "v1",
 		},
-	).Namespace(namespace).List(ctx.Context, metav1.ListOptions{
+	).Namespace(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector,
 		FieldSelector: fields.OneTermEqualSelector("status.phase", "Running").String(),
 	})
@@ -364,7 +265,8 @@ func IsCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespac
 	return true, nil
 }
 
-func IsAllCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, namespace string, rev string) (bool, error) {
+// Going through controller, enforcer, scanner and registry-adapter to make sure their internal secret is up-to-date.
+func IsAllCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, namespace string, rev string) (bool, error) {
 	if uptodate, err := IsCertRevisionUpToDate(ctx, client, namespace, rev, ControllerPodLabelSelector); err != nil {
 		return false, fmt.Errorf("failed to check controller pods: %w", err)
 	} else if !uptodate {
@@ -392,7 +294,8 @@ func IsAllCertRevisionUpToDate(ctx *cli.Context, client dynamic.Interface, names
 	return true, nil
 }
 
-func WaitContainerUpdate(ctx *cli.Context, client dynamic.Interface, namespace string, rev string) error {
+// Wait until until containers being monitored has moved to new internal certificates.
+func WaitContainerUpdate(ctx context.Context, client dynamic.Interface, namespace string, rev string) error {
 	var err error
 
 	// Wait until all containers have the right revision.
@@ -428,6 +331,7 @@ func WaitContainerUpdate(ctx *cli.Context, client dynamic.Interface, namespace s
 	return nil
 }
 
+// Utility function to generate a combined CA.
 func GetCombinedCA(cacert1 []byte, cacert2 []byte) []byte {
 	var combinedca []byte
 	combinedca = append(combinedca, cacert1...)
@@ -436,47 +340,64 @@ func GetCombinedCA(cacert1 []byte, cacert2 []byte) []byte {
 	return combinedca
 }
 
-func DetermineMigrationStep(secret *corev1.Secret) (int, error) {
+// Determine migration steps, so upgrader can continue.
+func DetermineMigrationStep(secret *corev1.Secret) (int, bool, error) {
+
+	if secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] == nil ||
+		secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME] == nil ||
+		secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME] == nil ||
+		secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME] == nil ||
+		secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] == nil ||
+		secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] == nil ||
+		secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME] == nil ||
+		secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME] == nil ||
+		secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME] == nil {
+		return 0, false, errors.New("invalid internal certs")
+	}
+
+	if IsSameCert(secret, ACTIVE_SECRET_PREFIX, DEST_SECRET_PREFIX) &&
+		IsSameCert(secret, ACTIVE_SECRET_PREFIX, NEW_SECRET_PREFIX) {
+		return 0, true, nil
+	}
 
 	combinedca := GetCombinedCA(secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME], secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME])
 
-	// Migration has completed but failed before writing DEST cert.
 	if reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME], secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME], secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME]) {
-		return 0, nil
+		return 0, false, nil
 	}
 
+	// Has combined CA, but not others
 	if reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], combinedca) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME], secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME], secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME]) {
-		return 1, nil
+		return 1, false, nil
 	}
 
+	// Has combined CA and new key/cert.
 	if reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], combinedca) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME], secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME], secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]) {
-		return 2, nil
+		return 2, false, nil
 	}
 
+	// Migration has completed but failed before writing DEST cert.
 	if reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME], secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME], secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]) &&
 		reflect.DeepEqual(secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME], secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]) {
-		return 3, nil
+		return 3, false, nil
 	}
 
-	return 0, errors.New("unexpected status of internal certs secret")
+	return 0, false, errors.New("unexpected status of internal certs secret")
 }
 
-func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
-	namespace := ctx.String("namespace")
-	secretName := ctx.String("internal-secret-name")
-	timeout := ctx.Duration("rollout-timeout")
-
+// The main function for cert migration.
+func UpgradeInternalCerts(ctx context.Context, client dynamic.Interface, namespace string, secretName string, timeout time.Duration) error {
 	var secret *corev1.Secret
 	var err error
 
-	if secret, err = GetK8sSecret(ctx.Context, client, namespace, secretName); err != nil {
+	if secret, err = GetK8sSecret(ctx, client, namespace, secretName); err != nil {
 		if err != nil {
 			return fmt.Errorf("failed to get secret: %w", err)
 		}
@@ -484,7 +405,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 
 	// Make sure all components are deployed
 
-	err = WaitUntilDeployed(ctx.Context,
+	err = WaitUntilDeployed(ctx,
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
 		client,
 		namespace,
@@ -494,7 +415,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 		return fmt.Errorf("failed to wait controller to rollout: %w", err)
 	}
 
-	err = WaitUntilDeployed(ctx.Context,
+	err = WaitUntilDeployed(ctx,
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"},
 		client,
 		namespace,
@@ -504,7 +425,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 		return fmt.Errorf("failed to wait enforcer to rollout: %w", err)
 	}
 
-	err = WaitUntilDeployed(ctx.Context,
+	err = WaitUntilDeployed(ctx,
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
 		client,
 		namespace,
@@ -514,7 +435,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 		return fmt.Errorf("failed to wait scanner to rollout: %w", err)
 	}
 
-	err = WaitUntilDeployed(ctx.Context,
+	err = WaitUntilDeployed(ctx,
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
 		client,
 		namespace,
@@ -543,9 +464,13 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 		return fmt.Errorf("some containers failed to adopt new version of secrets: %w", err)
 	}
 
-	step, err := DetermineMigrationStep(secret)
+	step, completed, err := DetermineMigrationStep(secret)
 	if err != nil {
 		return fmt.Errorf("failed to determine the current migration step: %w", err)
+	}
+	if completed {
+		log.Info("migration has completed since all certs are the same")
+		return nil
 	}
 	log.WithField("step", step).Info("Start rollout certs")
 	for ; step < 3; step++ {
@@ -581,7 +506,7 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 		}
 
 		// Replace secret with what we got from API server.
-		secret, err = ApplyK8sSecret(ctx.Context, client, namespace, secret)
+		secret, err = UpdateSecret(ctx, client, namespace, secret)
 		if err != nil {
 			return fmt.Errorf("failed to create/update dst secret: %w", err)
 		}
@@ -599,26 +524,16 @@ func UpgradeInternalCerts(ctx *cli.Context, client dynamic.Interface) error {
 	secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME] = secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME]
 	secret.Data[DEST_SECRET_PREFIX+KEY_FILENAME] = secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME]
 
-	if _, err := ApplyK8sSecret(ctx.Context, client, namespace, secret); err != nil {
-		log.WithError(err).Fatal("failed to write dest secret.")
+	if _, err := UpdateSecret(ctx, client, namespace, secret); err != nil {
+		return fmt.Errorf("failed to write dest secret: %w", err)
 	}
 
 	log.Info("Internal certificates are migrated")
 	return nil
 }
 
-// Check if we should upgrade internal certs
-func ShouldUpgradeInternalCert(ctx *cli.Context, secret *corev1.Secret) (bool, error) {
-	if secret == nil || len(secret.Data) == 0 {
-		// No internal certificate.  We should upgrade it.
-		return true, nil
-	}
-	renewThreshold := ctx.Duration("expiry-cert-threshold")
-	log.WithFields(log.Fields{
-		"threshold": renewThreshold,
-	}).Info("Checking the current active certificate")
-
-	block, _ := pem.Decode(secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME])
+func IsCertNearExpired(data []byte, renewThreshold time.Duration) (bool, error) {
+	block, _ := pem.Decode(data)
 	if block == nil || block.Type != "CERTIFICATE" {
 		return false, errors.New("failed to decode certificate")
 	}
@@ -636,13 +551,57 @@ func ShouldUpgradeInternalCert(ctx *cli.Context, secret *corev1.Secret) (bool, e
 	return false, nil
 }
 
+// Check if we should upgrade internal certs. Currently the only criteria is:
+// - If the certificate's expiry date + expiry-cert-threshold < now.
+func ShouldUpgradeInternalCert(ctx context.Context, secret *corev1.Secret, renewThreshold time.Duration) (bool, bool, error) {
+	if secret == nil || len(secret.Data) == 0 {
+		// No internal certificate.  We should upgrade it.
+		return true, true, nil
+	}
+	log.WithFields(log.Fields{
+		"threshold": renewThreshold,
+	}).Info("Checking CA certificate")
+
+	// Check if the current certificate meets the criteria.
+	caexpired, err := IsCertNearExpired(secret.Data[DEST_SECRET_PREFIX+CACERT_FILENAME], renewThreshold)
+	if err != nil {
+		return false, false, err
+	}
+
+	log.WithFields(log.Fields{
+		"threshold": renewThreshold,
+	}).Info("Checking certificate")
+
+	certexpired, err := IsCertNearExpired(secret.Data[DEST_SECRET_PREFIX+CERT_FILENAME], renewThreshold)
+	if err != nil {
+		return false, false, err
+	}
+
+	return caexpired, certexpired, nil
+}
+
+type CertConfig struct {
+	CACertValidityDays int
+	CertValidityDays   int
+	RSAKeyLength       int
+}
+
 // This function is meant to be called during pre-install/pre-upgrade/pre-sync hook.
 // If it's a fresh-install, create an internal certificate that we can use directly.
 // If it's a upgrade, leave it as it is.
 // Post-upgrade/post-sync hook should deal with it.
-func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namespace string, freshInstall bool, secret *corev1.Secret) (*corev1.Secret, error) {
+func InitializeInternalSecret(ctx context.Context,
+	client dynamic.Interface,
+	namespace string,
+	secretName string,
+	freshInstall bool,
+	certOnly bool,
+	secret *corev1.Secret,
+	config CertConfig) (*corev1.Secret, error) {
 	var err error
-	secretName := ctx.String("internal-secret-name")
+
+	// Note: We always upgrade cacert/cert/key together.
+	// This is to reduce the attack surface, so after upgrader creates these certs, ca key will be discarded and attacker can't initialize
 
 	if len(secret.Data) != 0 {
 		log.Info("Updating internal secret.")
@@ -665,12 +624,12 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 	}
 
 	log.WithFields(log.Fields{
-		"validity_days":  ctx.Int("ca-cert-validity-days"),
-		"rsa-key-length": ctx.Int("rsa-key-length"),
+		"CACertValidityDays": config.CACertValidityDays,
+		"CertValidityDays":   config.CertValidityDays,
+		"RSAKeyLength":       config.RSAKeyLength,
 	}).Info("Creating new cert/key...")
 
-	caValidityDays := ctx.Int("ca-cert-validity-days")
-	cacert, cakey, err := kv.GenerateCAWithRSAKey(GetInternalCACertTemplate(caValidityDays), ctx.Int("rsa-key-length"))
+	cacert, cakey, err := kv.GenerateCAWithRSAKey(GetInternalCACertTemplate(config.CACertValidityDays), config.RSAKeyLength)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate ca cert: %w", err)
 	}
@@ -681,7 +640,7 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 
 	log.WithFields(log.Fields{
 		"cert":          string(cacert),
-		"validity_days": caValidityDays,
+		"validity_days": config.CACertValidityDays,
 	}).Debug("New cacert is created.")
 
 	ca, err := x509.ParseCertificate(capair.Certificate[0])
@@ -689,15 +648,14 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 		return nil, fmt.Errorf("failed to parse ca cert: %w", err)
 	}
 
-	certValidityDays := ctx.Int("cert-validity-days")
-	cert, key, err := kv.GenerateTLSCertWithRSAKey(GetInternalCertTemplate(certValidityDays), ctx.Int("rsa-key-length"), ca, capair.PrivateKey)
+	cert, key, err := kv.GenerateTLSCertWithRSAKey(GetInternalCertTemplate(config.CertValidityDays), config.RSAKeyLength, ca, capair.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate TLS certificate: %w", err)
 	}
 
 	log.WithFields(log.Fields{
 		"cert":          string(cert),
-		"validity_days": certValidityDays,
+		"validity_days": config.CertValidityDays,
 	}).Debug("New cert is created.")
 
 	// At this point, we have these keys/certs in PEM format:
@@ -710,7 +668,6 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 
 	if freshInstall {
 		// Fresh install case.  We should apply to NEW_SECRET_NAME, DEST_SECRET_NAME and ACTIVE_SECRET_NAME
-
 		secret.Data[NEW_SECRET_PREFIX+CACERT_FILENAME] = cacert
 		secret.Data[NEW_SECRET_PREFIX+CERT_FILENAME] = cert
 		secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME] = key
@@ -729,12 +686,9 @@ func InitializeInternalSecret(ctx *cli.Context, client dynamic.Interface, namesp
 		secret.Data[NEW_SECRET_PREFIX+KEY_FILENAME] = key
 	}
 
-	// TODO: Make sure that every operation will update the secret's label, so it's well synchronized.
-	// TODO: Use PATCH instead of CREATE/UPDATE.
-
 	// If there is other instance running at the same time, this function is expected to cause conflict.
 	var ret *corev1.Secret
-	if ret, err = ApplyK8sSecret(ctx.Context, client, namespace, secret); err != nil {
+	if ret, err = UpdateSecret(ctx, client, namespace, secret); err != nil {
 		return nil, fmt.Errorf("failed to write dst secret: %w", err)
 	}
 	log.WithFields(log.Fields{
@@ -760,6 +714,12 @@ func PostSyncHook(ctx *cli.Context) error {
 	kubeconfig := ctx.String("kube-config")
 	secretName := ctx.String("internal-secret-name")
 	freshInstall := ctx.Bool("fresh-install")
+	renewThreshold := ctx.Duration("expiry-cert-threshold")
+	timeout := ctx.Duration("timeout")
+	waitDeploymentTimeout := ctx.Duration("rollout-timeout")
+
+	timeoutCtx, cancel := context.WithTimeout(ctx.Context, timeout)
+	defer cancel()
 
 	log.Info("Creating k8s client")
 
@@ -773,7 +733,7 @@ func PostSyncHook(ctx *cli.Context) error {
 	// 1. Check if internal cert exists.  Create it if not exists.
 	var secret *corev1.Secret
 	var retSecret *corev1.Secret
-	if secret, err = GetK8sSecret(ctx.Context, client, namespace, secretName); err != nil {
+	if secret, err = GetK8sSecret(timeoutCtx, client, namespace, secretName); err != nil {
 		if !k8sError.IsNotFound(err) {
 			return fmt.Errorf("failed to find source secret: %w", err)
 		}
@@ -788,20 +748,27 @@ func PostSyncHook(ctx *cli.Context) error {
 	// 3. Secret is not up-to-date, say it's expired, and no upgrade is in progress.
 
 	// Check if upgrader should still need to do its job.  If so, exit.
-	if inprogress := IsUpgradeInProgress(ctx, secret); inprogress {
+	if inprogress := IsUpgradeInProgress(timeoutCtx, secret); inprogress {
 		// There was interrupted jobs.  We should reuse the certificate created.
+		// Note: It's guaranteed in init containers that only one instance of Job will be running.
 		log.Info("Cert rollout is still in progress.  This instance should take over.")
 	} else {
-		if shouldUpgrade, err := ShouldUpgradeInternalCert(ctx, secret); err != nil {
+		certOnly := false
+		if upgradeCA, upgradeCert, err := ShouldUpgradeInternalCert(ctx.Context, secret, renewThreshold); err != nil {
 			return fmt.Errorf("failed to check if we should upgrade internal cert: %w", err)
-		} else if !shouldUpgrade {
+		} else if !upgradeCA && !upgradeCert {
 			log.Info("Certificate is up-to-date")
 			return nil
 		} else {
+			certOnly = !upgradeCA && upgradeCert
 			log.Info("We should update internal certificate")
 		}
 
-		if retSecret, err = InitializeInternalSecret(ctx, client, namespace, freshInstall, secret); err != nil {
+		if retSecret, err = InitializeInternalSecret(timeoutCtx, client, namespace, secretName, freshInstall, certOnly, secret, CertConfig{
+			CACertValidityDays: ctx.Int("ca-cert-validity-days"),
+			CertValidityDays:   ctx.Int("cert-validity-days"),
+			RSAKeyLength:       ctx.Int("rsa-key-length"),
+		}); err != nil {
 			return fmt.Errorf("failed to initialize internal secret: %w", err)
 		}
 	}
@@ -830,14 +797,14 @@ func PostSyncHook(ctx *cli.Context) error {
 	log.Infof("Deploying internal secrets with retry: %+v", retry.DefaultRetry)
 	err = retry.OnError(retry.DefaultRetry,
 		func(error) bool {
-			// Retry on all errors...k8s job will make it retry anyway.
+			// Retry on all errors...returning error will make this job restart, which will lead to a retry anyway.
 			return true
 		},
 		func() error {
 			// The main logic.
 
 			// Now we have certs ready. It's time to do rolling update.
-			err = UpgradeInternalCerts(ctx, client)
+			err = UpgradeInternalCerts(timeoutCtx, client, namespace, secretName, waitDeploymentTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to upgrade internal certs: %w", err)
 			}

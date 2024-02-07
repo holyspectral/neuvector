@@ -18,17 +18,13 @@ import (
 )
 
 const (
-	UPGRADER_JOB_NAME = "neuvector-upgrader-job"
+	UPGRADER_JOB_NAME       = "neuvector-upgrader-job"
+	UPGRADER_UID_ANNOTATION = "upgrader-uid"
 )
 
-// Get deployment ID from environment variable.
-// The ID is generated from sha256(.Values), so it changes when an overrides changes or a new version of charts is available.
-func GetValuesSum(ctx *cli.Context, client dynamic.Interface, namespace string) (string, error) {
-	return os.Getenv("OVERRIDE_CHECKSUM"), nil
-}
-
-// Check controller's deployment to see if it's still not rolled out.
-// If yes, it's a fresh install.  If no, it's during a rolling update.
+// Check controller pods to see if they are all coming from the same owner (ReplicaSet)
+// It's more complicated to check if we're doing an upgrade instead of creating a new pod.
+// Luckily, we only need this information to speed up cert rotation during fresh install.
 func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string) (bool, error) {
 
 	// Get all controller pods including those being initialized.
@@ -54,21 +50,27 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 	ownerID := ""
 	// Examine all controller pods to see if their certificate expires or they're still using legacy certs.
 	for _, pod := range pods.Items {
+		uid := ""
+		if len(pod.OwnerReferences) > 0 {
+			uid = string(pod.OwnerReferences[0].UID)
+		}
+
 		log.WithFields(log.Fields{
-			"pod": pod.Status.PodIP,
-		}).Debug("Getting gRPC and consul certs")
+			"pod":      pod.Status.PodIP,
+			"ownerUID": uid,
+		}).Debug("Getting pod's owner UID")
 
 		if len(pod.OwnerReferences) != 1 {
-			// Shouldn't be more than owner reference...return error in this case.
-			return false, errors.New("more than one owner reference are detected")
+			// Shouldn't be more than one owner reference...return error in this case.
+			return false, errors.New("invalid owner reference are detected")
 		}
 		if ownerID == "" {
-			ownerID = string(pod.OwnerReferences[0].UID)
-		} else {
-			if ownerID != string(pod.OwnerReferences[0].UID) {
-				log.Info("Controller pods belonging to other replicaset is detected.  We're during a rolling update.")
-				return false, nil
-			}
+			ownerID = uid
+			continue
+		}
+		if ownerID != uid {
+			log.Info("Controller pods belonging to other replicaset is detected.  We're not in a fresh install.")
+			return false, nil
 		}
 	}
 
@@ -77,12 +79,16 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 }
 
 // Create post-sync job and leave.
-func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) error {
+func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
 	// Global cluster-level lock with 5 mins TTL
 	if withLock {
-		lock, err := CreateLocker(namespace, "neuvector-controller-init-container")
+		hostname, err := os.Hostname()
 		if err != nil {
-			return fmt.Errorf("failed to acquire cluster-wide lock: %w", err)
+			hostname = "neuvector-controller-init-container"
+		}
+		lock, err := CreateLocker(namespace, hostname)
+		if err != nil {
+			return nil, fmt.Errorf("failed to acquire cluster-wide lock: %w", err)
 		}
 		lock.Lock()
 		defer lock.Unlock()
@@ -99,14 +105,14 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 
 	if err != nil {
 		if !k8sError.IsNotFound(err) {
-			return fmt.Errorf("failed to find upgrader job: %w", err)
+			return nil, fmt.Errorf("failed to find upgrader job: %w", err)
 		}
 	} else {
 		var resc batchv1.Job
 		err = runtime.DefaultUnstructuredConverter.
 			FromUnstructured(item.UnstructuredContent(), &resc)
 		if err != nil {
-			return fmt.Errorf("failed to convert to job: %w", err)
+			return nil, fmt.Errorf("failed to convert to job: %w", err)
 		}
 		job = &resc
 	}
@@ -115,10 +121,10 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 	if job != nil {
 
 		// Make sure jobs created by other init containers will not be deleted.
-		if job.Annotations["upgrader-uid"] == upgraderUID {
+		if job.Annotations[UPGRADER_UID_ANNOTATION] == upgraderUID {
 			// This is created by the same deployment.
 			log.Info("Upgrader job is already created.  Exit.")
-			return nil
+			return job, nil
 		}
 
 		background := metav1.DeletePropagationBackground
@@ -132,14 +138,14 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 			PropagationPolicy: &background,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to delete old upgrade job: %w", err)
+			return nil, fmt.Errorf("failed to delete old upgrade job: %w", err)
 		}
 		log.Info("Job from the previous deployment/values is deleted.")
 	}
 
 	freshInstall, err := IsFreshInstall(ctx, client, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to check if it's a fresh install or not: %w", err)
+		return nil, fmt.Errorf("failed to check if it's a fresh install or not: %w", err)
 	}
 
 	//
@@ -152,9 +158,8 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: UPGRADER_JOB_NAME,
-			//Labels:      map[string]string{}, // TODO: fill these
 			Annotations: map[string]string{
-				"upgrader-uid": upgraderUID,
+				UPGRADER_UID_ANNOTATION: upgraderUID,
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -162,13 +167,16 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      UPGRADER_JOB_NAME,
 					Namespace: namespace,
+					Labels: map[string]string{
+						"app": "neuvector-upgrader-job",
+					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						corev1.Container{
 							Name:            "upgrader",
 							Image:           ctx.String("image"),
-							Command:         []string{"/usr/local/bin/upgrader", "post-sync-hook"},
+							Command:         []string{"/usr/local/bin/upgrader", "upgrader-job"},
 							ImagePullPolicy: corev1.PullAlways,
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
@@ -213,10 +221,10 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 
 	unstructedJob, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&newjob)
 	if err != nil {
-		return fmt.Errorf("failed to convert target job: %w", err)
+		return nil, fmt.Errorf("failed to convert target job: %w", err)
 	}
 
-	_, err = client.Resource(
+	retjob, err := client.Resource(
 		schema.GroupVersionResource{
 			Resource: "jobs",
 			Version:  "v1",
@@ -224,20 +232,21 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 		},
 	).Namespace(namespace).Create(ctx.Context, &unstructured.Unstructured{Object: unstructedJob}, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create upgrade job: %w", err)
+		return nil, fmt.Errorf("failed to create upgrade job: %w", err)
 	}
+
+	var ret batchv1.Job
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(retjob.UnstructuredContent(), &ret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to job: %w", err)
+	}
+
 	log.Info("Post upgrade job is created")
-	return nil
+	return &ret, nil
 }
 
 func PreSyncHook(ctx *cli.Context) error {
-	skip := ctx.Bool("skip-cert-creation")
-
-	if skip {
-		log.Info("Skipping certificate creation")
-		return nil
-	}
-
 	namespace := ctx.String("namespace")
 	kubeconfig := ctx.String("kube-config")
 	secretName := ctx.String("internal-secret-name")
@@ -251,10 +260,7 @@ func PreSyncHook(ctx *cli.Context) error {
 
 	log.Info("Getting helm values check sum")
 
-	valuesSum, err := GetValuesSum(ctx, client, namespace)
-	if err != nil {
-		return fmt.Errorf("failed to get this pod's owner UID: %w", err)
-	}
+	valuesChecksum := os.Getenv("OVERRIDE_CHECKSUM")
 
 	var secret *corev1.Secret
 	if secret, err = GetK8sSecret(ctx.Context, client, namespace, secretName); err != nil {
@@ -266,7 +272,7 @@ func PreSyncHook(ctx *cli.Context) error {
 	}
 	secretUID := string(secret.UID)
 
-	log.WithField("uid", valuesSum).Info("Retrieved values sha256 sum successfully")
+	log.WithField("checksum", valuesChecksum).Info("Retrieved values sha256 sum successfully")
 
 	log.Info("Creating cert upgrade job")
 
@@ -274,7 +280,7 @@ func PreSyncHook(ctx *cli.Context) error {
 	// If secret.UID is changed, that means this is a different deployment, so we have to delete the existing job.
 	// If the deploymentUID, which is a sha256 sum of all helm values, changes, we do the same thing.
 	// If this UID is the same, skip the job creation.
-	if err := CreatePostSyncJob(ctx, client, namespace, secretUID+valuesSum, true); err != nil {
+	if _, err := CreatePostSyncJob(ctx, client, namespace, secretUID+valuesChecksum, true); err != nil {
 		return fmt.Errorf("failed to create post sync job: %w", err)
 	}
 

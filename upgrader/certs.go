@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/big"
 	"reflect"
 	"time"
 
-	"github.com/urfave/cli/v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -71,7 +71,7 @@ func IsSameCert(secret *corev1.Secret, prefix1 string, prefix2 string) bool {
 // This is because the upgrader will move newSecret to activeSecret and finally destSecret.
 // That means, after upgrade, these three secrets should be the same.
 // If they're the same, return false, otherwise, return true.
-func IsUpgradeInProgress(ctx *cli.Context, secret *corev1.Secret) bool {
+func IsUpgradeInProgress(ctx context.Context, secret *corev1.Secret) bool {
 	if secret == nil {
 		return false
 	}
