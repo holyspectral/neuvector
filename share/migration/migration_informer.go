@@ -258,7 +258,10 @@ func (c *InternalSecretController) secretDelete(obj interface{}) {
 	if !c.IsOfInterest(secret) {
 		return
 	}
-	log.Info("internal secret is deleted", secret.Namespace, secret.Name)
+	log.WithFields(log.Fields{
+		"namespace": secret.Namespace,
+		"name":      secret.Name,
+	}).Info("internal secret is deleted")
 }
 
 func NewInternalSecretController(informerFactory informers.SharedInformerFactory, namespace string, secretName string, reloadFuncs []func([]byte, []byte, []byte) error) (*InternalSecretController, error) {

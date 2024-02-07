@@ -82,11 +82,7 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
 	// Global cluster-level lock with 5 mins TTL
 	if withLock {
-		hostname, err := os.Hostname()
-		if err != nil {
-			hostname = "neuvector-controller-init-container"
-		}
-		lock, err := CreateLocker(namespace, hostname)
+		lock, err := CreateLocker(namespace, "init-container")
 		if err != nil {
 			return nil, fmt.Errorf("failed to acquire cluster-wide lock: %w", err)
 		}
@@ -178,26 +174,32 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 							Image:           ctx.String("image"),
 							Command:         []string{"/usr/local/bin/upgrader", "upgrader-job"},
 							ImagePullPolicy: corev1.PullAlways,
-							Env: []corev1.EnvVar{
-								corev1.EnvVar{
-									Name:  "PODNAME",
-									Value: os.Getenv("PODNAME"),
-								},
-								corev1.EnvVar{
-									Name:  "OVERRIDE_CHECKSUM",
-									Value: os.Getenv("OVERRIDE_CHECKSUM"),
-								},
-								corev1.EnvVar{
-									Name:  "EXPIRY_CERT_THRESHOLD",
-									Value: os.Getenv("EXPIRY_CERT_THRESHOLD"),
-								},
-							},
+							Env:             []corev1.EnvVar{},
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyNever,
 				},
 			},
 		},
+	}
+
+	supportedEnvs := []string{
+		"EXPIRY_CERT_THRESHOLD",
+		"CA_CERT_VALIDITY_PERIOD",
+		"CERT_VALIDITY_PERIOD",
+		"RSA_KEY_LENGTH",
+		"TIMEOUT",
+		"ROLLOUT_TIMEOUT",
+	}
+	for _, env := range supportedEnvs {
+		if value, ok := os.LookupEnv(env); ok {
+			newjob.Spec.Template.Spec.Containers[0].Env = append(newjob.Spec.Template.Spec.Containers[0].Env,
+				corev1.EnvVar{
+					Name:  env,
+					Value: value,
+				},
+			)
+		}
 	}
 
 	pullSecret := ctx.String("image-pull-secret")

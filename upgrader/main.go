@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jrhouston/k8slock"
 	log "github.com/sirupsen/logrus"
 
@@ -67,13 +68,19 @@ func NewK8sClient(kubeconfig string) (dynamic.Interface, error) {
 	return dynamic.NewForConfig(config)
 }
 
-func CreateLocker(namespace string, holdername string) (*k8slock.Locker, error) {
+func CreateLocker(namespace string, lockName string) (*k8slock.Locker, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Info("failed to get hostname: %w", err)
+	}
+	hostname += uuid.New().String()
+
 	return k8slock.NewLocker(
-		"internal-cert-migration-lock",
+		lockName,
 		k8slock.RetryWaitDuration(time.Second*30),
 		k8slock.Namespace(namespace),
 		k8slock.TTL(time.Minute*5),
-		k8slock.ClientID(holdername),
+		k8slock.ClientID(hostname),
 	)
 }
 
@@ -149,21 +156,21 @@ func main() {
 				},
 				&cli.DurationFlag{
 					Name:    "expiry-cert-threshold",
-					Value:   30 * 24 * time.Hour,
+					Value:   60 * 24 * time.Hour,
 					Usage:   "The threshold to automatically upgrade an internal cert",
 					EnvVars: []string{"EXPIRY_CERT_THRESHOLD"},
 				},
-				&cli.IntFlag{
-					Name:    "ca-cert-validity-days",
-					Value:   365 * 5, // 5 years
-					Usage:   "The ca cert's validity period in days",
-					EnvVars: []string{"CA_CERT_VALIDITY_DAYS"},
+				&cli.DurationFlag{
+					Name:    "ca-cert-validity-period",
+					Value:   time.Hour * 24 * 365 * 5,
+					Usage:   "The ca cert's validity period",
+					EnvVars: []string{"CA_CERT_VALIDITY_PERIOD"},
 				},
-				&cli.IntFlag{
-					Name:    "cert-validity-days",
-					Value:   365 * 2, // 2 years
-					Usage:   "The cert's validity period in days",
-					EnvVars: []string{"CERT_VALIDITY_DAYS"},
+				&cli.DurationFlag{
+					Name:    "cert-validity-period",
+					Value:   time.Hour * 24 * 365 * 3,
+					Usage:   "The cert's validity period",
+					EnvVars: []string{"CERT_VALIDITY_PERIOD"},
 				},
 				&cli.BoolFlag{
 					Name:    "fresh-install",

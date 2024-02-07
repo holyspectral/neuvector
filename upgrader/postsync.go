@@ -416,13 +416,10 @@ func UpgradeInternalCerts(ctx context.Context, client dynamic.Interface, namespa
 	var err error
 
 	if secret, err = GetK8sSecret(ctx, client, namespace, secretName); err != nil {
-		if err != nil {
-			return fmt.Errorf("failed to get secret: %w", err)
-		}
+		return fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	// Make sure all components are deployed
-
 	err = WaitUntilDeployed(ctx,
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
 		client,
@@ -599,9 +596,9 @@ func ShouldUpgradeInternalCert(ctx context.Context, secret *corev1.Secret, renew
 }
 
 type CertConfig struct {
-	CACertValidityDays int
-	CertValidityDays   int
-	RSAKeyLength       int
+	CACertValidityDuration time.Duration
+	CertValidityDuration   time.Duration
+	RSAKeyLength           int
 }
 
 // This function is meant to be called during pre-install/pre-upgrade/pre-sync hook.
@@ -642,9 +639,9 @@ func InitializeInternalSecret(ctx context.Context,
 	}
 
 	log.WithFields(log.Fields{
-		"CACertValidityDays": config.CACertValidityDays,
-		"CertValidityDays":   config.CertValidityDays,
-		"RSAKeyLength":       config.RSAKeyLength,
+		"CACertValidityDuration": config.CACertValidityDuration,
+		"CertValidityDuration":   config.CertValidityDuration,
+		"RSAKeyLength":           config.RSAKeyLength,
 	}).Info("Creating new cert/key...")
 
 	cacert, cakey, err := kv.GenerateCAWithRSAKey(
@@ -657,7 +654,7 @@ func InitializeInternalSecret(ctx context.Context,
 				CommonName:   "NeuVector",
 			},
 			NotBefore:             time.Now().Add(time.Hour * -1), // Give it some room for timing skew.
-			NotAfter:              time.Now().AddDate(0, 0, config.CACertValidityDays),
+			NotAfter:              time.Now().Add(config.CACertValidityDuration),
 			IsCA:                  true,
 			BasicConstraintsValid: true,
 		}, config.RSAKeyLength)
@@ -670,8 +667,8 @@ func InitializeInternalSecret(ctx context.Context,
 	}
 
 	log.WithFields(log.Fields{
-		"cert":          string(cacert),
-		"validity_days": config.CACertValidityDays,
+		"cert":     string(cacert),
+		"validity": config.CACertValidityDuration,
 	}).Debug("New cacert is created.")
 
 	ca, err := x509.ParseCertificate(capair.Certificate[0])
@@ -691,7 +688,7 @@ func InitializeInternalSecret(ctx context.Context,
 				CommonName:         "NeuVector",
 			},
 			NotBefore:             time.Now().Add(time.Hour * -1), // Give it some room for timing skew.
-			NotAfter:              time.Now().AddDate(0, 0, config.CertValidityDays),
+			NotAfter:              time.Now().Add(config.CertValidityDuration),
 			SubjectKeyId:          []byte{1, 2, 3, 4, 6},
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 			KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment,
@@ -705,8 +702,8 @@ func InitializeInternalSecret(ctx context.Context,
 	}
 
 	log.WithFields(log.Fields{
-		"cert":          string(cert),
-		"validity_days": config.CertValidityDays,
+		"cert":     string(cert),
+		"validity": config.CertValidityDuration,
 	}).Debug("New cert is created.")
 
 	// At this point, we have these keys/certs in PEM format:
@@ -772,6 +769,15 @@ func PostSyncHook(ctx *cli.Context) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx.Context, timeout)
 	defer cancel()
 
+	// Make sure only one upgrader will be running at the same time.
+	lock, err := CreateLocker(namespace, "upgrader")
+	if err != nil {
+		log.Fatal("failed to acquire cluster-wide lock: %w", err)
+	}
+
+	lock.Lock()
+	defer lock.Unlock()
+
 	log.Info("Creating k8s client")
 
 	client, err := NewK8sClient(kubeconfig)
@@ -805,7 +811,7 @@ func PostSyncHook(ctx *cli.Context) error {
 
 	// Initialization phase.
 
-	// 1. Check if internal cert exists.  Create it if not exists.
+	// 1. Check if internal cert exists.
 	var secret *corev1.Secret
 	var retSecret *corev1.Secret
 	if secret, err = GetK8sSecret(timeoutCtx, client, namespace, secretName); err != nil {
@@ -813,6 +819,7 @@ func PostSyncHook(ctx *cli.Context) error {
 			return fmt.Errorf("failed to find source secret: %w", err)
 		}
 	}
+
 	noInitialSecret := (secret == nil || len(secret.Data) == 0)
 
 	// Check if we should update cert.  If not, exit
@@ -840,9 +847,9 @@ func PostSyncHook(ctx *cli.Context) error {
 		}
 
 		if retSecret, err = InitializeInternalSecret(timeoutCtx, client, namespace, secretName, freshInstall, certOnly, secret, CertConfig{
-			CACertValidityDays: ctx.Int("ca-cert-validity-days"),
-			CertValidityDays:   ctx.Int("cert-validity-days"),
-			RSAKeyLength:       ctx.Int("rsa-key-length"),
+			CACertValidityDuration: ctx.Duration("ca-cert-validity-period"),
+			CertValidityDuration:   ctx.Duration("cert-validity-period"),
+			RSAKeyLength:           ctx.Int("rsa-key-length"),
 		}); err != nil {
 			return fmt.Errorf("failed to initialize internal secret: %w", err)
 		}
