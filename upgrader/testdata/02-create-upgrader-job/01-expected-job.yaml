@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    upgrader-uid: uid
+  creationTimestamp: null
+  name: neuvector-upgrader-job
+  namespace: neuvector
+spec:
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: neuvector-upgrader-job
+      name: neuvector-upgrader-job
+      namespace: neuvector
+    spec:
+      containers:
+        - command:
+            - /usr/local/bin/upgrader
+            - upgrader-job
+            - --fresh-install
+          imagePullPolicy: Always
+          name: upgrader
+          resources: {}
+      restartPolicy: Never
+status: {}
