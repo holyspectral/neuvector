@@ -184,6 +184,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 	}
 
 	supportedEnvs := []string{
+		"POD_NAMESPACE",
 		"EXPIRY_CERT_THRESHOLD",
 		"CA_CERT_VALIDITY_PERIOD",
 		"CERT_VALIDITY_PERIOD",
@@ -249,11 +250,15 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 }
 
 func PreSyncHook(ctx *cli.Context) error {
-	namespace := ctx.String("namespace")
+	namespace := ctx.String("pod-namespace")
 	kubeconfig := ctx.String("kube-config")
 	secretName := ctx.String("internal-secret-name")
 
-	log.Info("Creating k8s client")
+	log.WithFields(log.Fields{
+		"namespace":  namespace,
+		"kubeconfig": kubeconfig,
+		"secretName": secretName,
+	}).Info("init container starts")
 
 	client, err := NewK8sClient(kubeconfig)
 	if err != nil {

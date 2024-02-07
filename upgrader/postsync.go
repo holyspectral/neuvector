@@ -758,7 +758,7 @@ func InitializeInternalSecret(ctx context.Context,
 // empty => create secret => if secret is created and this is for fresh install, trigger rolling update and exit.
 // not empty => do rolling update per its state.
 func PostSyncHook(ctx *cli.Context) error {
-	namespace := ctx.String("namespace")
+	namespace := ctx.String("pod-namespace")
 	kubeconfig := ctx.String("kube-config")
 	secretName := ctx.String("internal-secret-name")
 	freshInstall := ctx.Bool("fresh-install")

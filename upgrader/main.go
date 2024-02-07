@@ -93,7 +93,7 @@ func main() {
 			Usage: "the active secret used by containers.  For testing only.",
 		},
 		&cli.StringFlag{
-			Name:    "namespace",
+			Name:    "pod-namespace",
 			Value:   "neuvector",
 			Usage:   "The k8s namespace where NeuVector is running in",
 			EnvVars: []string{"POD_NAMESPACE"},

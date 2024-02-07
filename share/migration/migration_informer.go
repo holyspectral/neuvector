@@ -303,7 +303,7 @@ func InitializeInternalSecretController(ctx context.Context, reloadFuncs []func(
 		return fmt.Errorf("failed to get k8s config: %w", err)
 	}
 
-	factory := informers.NewSharedInformerFactoryWithOptions(clientset, time.Hour*24, informers.WithNamespace("neuvector"))
+	factory := informers.NewSharedInformerFactoryWithOptions(clientset, time.Hour*24, informers.WithNamespace(os.Getenv("POD_NAMESPACE")))
 
 	controller, err := NewInternalSecretController(factory, os.Getenv("POD_NAMESPACE"), "neuvector-internal-certs", reloadFuncs)
 	if err != nil {
