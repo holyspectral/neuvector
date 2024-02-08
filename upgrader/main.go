@@ -155,19 +155,19 @@ func main() {
 				},
 				&cli.DurationFlag{
 					Name:    "expiry-cert-threshold",
-					Value:   60 * 24 * time.Hour,
+					Value:   10 * 365 * 24 * time.Hour, // Will always rotate by default.
 					Usage:   "The threshold to automatically upgrade an internal cert",
 					EnvVars: []string{"EXPIRY_CERT_THRESHOLD"},
 				},
 				&cli.DurationFlag{
 					Name:    "ca-cert-validity-period",
-					Value:   time.Hour * 24 * 365 * 5,
+					Value:   5 * 365 * 24 * time.Hour,
 					Usage:   "The ca cert's validity period",
 					EnvVars: []string{"CA_CERT_VALIDITY_PERIOD"},
 				},
 				&cli.DurationFlag{
 					Name:    "cert-validity-period",
-					Value:   time.Hour * 24 * 365 * 3,
+					Value:   3 * 365 * 24 * time.Hour,
 					Usage:   "The cert's validity period",
 					EnvVars: []string{"CERT_VALIDITY_PERIOD"},
 				},

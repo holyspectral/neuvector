@@ -105,20 +105,20 @@ func ReloadCert(cacert []byte, cert []byte, key []byte) error {
 // The secret is created by helm and events will be received following this order:
 // 1. The initial add.  It might have certs filled depending on timing, but no guarantee.
 // 2. The following update.  This should have certs all the time.
-func (c *InternalSecretController) ReloadSecret(secret *v1.Secret) error {
+func (c *InternalSecretController) ReloadSecret(secret *v1.Secret) (bool, error) {
 	cacert := secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME]
 	cert := secret.Data[ACTIVE_SECRET_PREFIX+CERT_FILENAME]
 	key := secret.Data[ACTIVE_SECRET_PREFIX+KEY_FILENAME]
 
 	if cacert == nil || cert == nil || key == nil {
-		return errors.New("active secret is not found, probably not initialized yet")
+		return false, errors.New("active secret is not found, probably not initialized yet")
 	}
 
 	// Keep copy of existing certs, so we can rollback if something is wrong.
 	oldcacert, oldcert, oldkey, err := GetCurrentInternalCerts()
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("failed to read existing certs: %w", err)
+			return false, fmt.Errorf("failed to read existing certs: %w", err)
 		}
 		// If file is not found, the container may have just been initialized.
 	}
@@ -126,12 +126,12 @@ func (c *InternalSecretController) ReloadSecret(secret *v1.Secret) error {
 	if reflect.DeepEqual(oldcacert, cacert) && reflect.DeepEqual(oldcert, cert) && reflect.DeepEqual(oldkey, key) {
 		// It's possible that controller restarts after cert is rolled out, so flip the flag in this case.
 		atomic.SwapInt32(&c.initialized, 1)
-		log.Info("Internal certificate is not changed")
-		return nil
+		log.Debug("Internal certificate is not changed")
+		return false, nil
 	}
 
 	if err := ReloadCert(cacert, cert, key); err != nil {
-		return fmt.Errorf("failed to reload certs: %w", err)
+		return false, fmt.Errorf("failed to reload certs: %w", err)
 	}
 
 	// At this point, cert has been replaced.
@@ -139,7 +139,7 @@ func (c *InternalSecretController) ReloadSecret(secret *v1.Secret) error {
 	// This go routine is the sole writer of c.initialized, so no lock is required.
 	if c.initialized == 0 {
 		atomic.SwapInt32(&c.initialized, 1)
-		return nil
+		return true, nil
 	}
 
 	recoverCerts := func() {
@@ -159,11 +159,11 @@ func (c *InternalSecretController) ReloadSecret(secret *v1.Secret) error {
 		if err != nil {
 			log.WithError(err).Error("failed to reload internal certs")
 			recoverCerts()
-			return fmt.Errorf("failed to reload internal certs: %w", err)
+			return false, fmt.Errorf("failed to reload internal certs: %w", err)
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 func (c *InternalSecretController) IsOfInterest(secret *v1.Secret) bool {
@@ -204,12 +204,16 @@ func (c *InternalSecretController) secretAdd(obj interface{}) {
 		"namespace": secret.Namespace,
 		"name":      secret.Name,
 		"rev":       secret.ResourceVersion,
-	}).Info("internal secret is added")
+	}).Debug("internal secret is added")
 
-	if err := c.ReloadSecret(secret); err != nil {
-		log.WithError(err).Error("failed to reload secret")
+	if reloaded, err := c.ReloadSecret(secret); err != nil {
+		log.WithError(err).Warn("failed to reload secret")
 	} else {
-		log.WithField("rev", secret.ResourceVersion).Info("Internal secret is up-to-date")
+		if reloaded {
+			log.WithField("rev", secret.ResourceVersion).Info("Internal secret is up-to-date")
+		} else {
+			log.WithField("rev", secret.ResourceVersion).Debug("Internal secret is up-to-date")
+		}
 		healthz.UpdateStatus("cert.revision", secret.ResourceVersion)
 	}
 }
@@ -243,12 +247,16 @@ func (c *InternalSecretController) secretUpdate(old, new interface{}) {
 		"namespace": newSecret.Namespace,
 		"name":      newSecret.Name,
 		"rev":       newSecret.ResourceVersion,
-	}).Info("New internal secret is detected")
+	}).Debug("New internal secret is detected")
 
-	if err := c.ReloadSecret(newSecret); err != nil {
+	if reloaded, err := c.ReloadSecret(newSecret); err != nil {
 		log.WithError(err).Error("failed to reload secret")
 	} else {
-		log.WithField("rev", newSecret.ResourceVersion).Info("Internal secret is up-to-date")
+		if reloaded {
+			log.WithField("rev", newSecret.ResourceVersion).Info("Internal secret is up-to-date")
+		} else {
+			log.WithField("rev", newSecret.ResourceVersion).Debug("Internal secret is up-to-date")
+		}
 		healthz.UpdateStatus("cert.revision", newSecret.ResourceVersion)
 	}
 }
@@ -261,7 +269,7 @@ func (c *InternalSecretController) secretDelete(obj interface{}) {
 	log.WithFields(log.Fields{
 		"namespace": secret.Namespace,
 		"name":      secret.Name,
-	}).Info("internal secret is deleted")
+	}).Debug("internal secret is deleted")
 }
 
 func NewInternalSecretController(informerFactory informers.SharedInformerFactory, namespace string, secretName string, reloadFuncs []func([]byte, []byte, []byte) error) (*InternalSecretController, error) {
