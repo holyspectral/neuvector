@@ -128,6 +128,12 @@ func main() {
 					Usage:   "The image pull policy used by upgrader job",
 					EnvVars: []string{"IMAGE_PULL_POLICY"},
 				},
+				&cli.IntFlag{
+					Name:    "job-timeout",
+					Value:   3600,
+					Usage:   "The timeout of the upgrader job created",
+					EnvVars: []string{"JOB_TIMEOUT"},
+				},
 			},
 			Action: PreSyncHook,
 		},

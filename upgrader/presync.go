@@ -80,7 +80,7 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 }
 
 // Create post-sync job and leave.
-func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
+func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace string, upgraderUID string, jobTimeoutSeconds int, withLock bool) (*batchv1.Job, error) {
 	// Global cluster-level lock with 5 mins TTL
 	if withLock {
 		lock, err := CreateLocker(namespace, "init-container")
@@ -181,7 +181,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 					RestartPolicy: corev1.RestartPolicyNever,
 				},
 			},
-			ActiveDeadlineSeconds: pointer.Int64Ptr(3600), // 1 hour
+			ActiveDeadlineSeconds: pointer.Int64Ptr(int64(jobTimeoutSeconds)), // 1 hour
 		},
 	}
 
@@ -255,6 +255,7 @@ func PreSyncHook(ctx *cli.Context) error {
 	namespace := ctx.String("pod-namespace")
 	kubeconfig := ctx.String("kube-config")
 	secretName := ctx.String("internal-secret-name")
+	jobTimeoutSecond := ctx.Int("job-timeout")
 
 	log.WithFields(log.Fields{
 		"namespace":  namespace,
@@ -289,7 +290,7 @@ func PreSyncHook(ctx *cli.Context) error {
 	// If secret.UID is changed, that means this is a different deployment, so we have to delete the existing job.
 	// If the deploymentUID, which is a sha256 sum of all helm values, changes, we do the same thing.
 	// If this UID is the same, skip the job creation.
-	if _, err := CreatePostSyncJob(ctx, client, namespace, secretUID+valuesChecksum, true); err != nil {
+	if _, err := CreatePostSyncJob(ctx, client, namespace, secretUID+valuesChecksum, jobTimeoutSecond, true); err != nil {
 		return fmt.Errorf("failed to create post sync job: %w", err)
 	}
 
