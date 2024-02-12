@@ -206,6 +206,9 @@ func WaitUntilDeployed(ctx context.Context,
 func IsCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, namespace string, rev string, selector string) (bool, error) {
 	// Get all running pods first.
 	// Even if some pods are not in running status, e.g., ContainerStatusUnknown, they can catch up from neuvector-internal certs secret.
+	//
+	// NOTE: When a pod becomes running after we list the pods, it's supposed to get the new version of certificate we just update.
+	// If for any reason the pod can't get newer certificate, it will be stuck in init phase and it will be caught in the next round.
 	item, err := client.Resource(
 		schema.GroupVersionResource{
 			Resource: "pods",

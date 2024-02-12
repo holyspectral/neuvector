@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -180,6 +181,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 					RestartPolicy: corev1.RestartPolicyNever,
 				},
 			},
+			ActiveDeadlineSeconds: pointer.Int64Ptr(3600), // 1 hour
 		},
 	}
 
