@@ -72,7 +72,7 @@ func CreateLocker(namespace string, lockName string) (*k8slock.Locker, error) {
 	if err != nil {
 		log.Info("failed to get hostname: %w", err)
 	}
-	hostname += uuid.New().String()
+	hostname += "_" + uuid.New().String()
 
 	return k8slock.NewLocker(
 		lockName,
@@ -104,49 +104,24 @@ func main() {
 			Usage:   "the new secret to be applied",
 			EnvVars: []string{"INTERNAL_SECRET_NAME"},
 		},
+		&cli.DurationFlag{
+			Name:    "timeout",
+			Value:   time.Minute * 30,
+			Usage:   "The timeout for this job to complete",
+			EnvVars: []string{"TIMEOUT"},
+		},
 	}
 	app.Commands = cli.Commands{
 		&cli.Command{
-			Name:  "create-upgrader-job",
-			Usage: "This command creates upgrader job in a not racey way.",
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:    "image",
-					Value:   "",
-					Usage:   "The image path used by upgrader job",
-					EnvVars: []string{"UPGRADER_IMAGE_PATH"},
-				},
-				&cli.StringFlag{
-					Name:    "image-pull-secret",
-					Value:   "",
-					Usage:   "The image pull secret used by upgrader job",
-					EnvVars: []string{"IMAGE_PULL_SECRET"},
-				},
-				&cli.StringFlag{
-					Name:    "image-pull-policy",
-					Value:   "",
-					Usage:   "The image pull policy used by upgrader job",
-					EnvVars: []string{"IMAGE_PULL_POLICY"},
-				},
-				&cli.IntFlag{
-					Name:    "job-timeout",
-					Value:   3600,
-					Usage:   "The timeout of the upgrader job created",
-					EnvVars: []string{"JOB_TIMEOUT"},
-				},
-			},
+			Name:   "create-upgrader-job",
+			Usage:  "This command creates upgrader job from neuvector-upgrader-pod cron job in a not racey way.",
+			Flags:  []cli.Flag{},
 			Action: PreSyncHook,
 		},
 		&cli.Command{
 			Name:  "upgrader-job",
 			Usage: "Run neuvector upgrader",
 			Flags: []cli.Flag{
-				&cli.DurationFlag{
-					Name:    "timeout",
-					Value:   time.Minute * 30,
-					Usage:   "The timeout for this job to complete",
-					EnvVars: []string{"TIMEOUT"},
-				},
 				&cli.DurationFlag{
 					Name:    "rollout-timeout",
 					Value:   0,

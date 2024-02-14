@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -15,18 +17,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/utils/pointer"
 )
 
 const (
 	UPGRADER_JOB_NAME       = "neuvector-upgrader-job"
+	UPGRADER_CRONJOB_NAME   = "neuvector-upgrader-pod"
 	UPGRADER_UID_ANNOTATION = "upgrader-uid"
+
+	CONTROLLER_LEASE_NAME = "neuvector-controller"
 )
 
 // Check controller pods to see if they are all coming from the same owner (ReplicaSet)
 // It's more complicated to check if we're doing an upgrade instead of creating a new pod.
 // Luckily, we only need this information to speed up cert rotation during fresh install.
-func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string) (bool, error) {
+func IsFreshInstall(ctx context.Context, client dynamic.Interface, namespace string) (bool, error) {
 
 	// Get all controller pods including those being initialized.
 	item, err := client.Resource(
@@ -34,7 +38,7 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 			Resource: "pods",
 			Version:  "v1",
 		},
-	).Namespace(namespace).List(ctx.Context, metav1.ListOptions{
+	).Namespace(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: ControllerPodLabelSelector,
 	})
 	if err != nil {
@@ -80,10 +84,10 @@ func IsFreshInstall(ctx *cli.Context, client dynamic.Interface, namespace string
 }
 
 // Create post-sync job and leave.
-func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace string, upgraderUID string, jobTimeoutSeconds int, withLock bool) (*batchv1.Job, error) {
+func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
 	// Global cluster-level lock with 5 mins TTL
 	if withLock {
-		lock, err := CreateLocker(namespace, "init-container")
+		lock, err := CreateLocker(namespace, CONTROLLER_LEASE_NAME)
 		if err != nil {
 			return nil, fmt.Errorf("failed to acquire cluster-wide lock: %w", err)
 		}
@@ -98,7 +102,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 			Version:  "v1",
 			Group:    "batch",
 		},
-	).Namespace(namespace).Get(ctx.Context, UPGRADER_JOB_NAME, metav1.GetOptions{})
+	).Namespace(namespace).Get(ctx, UPGRADER_JOB_NAME, metav1.GetOptions{})
 
 	if err != nil {
 		if !k8sError.IsNotFound(err) {
@@ -131,7 +135,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 				Version:  "v1",
 				Group:    "batch",
 			},
-		).Namespace(namespace).Delete(ctx.Context, UPGRADER_JOB_NAME, metav1.DeleteOptions{
+		).Namespace(namespace).Delete(ctx, UPGRADER_JOB_NAME, metav1.DeleteOptions{
 			PropagationPolicy: &background,
 		})
 		if err != nil {
@@ -145,79 +149,43 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 		return nil, fmt.Errorf("failed to check if it's a fresh install or not: %w", err)
 	}
 
-	//
-	// Create a new job now.
-	//
-	newjob := batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Job",
-			APIVersion: "batch/v1",
+	// Get cron job's template to create job
+	item, err = client.Resource(
+		schema.GroupVersionResource{
+			Resource: "cronjobs",
+			Version:  "v1",
+			Group:    "batch",
 		},
+	).Namespace(namespace).Get(ctx, UPGRADER_CRONJOB_NAME, metav1.GetOptions{})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to find upgrader cronjob: %w", err)
+	}
+	var cronjob batchv1.CronJob
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(item.UnstructuredContent(), &cronjob)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to job: %w", err)
+	}
+
+	annotations := make(map[string]string)
+	annotations["cronjob.kubernetes.io/instantiate"] = "manual"
+	annotations[UPGRADER_UID_ANNOTATION] = upgraderUID
+
+	for k, v := range cronjob.Spec.JobTemplate.Annotations {
+		annotations[k] = v
+	}
+
+	newjob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: UPGRADER_JOB_NAME,
-			Annotations: map[string]string{
-				UPGRADER_UID_ANNOTATION: upgraderUID,
-			},
+			Labels:            cronjob.Spec.JobTemplate.Labels,
+			Annotations:       annotations,
+			Name:              UPGRADER_JOB_NAME,
+			Namespace:         namespace,
+			CreationTimestamp: metav1.Time{Time: time.Now()},
+			OwnerReferences:   []metav1.OwnerReference{*metav1.NewControllerRef(&cronjob, batchv1.SchemeGroupVersion.WithKind("CronJob"))},
 		},
-		Spec: batchv1.JobSpec{
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      UPGRADER_JOB_NAME,
-					Namespace: namespace,
-					Labels: map[string]string{
-						"app": "neuvector-upgrader-job",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						corev1.Container{
-							Name:            "upgrader",
-							Image:           ctx.String("image"),
-							Command:         []string{"/usr/local/bin/upgrader", "upgrader-job"},
-							ImagePullPolicy: corev1.PullAlways,
-							Env:             []corev1.EnvVar{},
-						},
-					},
-					RestartPolicy: corev1.RestartPolicyNever,
-				},
-			},
-			ActiveDeadlineSeconds: pointer.Int64Ptr(int64(jobTimeoutSeconds)), // 1 hour
-		},
-	}
-
-	supportedEnvs := []string{
-		"POD_NAMESPACE",
-		"EXPIRY_CERT_THRESHOLD",
-		"CA_CERT_VALIDITY_PERIOD",
-		"CERT_VALIDITY_PERIOD",
-		"RSA_KEY_LENGTH",
-		"TIMEOUT",
-		"ROLLOUT_TIMEOUT",
-	}
-	for _, env := range supportedEnvs {
-		if value, ok := os.LookupEnv(env); ok {
-			newjob.Spec.Template.Spec.Containers[0].Env = append(newjob.Spec.Template.Spec.Containers[0].Env,
-				corev1.EnvVar{
-					Name:  env,
-					Value: value,
-				},
-			)
-		}
-	}
-
-	pullSecret := ctx.String("image-pull-secret")
-	if pullSecret != "" {
-		newjob.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
-			{
-				Name: pullSecret,
-			},
-		}
-	}
-	pullPolicy := ctx.String("image-pull-policy")
-	if pullPolicy != "" {
-		for i := range newjob.Spec.Template.Spec.Containers {
-			newjob.Spec.Template.Spec.Containers[i].ImagePullPolicy = corev1.PullPolicy(pullPolicy)
-		}
+		Spec: cronjob.Spec.JobTemplate.Spec,
 	}
 
 	if freshInstall {
@@ -235,7 +203,7 @@ func CreatePostSyncJob(ctx *cli.Context, client dynamic.Interface, namespace str
 			Version:  "v1",
 			Group:    "batch",
 		},
-	).Namespace(namespace).Create(ctx.Context, &unstructured.Unstructured{Object: unstructedJob}, metav1.CreateOptions{})
+	).Namespace(namespace).Create(ctx, &unstructured.Unstructured{Object: unstructedJob}, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create upgrade job: %w", err)
 	}
@@ -255,7 +223,7 @@ func PreSyncHook(ctx *cli.Context) error {
 	namespace := ctx.String("pod-namespace")
 	kubeconfig := ctx.String("kube-config")
 	secretName := ctx.String("internal-secret-name")
-	jobTimeoutSecond := ctx.Int("job-timeout")
+	timeout := ctx.Duration("timeout")
 
 	log.WithFields(log.Fields{
 		"namespace":  namespace,
@@ -272,8 +240,11 @@ func PreSyncHook(ctx *cli.Context) error {
 
 	valuesChecksum := os.Getenv("OVERRIDE_CHECKSUM")
 
+	timeoutCtx, cancel := context.WithTimeout(ctx.Context, timeout)
+	defer cancel()
+
 	var secret *corev1.Secret
-	if secret, err = GetK8sSecret(ctx.Context, client, namespace, secretName); err != nil {
+	if secret, err = GetK8sSecret(timeoutCtx, client, namespace, secretName); err != nil {
 		// The secret is supposed to be created by helm.
 		// If the secret is not created yet, it can be automatically retried by returning error.
 		if err != nil {
@@ -290,7 +261,7 @@ func PreSyncHook(ctx *cli.Context) error {
 	// If secret.UID is changed, that means this is a different deployment, so we have to delete the existing job.
 	// If the deploymentUID, which is a sha256 sum of all helm values, changes, we do the same thing.
 	// If this UID is the same, skip the job creation.
-	if _, err := CreatePostSyncJob(ctx, client, namespace, secretUID+valuesChecksum, jobTimeoutSecond, true); err != nil {
+	if _, err := CreatePostSyncJob(timeoutCtx, client, namespace, secretUID+valuesChecksum, true); err != nil {
 		return fmt.Errorf("failed to create post sync job: %w", err)
 	}
 

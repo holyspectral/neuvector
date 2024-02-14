@@ -147,7 +147,7 @@ func TestIsFreshInstall(t *testing.T) {
 		client := fake.NewSimpleDynamicClient(scheme.Scheme,
 			loadObjectList(t, tc.TestData)...,
 		)
-		isFreshInstall, err := IsFreshInstall(ctx, client, "neuvector")
+		isFreshInstall, err := IsFreshInstall(ctx.Context, client, "neuvector")
 		if tc.ExpectedErr {
 			assert.NotNil(t, err)
 		} else {
@@ -189,7 +189,7 @@ func TestCreateJob(t *testing.T) {
 		client := fake.NewSimpleDynamicClient(scheme.Scheme,
 			testdata...,
 		)
-		job, err := CreatePostSyncJob(ctx, client, "neuvector", "uid", 3600, false)
+		job, err := CreatePostSyncJob(ctx.Context, client, "neuvector", "uid", false)
 
 		expectedJob := loadJob(t, tc.ExpectedData)
 		if tc.ExpectedErr {
@@ -204,7 +204,7 @@ func TestCreateJob(t *testing.T) {
 func TestCreateJobWithForcedK8sError(t *testing.T) {
 
 	ErrorInjector(t, nil, func(ctx *cli.Context, client dynamic.Interface, injected *bool) bool {
-		job, err := CreatePostSyncJob(ctx, client, "neuvector", "uid2", 3600, false)
+		job, err := CreatePostSyncJob(ctx.Context, client, "neuvector", "uid2", false)
 
 		if *injected {
 			assert.Nil(t, job)

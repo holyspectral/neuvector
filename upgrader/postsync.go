@@ -37,6 +37,10 @@ import (
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
 
+const (
+	UPGRADER_LEASE_NAME = "neuvector-upgrader"
+)
+
 type ContainerStatus map[string]string
 
 func GetRemoteCert(host string, port string, config *tls.Config) (*x509.Certificate, error) {
@@ -773,7 +777,7 @@ func PostSyncHook(ctx *cli.Context) error {
 	defer cancel()
 
 	// Make sure only one upgrader will be running at the same time.
-	lock, err := CreateLocker(namespace, "upgrader")
+	lock, err := CreateLocker(namespace, UPGRADER_LEASE_NAME)
 	if err != nil {
 		log.Fatal("failed to acquire cluster-wide lock: %w", err)
 	}
