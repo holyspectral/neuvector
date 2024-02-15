@@ -176,7 +176,12 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 		annotations[k] = v
 	}
 
+	// TODO: support betav1?  v1 is available since 1.21.
 	newjob := &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Job",
+			APIVersion: "batch/v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:            cronjob.Spec.JobTemplate.Labels,
 			Annotations:       annotations,

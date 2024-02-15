@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
@@ -44,9 +45,11 @@ func ErrorInjector(t *testing.T, clientInit func() *fake.FakeDynamicClient, f fu
 			return false, nil, nil
 		}
 		var client *fake.FakeDynamicClient
+		testdata := loadObjectList(t, "03-forced-errors/01-testdata.yaml")
+		testdata = append(testdata, loadObject(t, "02-create-upgrader-job/00-cronjob.yaml"))
 		if clientInit == nil {
 			client = fake.NewSimpleDynamicClient(scheme.Scheme,
-				loadObjectList(t, "03-forced-errors/01-testdata.yaml")...,
+				testdata...,
 			)
 		} else {
 			client = clientInit()
@@ -186,12 +189,17 @@ func TestCreateJob(t *testing.T) {
 			testdata = loadObjectList(t, tc.TestData)
 		}
 
+		testdata = append(testdata, loadObject(t, "02-create-upgrader-job/00-cronjob.yaml"))
+
 		client := fake.NewSimpleDynamicClient(scheme.Scheme,
 			testdata...,
 		)
 		job, err := CreatePostSyncJob(ctx.Context, client, "neuvector", "uid", false)
 
 		expectedJob := loadJob(t, tc.ExpectedData)
+		job.CreationTimestamp = v1.Time{}
+		expectedJob.CreationTimestamp = v1.Time{}
+
 		if tc.ExpectedErr {
 			assert.NotNil(t, err)
 		} else {
