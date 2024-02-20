@@ -132,5 +132,6 @@ require (
 	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
 	k8s.io/kubectl v0.21.14
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 	sigs.k8s.io/yaml v1.3.0
 )
