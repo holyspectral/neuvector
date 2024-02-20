@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8sError "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -149,7 +151,14 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 		return nil, fmt.Errorf("failed to check if it's a fresh install or not: %w", err)
 	}
 
-	// Get cron job's template to create job
+	// Get cron job's template to create job.
+	// Note: CronJob is moved to batch/v1 in 1.21.  We fallback to v1beta1 if it doesn't exist.
+
+	var jobSpec *batchv1.JobSpec
+	var labels map[string]string
+
+	annotations := make(map[string]string)
+	useBetav1 := true
 	item, err = client.Resource(
 		schema.GroupVersionResource{
 			Resource: "cronjobs",
@@ -158,39 +167,72 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 		},
 	).Namespace(namespace).Get(ctx, UPGRADER_CRONJOB_NAME, metav1.GetOptions{})
 
+	if err != nil && k8sError.IsNotFound(err) {
+		log.Info("batch/v1 is not found.  Fallback to batch/v1beta1")
+		useBetav1 = false
+		item, err = client.Resource(
+			schema.GroupVersionResource{
+				Resource: "cronjobs",
+				Version:  "v1beta1",
+				Group:    "batch",
+			},
+		).Namespace(namespace).Get(ctx, UPGRADER_CRONJOB_NAME, metav1.GetOptions{})
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to find upgrader cronjob: %w", err)
 	}
-	var cronjob batchv1.CronJob
-	err = runtime.DefaultUnstructuredConverter.
-		FromUnstructured(item.UnstructuredContent(), &cronjob)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert to job: %w", err)
+
+	if useBetav1 {
+		var cronjob batchv1.CronJob
+		err = runtime.DefaultUnstructuredConverter.
+			FromUnstructured(item.UnstructuredContent(), &cronjob)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert to job: %w", err)
+		}
+		jobSpec = &cronjob.Spec.JobTemplate.Spec
+		for k, v := range cronjob.Spec.JobTemplate.Annotations {
+			annotations[k] = v
+		}
+		labels = cronjob.Spec.JobTemplate.Labels
+	} else {
+		var cronjob batchv1beta1.CronJob
+		err = runtime.DefaultUnstructuredConverter.
+			FromUnstructured(item.UnstructuredContent(), &cronjob)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert to job: %w", err)
+		}
+		jobSpec = &cronjob.Spec.JobTemplate.Spec
+		for k, v := range cronjob.Spec.JobTemplate.Annotations {
+			annotations[k] = v
+		}
+		labels = cronjob.Spec.JobTemplate.Labels
 	}
 
-	annotations := make(map[string]string)
 	annotations["cronjob.kubernetes.io/instantiate"] = "manual"
 	annotations[UPGRADER_UID_ANNOTATION] = upgraderUID
 
-	for k, v := range cronjob.Spec.JobTemplate.Annotations {
-		annotations[k] = v
-	}
-
-	// TODO: support betav1?  v1 is available since 1.21.
 	newjob := &batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Job",
 			APIVersion: "batch/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:            cronjob.Spec.JobTemplate.Labels,
+			Labels:            labels,
 			Annotations:       annotations,
 			Name:              UPGRADER_JOB_NAME,
 			Namespace:         namespace,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
-			OwnerReferences:   []metav1.OwnerReference{*metav1.NewControllerRef(&cronjob, batchv1.SchemeGroupVersion.WithKind("CronJob"))},
+			OwnerReferences: []metav1.OwnerReference{metav1.OwnerReference{
+				APIVersion:         item.GetAPIVersion(),
+				Kind:               item.GetKind(),
+				Name:               item.GetName(),
+				UID:                item.GetUID(),
+				BlockOwnerDeletion: pointer.Bool(true),
+				Controller:         pointer.Bool(true),
+			}},
 		},
-		Spec: cronjob.Spec.JobTemplate.Spec,
+		Spec: *jobSpec,
 	}
 
 	if freshInstall {

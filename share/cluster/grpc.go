@@ -57,14 +57,14 @@ type GRPCServer struct {
 func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 	options := &advancedtls.ServerOptions{
 		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-			log.Info("Server getting certificates")
+			log.Debug("Server getting certificates")
 			_, cert, _ := GetInternalCert()
 
 			return cert, nil
 		},
 		RootCertificateOptions: advancedtls.RootCertificateOptions{
 			GetRootCAs: func(params *advancedtls.GetRootCAsParams) (*advancedtls.GetRootCAsResults, error) {
-				log.Info("Server getting root CAs")
+				log.Debug("Server getting root CAs")
 				caCertPool, _, _ := GetInternalCert()
 
 				return &advancedtls.GetRootCAsResults{
@@ -73,7 +73,7 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 			},
 		},
 		VerifyPeer: func(params *advancedtls.VerificationFuncParams) (*advancedtls.VerificationResults, error) {
-			log.Info("Server checking CN")
+			log.Debug("Server checking CN")
 			_, _, cn := GetInternalCert()
 			if params.Leaf == nil || len(params.Leaf.DNSNames) == 0 {
 				return nil, errors.New("no valid certificate")
@@ -272,14 +272,14 @@ func (c *GRPCClient) monitorGRPCConnectivity(ctx context.Context) {
 func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback, compress bool) (*GRPCClient, error) {
 	options := &advancedtls.ClientOptions{
 		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			log.Info("Client getting certificates")
+			log.Debug("Client getting certificates")
 			_, cert, _ := GetInternalCert()
 
 			return cert, nil
 		},
 		RootCertificateOptions: advancedtls.RootCertificateOptions{
 			GetRootCAs: func(params *advancedtls.GetRootCAsParams) (*advancedtls.GetRootCAsResults, error) {
-				log.Info("Client getting root CAs")
+				log.Debug("Client getting root CAs")
 				caCertPool, _, _ := GetInternalCert()
 
 				return &advancedtls.GetRootCAsResults{
@@ -288,7 +288,7 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 			},
 		},
 		VerifyPeer: func(params *advancedtls.VerificationFuncParams) (*advancedtls.VerificationResults, error) {
-			log.Info("Client checking CN")
+			log.Debug("Client checking CN")
 			_, _, cn := GetInternalCert()
 			if params.Leaf == nil || len(params.Leaf.DNSNames) == 0 {
 				return nil, errors.New("no valid certificate")
