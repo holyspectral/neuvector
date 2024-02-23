@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/utils/pointer"
 )
@@ -85,80 +87,7 @@ func IsFreshInstall(ctx context.Context, client dynamic.Interface, namespace str
 	return true, nil
 }
 
-// Create post-sync job and leave.
-func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
-	// Global cluster-level lock with 5 mins TTL
-	if withLock {
-		lock, err := CreateLocker(namespace, CONTROLLER_LEASE_NAME)
-		if err != nil {
-			return nil, fmt.Errorf("failed to acquire cluster-wide lock: %w", err)
-		}
-		lock.Lock()
-		defer lock.Unlock()
-	}
-
-	var job *batchv1.Job
-	item, err := client.Resource(
-		schema.GroupVersionResource{
-			Resource: "jobs",
-			Version:  "v1",
-			Group:    "batch",
-		},
-	).Namespace(namespace).Get(ctx, UPGRADER_JOB_NAME, metav1.GetOptions{})
-
-	if err != nil {
-		if !k8sError.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to find upgrader job: %w", err)
-		}
-	} else {
-		var resc batchv1.Job
-		err = runtime.DefaultUnstructuredConverter.
-			FromUnstructured(item.UnstructuredContent(), &resc)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert to job: %w", err)
-		}
-		job = &resc
-	}
-
-	// Delete existing jobs if it meets certain condition
-	if job != nil {
-
-		// Make sure jobs created by other init containers will not be deleted.
-		if job.Annotations[UPGRADER_UID_ANNOTATION] == upgraderUID {
-			// This is created by the same deployment.
-			log.Info("Upgrader job is already created.  Exit.")
-			return job, nil
-		}
-
-		background := metav1.DeletePropagationBackground
-		err := client.Resource(
-			schema.GroupVersionResource{
-				Resource: "jobs",
-				Version:  "v1",
-				Group:    "batch",
-			},
-		).Namespace(namespace).Delete(ctx, UPGRADER_JOB_NAME, metav1.DeleteOptions{
-			PropagationPolicy: &background,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to delete old upgrade job: %w", err)
-		}
-		log.Info("Job from the previous deployment/values is deleted.")
-	}
-
-	freshInstall, err := IsFreshInstall(ctx, client, namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if it's a fresh install or not: %w", err)
-	}
-
-	// Get cron job's template to create job.
-	// Note: CronJob is moved to batch/v1 in 1.21.  We fallback to v1beta1 if it doesn't exist.
-
-	var jobSpec *batchv1.JobSpec
-	var labels map[string]string
-
-	annotations := make(map[string]string)
-	useBetav1 := true
+func GetCronJobDetail(ctx context.Context, client dynamic.Interface, namespace string) (item *unstructured.Unstructured, jobSpec *batchv1.JobSpec, labels map[string]string, annotations map[string]string, useBetav1 bool, err error) {
 	item, err = client.Resource(
 		schema.GroupVersionResource{
 			Resource: "cronjobs",
@@ -180,7 +109,7 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to find upgrader cronjob: %w", err)
+		return nil, nil, nil, nil, false, fmt.Errorf("failed to find upgrader cronjob: %w", err)
 	}
 
 	if useBetav1 {
@@ -188,29 +117,86 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 		err = runtime.DefaultUnstructuredConverter.
 			FromUnstructured(item.UnstructuredContent(), &cronjob)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert to job: %w", err)
+			return nil, nil, nil, nil, false, fmt.Errorf("failed to convert to job: %w", err)
 		}
 		jobSpec = &cronjob.Spec.JobTemplate.Spec
-		for k, v := range cronjob.Spec.JobTemplate.Annotations {
-			annotations[k] = v
-		}
+		annotations = cronjob.Spec.JobTemplate.Annotations
 		labels = cronjob.Spec.JobTemplate.Labels
 	} else {
 		var cronjob batchv1beta1.CronJob
 		err = runtime.DefaultUnstructuredConverter.
 			FromUnstructured(item.UnstructuredContent(), &cronjob)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert to job: %w", err)
+			return nil, nil, nil, nil, false, fmt.Errorf("failed to convert to job: %w", err)
 		}
 		jobSpec = &cronjob.Spec.JobTemplate.Spec
-		for k, v := range cronjob.Spec.JobTemplate.Annotations {
-			annotations[k] = v
-		}
+		annotations = cronjob.Spec.JobTemplate.Annotations
 		labels = cronjob.Spec.JobTemplate.Labels
 	}
 
-	annotations["cronjob.kubernetes.io/instantiate"] = "manual"
-	annotations[UPGRADER_UID_ANNOTATION] = upgraderUID
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+
+	return item, jobSpec, labels, annotations, useBetav1, nil
+
+}
+
+// Create post-sync job and leave.
+func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
+	// Global cluster-level lock with 5 mins TTL
+	if withLock {
+		lock, err := CreateLocker(namespace, CONTROLLER_LEASE_NAME)
+		if err != nil {
+			return nil, fmt.Errorf("failed to acquire cluster-wide lock: %w", err)
+		}
+		lock.Lock()
+		defer lock.Unlock()
+	}
+
+	// Get cron job's template to create job.
+	// Note: CronJob is moved to batch/v1 in 1.21.  We fallback to v1beta1 if it doesn't exist.
+	cronjob, jobSpec, jobLabels, jobAnnotations, useBetav1, err := GetCronJobDetail(ctx, client, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get detail from upgrader cronjob: %w", err)
+	}
+
+	// Make sure jobs created by other init containers will not be deleted.
+	annotations := cronjob.GetAnnotations()
+	if annotations != nil && annotations[UPGRADER_UID_ANNOTATION] == upgraderUID {
+		// This is created by the same deployment.
+		log.Info("Upgrader job is already created.  Exit.")
+		return nil, nil
+	}
+
+	background := metav1.DeletePropagationBackground
+	err = client.Resource(
+		schema.GroupVersionResource{
+			Resource: "jobs",
+			Version:  "v1",
+			Group:    "batch",
+		},
+	).Namespace(namespace).Delete(ctx, UPGRADER_JOB_NAME, metav1.DeleteOptions{PropagationPolicy: &background})
+
+	if err != nil {
+		if !k8sError.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to find upgrader job: %w", err)
+		}
+	} else {
+		log.Info("Job from the previous deployment/values is deleted.")
+	}
+
+	freshInstall, err := IsFreshInstall(ctx, client, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if it's a fresh install or not: %w", err)
+	}
+
+	jobAnnotations["cronjob.kubernetes.io/instantiate"] = "manual"
+	jobAnnotations[UPGRADER_UID_ANNOTATION] = upgraderUID
 
 	newjob := &batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
@@ -218,16 +204,16 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 			APIVersion: "batch/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:            labels,
-			Annotations:       annotations,
+			Labels:            jobLabels,
+			Annotations:       jobAnnotations,
 			Name:              UPGRADER_JOB_NAME,
 			Namespace:         namespace,
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			OwnerReferences: []metav1.OwnerReference{metav1.OwnerReference{
-				APIVersion:         item.GetAPIVersion(),
-				Kind:               item.GetKind(),
-				Name:               item.GetName(),
-				UID:                item.GetUID(),
+				APIVersion:         cronjob.GetAPIVersion(),
+				Kind:               cronjob.GetKind(),
+				Name:               cronjob.GetName(),
+				UID:                cronjob.GetUID(),
 				BlockOwnerDeletion: pointer.Bool(true),
 				Controller:         pointer.Bool(true),
 			}},
@@ -255,11 +241,46 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 		return nil, fmt.Errorf("failed to create upgrade job: %w", err)
 	}
 
+	// Patch cronjob, so it has the UPGRADER_UID_ANNOTATION annotation
+
 	var ret batchv1.Job
 	err = runtime.DefaultUnstructuredConverter.
 		FromUnstructured(retjob.UnstructuredContent(), &ret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert to job: %w", err)
+	}
+
+	// Update cronjob
+	payload := []struct {
+		Op    string `json:"op"`
+		Path  string `json:"path"`
+		Value string `json:"value"`
+	}{{
+		Op:    "replace",
+		Path:  fmt.Sprintf("/metadata/annotations/%s", UPGRADER_UID_ANNOTATION),
+		Value: upgraderUID,
+	}}
+	patchBytes, _ := json.Marshal(payload)
+
+	if useBetav1 {
+		_, err = client.Resource(
+			schema.GroupVersionResource{
+				Resource: "cronjobs",
+				Version:  "v1beta1",
+				Group:    "batch",
+			},
+		).Namespace(namespace).Patch(ctx, UPGRADER_CRONJOB_NAME, types.JSONPatchType, patchBytes, metav1.PatchOptions{})
+	} else {
+		_, err = client.Resource(
+			schema.GroupVersionResource{
+				Resource: "cronjobs",
+				Version:  "v1",
+				Group:    "batch",
+			},
+		).Namespace(namespace).Patch(ctx, UPGRADER_CRONJOB_NAME, types.JSONPatchType, patchBytes, metav1.PatchOptions{})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to update cron job labels: %w", err)
 	}
 
 	log.Info("Post upgrade job is created")
