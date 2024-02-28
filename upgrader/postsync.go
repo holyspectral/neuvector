@@ -437,36 +437,6 @@ func UpgradeInternalCerts(ctx context.Context, client dynamic.Interface, namespa
 		return fmt.Errorf("failed to wait controller to rollout: %w", err)
 	}
 
-	err = WaitUntilDeployed(ctx,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"},
-		client,
-		namespace,
-		"neuvector-enforcer-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait enforcer to rollout: %w", err)
-	}
-
-	err = WaitUntilDeployed(ctx,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-		client,
-		namespace,
-		"neuvector-scanner-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait scanner to rollout: %w", err)
-	}
-
-	err = WaitUntilDeployed(ctx,
-		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
-		client,
-		namespace,
-		"neuvector-registry-adapter-pod",
-		timeout)
-	if err != nil {
-		return fmt.Errorf("failed to wait registry to rollout: %w", err)
-	}
-
 	// 2. NOTE: we don't wait for enforcer and scanner because their certs don't have to be changed at the same time.
 
 	// Flow:
@@ -775,6 +745,8 @@ func PostSyncHook(ctx *cli.Context) error {
 
 	timeoutCtx, cancel := context.WithTimeout(ctx.Context, timeout)
 	defer cancel()
+
+	log.Info("Initializing lock")
 
 	// Make sure only one upgrader will be running at the same time.
 	lock, err := CreateLocker(namespace, UPGRADER_LEASE_NAME)

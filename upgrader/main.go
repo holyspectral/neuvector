@@ -78,7 +78,7 @@ func CreateLocker(namespace string, lockName string) (*k8slock.Locker, error) {
 		lockName,
 		k8slock.RetryWaitDuration(time.Second*30),
 		k8slock.Namespace(namespace),
-		k8slock.TTL(time.Minute*5),
+		k8slock.TTL(time.Hour*1),
 		k8slock.ClientID(hostname),
 	)
 }
