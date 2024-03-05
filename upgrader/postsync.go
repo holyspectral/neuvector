@@ -249,7 +249,8 @@ func IsCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, names
 		}
 
 		log.WithFields(log.Fields{
-			"pod": pod.Status.PodIP,
+			"podName": pod.Name,
+			"pod":     pod.Status.PodIP,
 		}).Info("Getting container status")
 
 		var status ContainerStatus
@@ -259,17 +260,17 @@ func IsCertRevisionUpToDate(ctx context.Context, client dynamic.Interface, names
 
 		req, err := http.NewRequestWithContext(timeoutCtx, "GET", fmt.Sprintf("http://%s:%d/healthz", pod.Status.PodIP, 18500), nil)
 		if err != nil {
-			return false, fmt.Errorf("failed to create HTTP request: %w", err)
+			return false, fmt.Errorf("failed to create HTTP request for pod %s: %w", pod.Name, err)
 		}
 
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
-			return false, fmt.Errorf("failed to connect to healthz endpoint: %w", err)
+			return false, fmt.Errorf("failed to connect to healthz endpoint for pod %s: %w", pod.Name, err)
 		}
 
 		err = json.NewDecoder(res.Body).Decode(&status)
 		if err != nil {
-			return false, fmt.Errorf("failed to unmarshal healthz response: %w", err)
+			return false, fmt.Errorf("failed to unmarshal healthz response for pod %s: %w", pod.Name, err)
 		}
 
 		if status["cert.revision"] != rev {
