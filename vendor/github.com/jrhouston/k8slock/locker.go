@@ -20,13 +20,14 @@ import (
 
 // Locker implements the Locker interface using the kubernetes Lease resource
 type Locker struct {
-	clientset   *kubernetes.Clientset
-	leaseClient coordinationclientv1.LeaseInterface
-	namespace   string
-	name        string
-	clientID    string
-	retryWait   time.Duration
-	ttl         time.Duration
+	clientset         *kubernetes.Clientset
+	leaseClient       coordinationclientv1.LeaseInterface
+	namespace         string
+	name              string
+	clientID          string
+	retryWait         time.Duration
+	ttl               time.Duration
+	skipLeaseCreation bool
 }
 
 type option func(*Locker)
@@ -79,6 +80,13 @@ func TTL(ttl time.Duration) func(*Locker) {
 	}
 }
 
+// CreateLease specifies whether to create lease when it's absent.
+func CreateLease(create bool) func(*Locker) {
+	return func(l *Locker) {
+		l.skipLeaseCreation = !create
+	}
+}
+
 // NewLocker creates a Locker
 func NewLocker(name string, options ...option) (*Locker, error) {
 	locker := &Locker{
@@ -109,26 +117,29 @@ func NewLocker(name string, options ...option) (*Locker, error) {
 		locker.clientset = c
 	}
 
-	// create the Lease if it doesn't exist
 	leaseClient := locker.clientset.CoordinationV1().Leases(locker.namespace)
-	_, err := leaseClient.Get(context.TODO(), name, metav1.GetOptions{})
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return nil, err
-		}
 
-		lease := &coordinationv1.Lease{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
-			},
-			Spec: coordinationv1.LeaseSpec{
-				LeaseTransitions: pointer.Int32Ptr(0),
-			},
-		}
-
-		_, err := leaseClient.Create(context.TODO(), lease, metav1.CreateOptions{})
+	if !locker.skipLeaseCreation {
+		// create the Lease if it doesn't exist
+		_, err := leaseClient.Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			if !k8serrors.IsNotFound(err) {
+				return nil, err
+			}
+
+			lease := &coordinationv1.Lease{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+				},
+				Spec: coordinationv1.LeaseSpec{
+					LeaseTransitions: pointer.Int32Ptr(0),
+				},
+			}
+
+			_, err := leaseClient.Create(context.TODO(), lease, metav1.CreateOptions{})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

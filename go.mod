@@ -11,6 +11,8 @@ replace (
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.20.9
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.3
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
+
+	github.com/jrhouston/k8slock => github.com/holyspectral/k8slock v0.0.0-20240306020054-dcc2a005b265
 	github.com/kubernetes/cri-api => k8s.io/cri-api v0.22.3
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc5
 	github.com/russellhaering/gosaml2 => github.com/holyspectral/gosaml2 v0.0.0-20231003195827-3d916621a704
