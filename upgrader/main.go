@@ -80,6 +80,7 @@ func CreateLocker(namespace string, lockName string) (*k8slock.Locker, error) {
 		k8slock.Namespace(namespace),
 		k8slock.TTL(time.Hour*1),
 		k8slock.ClientID(hostname),
+		k8slock.CreateLease(false),
 	)
 }
 
