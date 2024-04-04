@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	UPGRADER_LEASE_NAME = "neuvector-upgrader"
+	UPGRADER_LEASE_NAME = "neuvector-cert-upgrader"
 )
 
 type ContainerStatus map[string]string
@@ -366,7 +366,7 @@ func GetCombinedCA(cacert1 []byte, cacert2 []byte) []byte {
 	return combinedca
 }
 
-// Determine migration steps, so upgrader can continue.
+// Determine migration steps, so cert-upgrader can continue.
 func DetermineMigrationStep(secret *corev1.Secret) (int, bool, error) {
 
 	if secret.Data[ACTIVE_SECRET_PREFIX+CACERT_FILENAME] == nil ||
@@ -594,7 +594,7 @@ func InitializeInternalSecret(ctx context.Context,
 	var err error
 
 	// Note: We always upgrade cacert/cert/key together.
-	// This is to reduce the attack surface, so after upgrader creates these certs, ca key will be discarded and attacker can't initialize
+	// This is to reduce the attack surface, so after cert-upgrader creates these certs, ca key will be discarded and attacker can't initialize
 
 	if len(secret.Data) != 0 {
 		log.Info("Updating internal secret.")
@@ -731,7 +731,7 @@ func InitializeInternalSecret(ctx context.Context,
 // 4. If the cert is in the progress of upgrade, try to finish it. (Interrupted upgrade)
 // 5. If the cert is not in progress, but its content is not ok, update it and trigger upgrade. (upgrade from old, upgrade from new and reinstall)
 //
-// Note: It's supposed to be only one upgrader job (post sync job) running at all time.
+// Note: It's supposed to be only one cert-upgrader job (post sync job) running at all time.
 //
 // empty => create secret => if secret is created and this is for fresh install, trigger rolling update and exit.
 // not empty => do rolling update per its state.
@@ -749,7 +749,7 @@ func PostSyncHook(ctx *cli.Context) error {
 
 	log.Info("Initializing lock")
 
-	// Make sure only one upgrader will be running at the same time.
+	// Make sure only one cert-upgrader will be running at the same time.
 	lock, err := CreateLocker(namespace, UPGRADER_LEASE_NAME)
 	if err != nil {
 		log.Fatal("failed to acquire cluster-wide lock: %w", err)
@@ -765,7 +765,7 @@ func PostSyncHook(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create k8s client: %w", err)
 	}
 
-	// Start watcher, so when `neuvector-internal-certs` secret is deleted, upgrader will stop
+	// Start watcher, so when `neuvector-internal-certs` secret is deleted, cert-upgrader will stop
 	watcher, err := client.Resource(schema.GroupVersionResource{
 		Resource: "secrets",
 		Version:  "v1",
@@ -809,7 +809,7 @@ func PostSyncHook(ctx *cli.Context) error {
 	// 2. An option is given to force update the secret.
 	// 3. Secret is not up-to-date, say it's expired, and no upgrade is in progress.
 
-	// Check if upgrader should still need to do its job.  If so, exit.
+	// Check if cert-upgrader should still need to do its job.  If so, exit.
 	if inprogress := IsUpgradeInProgress(timeoutCtx, secret); inprogress {
 		// There was interrupted jobs.  We should reuse the certificate created.
 		// Note: It's guaranteed in init containers that only one instance of Job will be running.

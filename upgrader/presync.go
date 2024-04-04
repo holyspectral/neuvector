@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	UPGRADER_JOB_NAME       = "neuvector-upgrader-job"
-	UPGRADER_CRONJOB_NAME   = "neuvector-upgrader-pod"
-	UPGRADER_UID_ANNOTATION = "upgrader-uid"
+	UPGRADER_JOB_NAME       = "neuvector-cert-upgrader-job"
+	UPGRADER_CRONJOB_NAME   = "neuvector-cert-upgrader-pod"
+	UPGRADER_UID_ANNOTATION = "cert-upgrader-uid"
 
 	CONTROLLER_LEASE_NAME = "neuvector-controller"
 )
@@ -109,7 +109,7 @@ func GetCronJobDetail(ctx context.Context, client dynamic.Interface, namespace s
 	}
 
 	if err != nil {
-		return nil, nil, nil, nil, false, fmt.Errorf("failed to find upgrader cronjob: %w", err)
+		return nil, nil, nil, nil, false, fmt.Errorf("failed to find cert upgrader cronjob: %w", err)
 	}
 
 	if useBetav1 {
@@ -147,7 +147,7 @@ func GetCronJobDetail(ctx context.Context, client dynamic.Interface, namespace s
 }
 
 // Create post-sync job and leave.
-func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace string, upgraderUID string, withLock bool) (*batchv1.Job, error) {
+func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace string, certUpgraderUID string, withLock bool) (*batchv1.Job, error) {
 	// Global cluster-level lock with 5 mins TTL
 	if withLock {
 		lock, err := CreateLocker(namespace, CONTROLLER_LEASE_NAME)
@@ -162,12 +162,12 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 	// Note: CronJob is moved to batch/v1 in 1.21.  We fallback to v1beta1 if it doesn't exist.
 	cronjob, jobSpec, jobLabels, jobAnnotations, useBetav1, err := GetCronJobDetail(ctx, client, namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get detail from upgrader cronjob: %w", err)
+		return nil, fmt.Errorf("failed to get detail from cert upgrader cronjob: %w", err)
 	}
 
 	// Make sure jobs created by other init containers will not be deleted.
 	annotations := cronjob.GetAnnotations()
-	if annotations != nil && annotations[UPGRADER_UID_ANNOTATION] == upgraderUID {
+	if annotations != nil && annotations[UPGRADER_UID_ANNOTATION] == certUpgraderUID {
 		// This is created by the same deployment.
 		log.Info("Upgrader job is already created.  Exit.")
 		return nil, nil
@@ -184,7 +184,7 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 
 	if err != nil {
 		if !k8sError.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to find upgrader job: %w", err)
+			return nil, fmt.Errorf("failed to find cert upgrader job: %w", err)
 		}
 	} else {
 		log.Info("Job from the previous deployment/values is deleted.")
@@ -196,7 +196,7 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 	}
 
 	jobAnnotations["cronjob.kubernetes.io/instantiate"] = "manual"
-	jobAnnotations[UPGRADER_UID_ANNOTATION] = upgraderUID
+	jobAnnotations[UPGRADER_UID_ANNOTATION] = certUpgraderUID
 
 	newjob := &batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
@@ -258,7 +258,7 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 	}{{
 		Op:    "replace",
 		Path:  fmt.Sprintf("/metadata/annotations/%s", UPGRADER_UID_ANNOTATION),
-		Value: upgraderUID,
+		Value: certUpgraderUID,
 	}}
 	patchBytes, _ := json.Marshal(payload)
 
