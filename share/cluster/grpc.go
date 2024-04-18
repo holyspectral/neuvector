@@ -75,15 +75,23 @@ func NewGRPCServerTCP(endpoint string) (*GRPCServer, error) {
 		VerifyPeer: func(params *advancedtls.VerificationFuncParams) (*advancedtls.VerificationResults, error) {
 			log.Debug("Server checking CN")
 			_, _, cn := GetInternalCert()
-			if params.Leaf == nil || len(params.Leaf.DNSNames) == 0 {
+			if params.Leaf == nil {
 				return nil, errors.New("no valid certificate")
 			}
-
-			if params.Leaf.DNSNames[0] != cn {
-				log.Warnf("server name is invalid: %s", params.Leaf.DNSNames[0])
-				return nil, fmt.Errorf("server name is invalid: %s", params.Leaf.DNSNames[0])
+			if params.Leaf.DNSNames != nil {
+				if params.Leaf.DNSNames[0] != cn {
+					log.Warnf("server name is invalid: %s", params.Leaf.DNSNames[0])
+					return &advancedtls.VerificationResults{}, fmt.Errorf("server name is invalid: %s. Expected: %s", params.Leaf.DNSNames[0], cn)
+				}
+			} else {
+				// Support very old certificate without SANs.
+				if params.Leaf.Subject.CommonName != cn {
+					log.Warnf("common name is invalid: %s", params.Leaf.DNSNames[0])
+					return &advancedtls.VerificationResults{}, fmt.Errorf("common name is invalid: %s. Expected: %s", params.Leaf.Subject.CommonName, cn)
+				}
 			}
-			return &advancedtls.VerificationResults{}, nil
+
+			return nil, nil
 		},
 		RequireClientCert: true,
 		VType:             advancedtls.CertVerification,
@@ -288,13 +296,22 @@ func newGRPCClientTCP(ctx context.Context, key, endpoint string, cb GRPCCallback
 		VerifyPeer: func(params *advancedtls.VerificationFuncParams) (*advancedtls.VerificationResults, error) {
 			log.Debug("Client checking CN")
 			_, _, cn := GetInternalCert()
-			if params.Leaf == nil || len(params.Leaf.DNSNames) == 0 {
+			if params.Leaf == nil {
 				return nil, errors.New("no valid certificate")
 			}
-			if params.Leaf.DNSNames[0] != cn {
-				log.Warnf("server name is invalid: %s", params.Leaf.DNSNames[0])
-				return &advancedtls.VerificationResults{}, fmt.Errorf("server name is invalid: %s", params.Leaf.DNSNames[0])
+			if params.Leaf.DNSNames != nil {
+				if params.Leaf.DNSNames[0] != cn {
+					log.Warnf("server name is invalid: %s", params.Leaf.DNSNames[0])
+					return &advancedtls.VerificationResults{}, fmt.Errorf("server name is invalid: %s. Expected: %s", params.Leaf.DNSNames[0], cn)
+				}
+			} else {
+				// Support very old certificate without SANs.
+				if params.Leaf.Subject.CommonName != cn {
+					log.Warnf("common name is invalid: %s", params.Leaf.DNSNames[0])
+					return &advancedtls.VerificationResults{}, fmt.Errorf("common name is invalid: %s. Expected: %s", params.Leaf.Subject.CommonName, cn)
+				}
 			}
+
 			return nil, nil
 		},
 		VType:        advancedtls.CertVerification, // Custom check is performed in VerifyPeer().
