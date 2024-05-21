@@ -55,7 +55,7 @@ type procContainer struct {
 	portsMap         map[osutil.SocketInfo]*procApp
 	checkRemovedPort uint
 	fInfo            map[string]*fileInfo
-	bPrivileged 	 bool
+	bPrivileged      bool
 }
 
 type procInternal struct {
@@ -160,7 +160,7 @@ func (p *Probe) removeHostPool(pid int) {
 }
 
 func (p *Probe) addProcessPool(pid, ppid int) (*procContainer, bool) {
-	if c, ok := p.pidContainerMap[ppid]; ok && c.id != ""{
+	if c, ok := p.pidContainerMap[ppid]; ok && c.id != "" {
 		if c.children.Contains(ppid) {
 			c.children.Add(pid)
 		} else {
@@ -172,7 +172,7 @@ func (p *Probe) addProcessPool(pid, ppid int) (*procContainer, bool) {
 	return nil, false
 }
 
-/////
+// ///
 func (p *Probe) isDockerDaemonProcess(proc *procInternal, id string) bool {
 	if id == "" { // host porcesses
 		if global.RT.IsRuntimeProcess(proc.pname, nil) {
@@ -190,7 +190,7 @@ func (p *Probe) isDockerDaemonProcess(proc *procInternal, id string) bool {
 	return proc.name == global.RT.String() || proc.pname == global.RT.String()
 }
 
-////
+// //
 // scan at timestamp: 0, 2, 4, 8, 16, 24, 32
 // after 1 minute, it scans once every minute
 const udpSessionQualification uint = 20         //seconds
@@ -225,23 +225,26 @@ func shouldScanProc(proc *procInternal) bool {
 	return scan
 }
 
-//to check whether the processes in a container ports have changed
+// to check whether the processes in a container ports have changed
 // UDP session: report only long-lasting UDP sessions (qualification: 20 second).
-//      It's impossible to distinguish a server or a client from /proc/net/udp[udp6]
+//
+//	It's impossible to distinguish a server or a client from /proc/net/udp[udp6]
+//
 // server case:
-// 	(s1) create a udp socket => no entry in the /proc/net/udp
-//	(s2) bind()sk_state=TCP_ESTABLISH => shown with inode in the /proc/net/udp
-//	(s3) socket closed => the entry is deleted in the /proc/net/udp
 //
-//	client case (for example, nslookup, its default timeout is 5+ sec):
-//	(c1) create a udp socket => no entry in the /proc/net/udp
-//	(c2) send dns query (short and fast), sk_state=TCP_ESTABLISH => shown with inode in the /proc/net/udp
-//	(c3) wait for response, sk_state=TCP_CLOSE => still shown with inode in the /proc/net/udp
-//	(c4) receive the reposnse (can not find the sk_state changes)
-//	(c5) socket closed => the entry is deleted in the /proc/net/udp
+//		(s1) create a udp socket => no entry in the /proc/net/udp
+//		(s2) bind()sk_state=TCP_ESTABLISH => shown with inode in the /proc/net/udp
+//		(s3) socket closed => the entry is deleted in the /proc/net/udp
 //
-//  When (c3) or (c4) takes too long, we have this false-positive cases.
-//  Also, it is impossible to catch the (c2) event by a polling method.
+//		client case (for example, nslookup, its default timeout is 5+ sec):
+//		(c1) create a udp socket => no entry in the /proc/net/udp
+//		(c2) send dns query (short and fast), sk_state=TCP_ESTABLISH => shown with inode in the /proc/net/udp
+//		(c3) wait for response, sk_state=TCP_CLOSE => still shown with inode in the /proc/net/udp
+//		(c4) receive the reposnse (can not find the sk_state changes)
+//		(c5) socket closed => the entry is deleted in the /proc/net/udp
+//
+//	 When (c3) or (c4) takes too long, we have this false-positive cases.
+//	 Also, it is impossible to catch the (c2) event by a polling method.
 func (p *Probe) checkProcAppPorts(c *procContainer, rateLimit bool) bool {
 	var addPort, notify bool
 	var socketTbl map[uint32]osutil.SocketInfo
@@ -347,7 +350,7 @@ func (p *Probe) checkProcAppPorts(c *procContainer, rateLimit bool) bool {
 	return notify
 }
 
-//get a container's listen ports and application map
+// get a container's listen ports and application map
 func (p *Probe) GetContainerAppPorts(id string) (utils.Set, map[share.CLUSProtoPort]*share.CLUSApp) {
 	appMap := make(map[share.CLUSProtoPort]*share.CLUSApp)
 	listensAll := utils.NewSet()
@@ -405,7 +408,7 @@ func (p *Probe) GetContainerProcHistory(id string) []*share.CLUSProcess {
 	}
 }
 
-//put all host processes in a virtual container, id=="". so we can handle host process same as other container
+// put all host processes in a virtual container, id=="". so we can handle host process same as other container
 func (p *Probe) addHost(pid int) {
 	c := &procContainer{
 		id:       "",
@@ -504,7 +507,7 @@ func (p *Probe) addContainerProcess(c *procContainer, pid int) {
 
 		if c.id == p.selfID {
 			if proc, ok := p.pidProcMap[pid]; ok && isFamilyProcess(c.children, proc) {
-				c.children.Add(pid)	// make an early decision
+				c.children.Add(pid) // make an early decision
 			}
 		} else {
 			c.outsider.Add(pid) // temporary: c.children
@@ -753,36 +756,36 @@ func (p *Probe) isSuspiciousProcess(proc *procInternal, id string) (*suspicProcI
 	return info, ok
 }
 
-
-/* patchRuntimeUser - Patches the process' username on the following condition:
-	* If the process' parent is the container daemon, this will update the process' username
+/*
+	 patchRuntimeUser - Patches the process' username on the following condition:
+		* If the process' parent is the container daemon, this will update the process' username
 
 The reasoning is:
 1. Fixes the bug found in NVSHAS-7054
-	* We get a violation report but the effective user reported is the host machine's username
-		and not the one in the container.
-2. We're trying to avoid always patching the username because getUserName() will access
-		/etc/passwd and we're trying to reduce file accesses.
- */
+  - We get a violation report but the effective user reported is the host machine's username
+    and not the one in the container.
+    2. We're trying to avoid always patching the username because getUserName() will access
+    /etc/passwd and we're trying to reduce file accesses.
+*/
 func (p *Probe) patchRuntimeUser(proc *procInternal) {
 	/*
-	Don't use the `proc.ppid` because it probably already exited by the time I'm checking.
-	We're going to use `proc.pname` instead to check that is from the container daemon.
-	Note that `IsRuntimeProcess` only checks the name of the process and not the path, so it might
-	still be possible to spoof.
+		Don't use the `proc.ppid` because it probably already exited by the time I'm checking.
+		We're going to use `proc.pname` instead to check that is from the container daemon.
+		Note that `IsRuntimeProcess` only checks the name of the process and not the path, so it might
+		still be possible to spoof.
 
-	When i run pstree - i get the actual parent which is containrd-shim which is a RuntimeProcess.
-	```
-	$ pstree -s -p -a 860138
-	systemd,1 splash
-	  └─containerd-shim,680237 -namespace moby -idd0c005eb42a045efc1
-	      └─top,860138
-	```
-	 */
-		if 	global.RT.IsRuntimeProcess(proc.pname, nil) {
-			proc.user = p.getUserName(proc.pid, proc.euid)
-			mLog.WithFields(log.Fields{"name": proc.name, "parent name": proc.pname, "parent pid": proc.ppid, "uid": proc.euid, "proc user": proc.user,}).Debug("Patching process' username because it came from containerd exec")
-		}
+		When i run pstree - i get the actual parent which is containrd-shim which is a RuntimeProcess.
+		```
+		$ pstree -s -p -a 860138
+		systemd,1 splash
+		  └─containerd-shim,680237 -namespace moby -idd0c005eb42a045efc1
+		      └─top,860138
+		```
+	*/
+	if global.RT.IsRuntimeProcess(proc.pname, nil) {
+		proc.user = p.getUserName(proc.pid, proc.euid)
+		mLog.WithFields(log.Fields{"name": proc.name, "parent name": proc.pname, "parent pid": proc.ppid, "uid": proc.euid, "proc user": proc.user}).Debug("Patching process' username because it came from containerd exec")
+	}
 }
 
 // TODO, improved it with snapshot, passing by reference for all structures
@@ -864,8 +867,8 @@ func (p *Probe) evalNewRunningApp(pid int) {
 	p.unlockProcMux() // minimum section lock
 }
 
-func (p *Probe) addContainerCandidateFromProc(proc *procInternal) (*procContainer, bool) {
-	c, res := p.addContainerCandidate(proc, false)
+func (p *Probe) addContainerCandidateFromProc(proc *procInternal, containerId string) (*procContainer, bool) {
+	c, res := p.addContainerCandidate(proc, containerId, false)
 	if res == 1 {
 		//	log.WithFields(log.Fields{"pid": proc.pid}).Info("PROC: Found new container from process")
 		return c, true
@@ -924,21 +927,21 @@ func (p *Probe) checkUserGroup_uidChange(escalProc *procInternal, c *procContain
 	return rUser, eUser, true
 }
 
-/////
+// ///
 func isSudoCommand(cmds []string) bool {
 	for i, cmd := range cmds {
 		if i == 0 {
-			switch(filepath.Base(cmd)) {
+			switch filepath.Base(cmd) {
 			case "sudo":
 				return true
-			case "su":	// check following su cmds
+			case "su": // check following su cmds
 			default:
 				return false
 			}
 		} else {
 			if strings.HasPrefix(cmd, "-") { // skip option
 				continue
-			} else {	// it could be "su -c /bin/ps neuvector"
+			} else { // it could be "su -c /bin/ps neuvector"
 				if cmd == "root" {
 					return true
 				}
@@ -1006,7 +1009,6 @@ func (p *Probe) rootEscalationCheck_uidChange(proc *procInternal, c *procContain
 	if (parent.ruid-c.userns.root) >= c.userns.uidMin && // valid user range
 		proc.ruid == c.userns.root { // user at root privilege level
 		p.updateProcess(parent) // obtain latest parent data
-
 
 		p.lockProcMux() // minimum section lock
 		_, _, notAuth := p.checkUserGroup_uidChange(parent, c)
@@ -1081,7 +1083,38 @@ func (p *Probe) rootEscalationCheck_uidChange(proc *procInternal, c *procContain
 	}
 }
 
-func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc *procInternal, pp *procInternal) {
+func (p *Probe) handleProcFork(pid, ppid int, name string, oldproc *procInternal, newproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
+	// Usually these two information are available at the same time.
+	if oldproc != nil && newproc != nil {
+		p.pidProcMap[oldproc.pid] = oldproc
+		p.pidProcMap[newproc.pid] = newproc
+
+		// The normal flow to create a container:
+		// 1. fork/clone
+		// 2. Set cgroup.
+		// 3. Execute entrypoint.
+		//
+		// We don't know if the new process is a container process until we receive proc exec.  Assign an intermediate value for now.
+		var id string
+		// TODO: addContainerCandidateFromProc checks /proc/xxx/cgroup, which can miss data.
+		if c1, ok := p.addContainerCandidateFromProc(oldproc, containerId); ok {
+			inContainer = true
+			if c, ok := p.containerMap[c1.id]; ok {
+				// TODO: Confirm this.
+				p.addContainerProcess(c, oldproc.pid) // add parent
+				p.addContainerProcess(c, newproc.pid) // add parent
+			} else {
+				// Potential race condition?
+				log.WithFields(log.Fields{"pid": pid, "ppid": ppid, "id": id}).Warn("Process not in a known container list. Race condition?")
+			}
+		}
+	} else {
+		return p.updateProcFromFork(pid, ppid, name)
+	}
+	return inContainer, oldproc, newproc
+}
+
+func (p *Probe) updateProcFromFork(pid, ppid int, name string) (inContainer bool, pc *procInternal, pp *procInternal) {
 	var insideContainer bool
 	now := time.Now()
 
@@ -1132,7 +1165,7 @@ func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc
 				insideContainer = c.id != ""
 				proc.ppid = ppid
 			} else {
-				if c1, ok := p.addContainerCandidateFromProc(proc); ok {
+				if c1, ok := p.addContainerCandidateFromProc(proc, ""); ok {
 					insideContainer = c1.id != ""
 				} else { // a hole by reBuiltProcessTables
 					//	log.WithFields(log.Fields{"pid": pid, "ppid": ppid}).Debug("PROC: Process not in conatiner map")
@@ -1186,7 +1219,7 @@ func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc
 
 		// check parent if the /proc/xxx/cgroup exists
 		var id string
-		if c1, ok := p.addContainerCandidateFromProc(proc_p); ok {
+		if c1, ok := p.addContainerCandidateFromProc(proc_p, ""); ok {
 			insideContainer = true
 			id = c1.id // just copy id
 		}
@@ -1204,7 +1237,18 @@ func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc
 	return insideContainer, proc, nil
 }
 
-func (p *Probe) handleProcExec(pid int, bInit bool) (bKubeProc bool) {
+func (p *Probe) handleProcExec(pid int, bInit bool, proc *procInternal) (bKubeProc bool) {
+	// Usually these two information are available at the same time.
+	if proc != nil {
+		p.pidProcMap[proc.pid] = proc
+	} else {
+		return p.updateProcFromExec(pid, bInit)
+	}
+	// TODO
+	return false
+}
+
+func (p *Probe) updateProcFromExec(pid int, bInit bool) (bKubeProc bool) {
 	// log.Debug("PROC: exec: ", pid)
 	var proc *procInternal
 	var c, c1 *procContainer
@@ -1224,7 +1268,7 @@ func (p *Probe) handleProcExec(pid int, bInit bool) (bKubeProc bool) {
 				// patch for older docker version realtime event glitches
 				// Older docker (re)assigns cgroup attributes for all worker
 				// after its "setkey" operations
-				if c1, ok = p.addContainerCandidateFromProc(proc); ok {
+				if c1, ok = p.addContainerCandidateFromProc(proc, ""); ok {
 					id = c1.id // just copy id
 				}
 			}
@@ -1261,7 +1305,7 @@ func (p *Probe) handleProcExec(pid int, bInit bool) (bKubeProc bool) {
 				action:       share.PolicyActionAllow,
 			}
 
-			if c1, ok = p.addContainerCandidateFromProc(proc); ok {
+			if c1, ok = p.addContainerCandidateFromProc(proc, ""); ok {
 				id = c1.id // just copy id
 				p.pidProcMap[proc.pid] = proc
 				proc.user = p.getUserName(proc.ppid, proc.euid) // get parent's username
@@ -1343,12 +1387,12 @@ func (p *Probe) handleProcExit(pid int) *procInternal {
 		if c, ok := p.pidContainerMap[pid]; !ok {
 			delete(p.pidProcMap, pid)
 			delete(p.pidContainerMap, pid)
-		} else if c.id == "" {	// exclude host processes
+		} else if c.id == "" { // exclude host processes
 			delete(p.pidProcMap, pid)
 			p.removeProcessInContainer(pid, c.id)
 			delete(p.pidContainerMap, pid)
 		} else {
-			p.exitProcSlices = append(p.exitProcSlices, &procDelayExit{ pid: pid, id: c.id, last: time.Now() })
+			p.exitProcSlices = append(p.exitProcSlices, &procDelayExit{pid: pid, id: c.id, last: time.Now()})
 		}
 		return proc
 	}
@@ -1591,17 +1635,31 @@ func (p *Probe) initReadProcesses() bool {
 	return foundKube
 }
 
-func (p *Probe) addContainerCandidate(proc *procInternal, scanMode bool) (*procContainer, int) {
+// When containerId is not empty, use the containerID.
+// "host": the event comes from host.
+// 64 character-long string: the event comes from container.
+// Other case: we don't know. Please retrieve the data from /proc/.
+func (p *Probe) addContainerCandidate(proc *procInternal, containerId string, scanMode bool) (*procContainer, int) {
 	var c *procContainer
 	var ok bool
+	var containerInContainer bool
+	var err error
+	var found bool
+	var id string
 
 	// check if the /proc/xxx/cgroup exists
-	id, containerInContainer, err, found := global.SYS.GetContainerIDByPID(proc.pid)
-	if !found {
-		if osutil.IsPidValid(proc.pid) {
-			log.WithFields(log.Fields{"error": err}).Debug()
+	if containerId == "" {
+		id, containerInContainer, err, found = global.SYS.GetContainerIDByPID(proc.pid)
+		if !found {
+			if osutil.IsPidValid(proc.pid) {
+				log.WithFields(log.Fields{"error": err}).Debug()
+			}
+			return nil, -1 // not ready
 		}
-		return nil, -1 // not ready
+	} else if containerId == "host" {
+		id = ""
+	} else {
+		id = containerId
 	}
 
 	// In container-in-container enviroment, the id should be container-in-container type.
@@ -1625,11 +1683,11 @@ func (p *Probe) addContainerCandidate(proc *procInternal, scanMode bool) (*procC
 	return p.containerMap[id], 1
 }
 
-//walk through the new processes, check which container it belongs to
+// walk through the new processes, check which container it belongs to
 func (p *Probe) walkNewProcesses() {
 	for pc := range p.newProcesses.Iter() {
 		proc := pc.(*procInternal)
-		_, res := p.addContainerCandidate(proc, true)
+		_, res := p.addContainerCandidate(proc, "", true)
 		if res == -1 {
 			if proc.retry >= retryReadProcMax { // 3-4 sec span
 				p.newProcesses.Remove(proc)
@@ -1641,8 +1699,8 @@ func (p *Probe) walkNewProcesses() {
 	}
 }
 
-//process scan mode, find out parent first, and then their children
-//simulate behavial of the netlink mode, create parent process first and then children
+// process scan mode, find out parent first, and then their children
+// simulate behavial of the netlink mode, create parent process first and then children
 func (p *Probe) scanNewProcess(pids utils.Set) {
 	var proc *procInternal
 	var finish, ok bool
@@ -1678,7 +1736,7 @@ func (p *Probe) scanNewProcess(pids utils.Set) {
 
 			//if its parent in the pidProcMap, handle and remove it, otherwise wait for next round
 			if _, ok = p.pidProcMap[proc.ppid]; ok {
-				insideContainer, proc_c, proc_p := p.handleProcFork(pid, proc.ppid, name)
+				insideContainer, proc_c, proc_p := p.handleProcFork(pid, proc.ppid, name, nil, nil, "")
 
 				//// for host processes
 				if !insideContainer {
@@ -1846,7 +1904,6 @@ func (p *Probe) evaluateApplication(proc *procInternal, id string, bKeepAlive bo
 	// username because we point to the wrong passwd file.
 	p.patchRuntimeUser(proc)
 
-
 	var action string
 	var bSkipReport, ok, bSkipEval bool
 	if !riskyReported {
@@ -1982,7 +2039,7 @@ func (p *Probe) inspectNewProcesses(bInit bool) {
 				if proc.name != "" && proc.path != "" {
 					if !proc.execScanDone {
 						proc.execScanDone = true
-						if p.handleProcExec(proc.pid, true) {
+						if p.handleProcExec(proc.pid, true, nil) {
 							p.inspectProcess.Remove(itr)
 						}
 					}
@@ -2207,7 +2264,7 @@ func (p *Probe) isAgentChild(proc *procInternal) bool {
 	ppid := proc.ppid
 	sid := proc.sid
 	pgid := proc.pgid
-	for i := 0; i < 4; i++ {	// upto 4 ancestors
+	for i := 0; i < 4; i++ { // upto 4 ancestors
 		if global.SYS.IsToolProcess(sid, pgid) {
 			return true
 		}
@@ -2256,11 +2313,11 @@ func (p *Probe) isAllowIpRuntimeCommand(cmds []string) bool {
 
 // Reducing false-positive cases
 // Allowing all CNI files under the /opt/cni/bin, not from its sub-directories
-//var azureCniProcMap = utils.NewSet(
-//		"azure-vnet", "host-local", "azure-vnet-ipam", "ipvlan", "azure-vnet-ipamv6", "loopback",
-//		"azure-vnet-telemetry", "macvlan", "portmap", "bridge", "ptp", "dhcp", "sample", "flannel",
-//		"tuning", "host-device", "vlan")
+// var azureCniProcMap = utils.NewSet(
 //
+//	"azure-vnet", "host-local", "azure-vnet-ipam", "ipvlan", "azure-vnet-ipamv6", "loopback",
+//	"azure-vnet-telemetry", "macvlan", "portmap", "bridge", "ptp", "dhcp", "sample", "flannel",
+//	"tuning", "host-device", "vlan")
 func (p *Probe) isAllowCniCommand(path string) bool {
 	if p.bKubePlatform {
 		return filepath.Dir(path) == "/opt/cni/bin"
@@ -2279,7 +2336,7 @@ func (p *Probe) isAllowCalicoCommand(proc *procInternal, bRtProcP bool) bool {
 }
 
 // a runc building-command during "docker run" (not from root process but exists parallelly)
-func (p *Probe) isAllowRuncInitCommand(path string, cmds[]string) bool {
+func (p *Probe) isAllowRuncInitCommand(path string, cmds []string) bool {
 	// in-memory execution: cmd=[docker-runc init ] name=5 parent=docker-runc path=/memfd:runc_cloned:/proc/self/ex ppath=/run/torcx/unpack/docker/bin/runc
 	if filepath.Base(path) == "runc" || strings.HasPrefix(path, "/memfd:runc_cloned") {
 		for i, cmd := range cmds {
@@ -2311,7 +2368,7 @@ func (p *Probe) isProcessException(proc *procInternal, group, id string, bParent
 	bRtProc := global.RT.IsRuntimeProcess(proc.name, nil)
 	bRtProcP := global.RT.IsRuntimeProcess(proc.pname, nil)
 	if proc.pname == "" {
-		bRtProcP = true		// not trace-able
+		bRtProcP = true // not trace-able
 	}
 
 	// both names are in the runtime list
@@ -2330,12 +2387,12 @@ func (p *Probe) isProcessException(proc *procInternal, group, id string, bParent
 
 		// oc specific
 		if p.kubeFlavor == share.FlavorOpenShift {
-			switch pname  {
+			switch pname {
 			case "hyperkube", "coreutils":
 				return true
 			case "openshift-sdn-node":
 				name := filepath.Base(proc.path)
-				return  name == "sh" || name == "bash"
+				return name == "sh" || name == "bash"
 			}
 		}
 	}
@@ -2475,12 +2532,12 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 	// If we are in protect mode, we should ignore the reported flag to determine the next actions.
 	// We don't need to report the violations more often, but we should make sure that if we
 	// transition from monitor -> protect, we ignore the reported flag to control determine actions.
-	if (proc.reported & profileReported) == 0  || mode == share.PolicyModeEnforce{
+	if (proc.reported&profileReported) == 0 || mode == share.PolicyModeEnforce {
 		bZeroDrift := setting == share.ProfileZeroDrift
 		if bZeroDrift {
 			if pass := p.IsAllowedShieldProcess(id, mode, svcGroup, proc, pp, true); pass {
 				switch pp.Action {
-				case share.PolicyActionLearn, share.PolicyActionCheckApp:	// exclude these two actions
+				case share.PolicyActionLearn, share.PolicyActionCheckApp: // exclude these two actions
 				default:
 					pp.Action = share.PolicyActionAllow
 					if !allowSuspicious && proc.action == share.PolicyActionCheckApp {
@@ -2506,10 +2563,10 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 			}
 		}
 
-		if (pp.Action == share.PolicyActionViolate || pp.Action == share.PolicyActionDeny) {
-		   if pp.Uuid != share.CLUSReservedUuidAnchorMode {
+		if pp.Action == share.PolicyActionViolate || pp.Action == share.PolicyActionDeny {
+			if pp.Uuid != share.CLUSReservedUuidAnchorMode {
 				var bParentHostProc bool
-				if c, ok := p.pidContainerMap[proc.ppid]; ok{
+				if c, ok := p.pidContainerMap[proc.ppid]; ok {
 					bParentHostProc = c.id == ""
 				}
 				if p.isProcessException(proc, svcGroup, id, bParentHostProc, bZeroDrift) {
@@ -2526,7 +2583,7 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 		case share.PolicyActionDeny: // Protect mode only
 			proc.reported |= profileReported
 			go p.sendProcessIncident(true, id, pp.Uuid, svcGroup, derivedGroup, proc)
-			if !bKeepAlive {	// bKeepAlive action : keep its original decision for existing process
+			if !bKeepAlive { // bKeepAlive action : keep its original decision for existing process
 				p.killProcess(proc.pid)
 				proc.action = pp.Action
 				log.WithFields(log.Fields{"name": proc.name, "pid": proc.pid}).Debug("PROC: Denied and killed")
@@ -2551,9 +2608,9 @@ func (p *Probe) sendProcessIncident(bDenied bool, id, uuid, group, derivedGroup 
 	p.unlockProcMux()
 
 	switch uuid {
-	case share.CLUSReservedUuidAnchorMode:	// zero-drift incident
+	case share.CLUSReservedUuidAnchorMode: // zero-drift incident
 		s = p.makeProcessReport(id, proc, "Process profile violation, not from an image file", nil, false, group, uuid)
-	case share.CLUSReservedUuidShieldMode:	// zero-drift incident
+	case share.CLUSReservedUuidShieldMode: // zero-drift incident
 		s = p.makeProcessReport(id, proc, "Process profile violation, not from its root process", nil, false, group, uuid)
 	default: // rules-based incident
 		s = p.makeProcessReport(id, proc, "Process profile violation", nil, false, derivedGroup, uuid)
@@ -2597,8 +2654,8 @@ func (p *Probe) ProcessLookup(pid int) *fsmon.ProcInfo {
 	return nil
 }
 
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////
 func printLastProcElements(list []*procInternal, nLastItems int) {
 	start := 0
 	length := len(list)
@@ -2615,7 +2672,7 @@ func printLastProcElements(list []*procInternal, nLastItems int) {
 	}
 }
 
-//////// only from netlink monitor, already guarded by procMux
+// ////// only from netlink monitor, already guarded by procMux
 func (p *Probe) addProcHistory(id string, proc *procInternal, bFromMonitor bool) {
 	var histProc *ringbuffer.RingBuffer
 	var ok bool
@@ -2680,18 +2737,18 @@ func (p *Probe) PutBeginningProcEventsBackToWork(id string) int {
 			//  assume no ousiders during the initial stage, only justify insider processes
 			if pp, ok := p.pidProcMap[proc.pid]; ok {
 				p.evaluateApplication(pp, id, true)
-			} else {	// process was gone
+			} else { // process was gone
 				p.evaluateApplication(proc, id, true)
 			}
 			cnt++
 		}
 	}
 
-	p.cleanupProcessInContainer(id)	// remove dead processes
+	p.cleanupProcessInContainer(id) // remove dead processes
 	return cnt
 }
 
-/// garbage collection : reference the actual removal events at container engine
+// / garbage collection : reference the actual removal events at container engine
 func (p *Probe) purgeProcHistory() int {
 	var cnt int
 
@@ -2720,7 +2777,7 @@ func (p *Probe) alterRiskyAction(pid int, riskapp map[string]string) {
 	}
 }
 
-////
+// //
 func (p *Probe) updateCurrentRiskyAppRule(id string, pg *share.CLUSProcessProfile) {
 	var riskType string
 	var riskapp map[string]string
@@ -2785,7 +2842,7 @@ func (p *Probe) evaluateApp(pid int, id string, bReScanCgroup bool) {
 				proc.ppath, _ = global.SYS.GetFilePath(proc.ppid)
 				idn := id
 				if bReScanCgroup {
-					if c1, ok := p.addContainerCandidateFromProc(proc); ok && c1.id != "" {
+					if c1, ok := p.addContainerCandidateFromProc(proc, ""); ok && c1.id != "" {
 						mLog.WithFields(log.Fields{"name": proc.name, "pid": proc.pid, "id": c1.id}).Debug("PROC: patch")
 						p.addProcHistory(c1.id, proc, true)
 						idn = c1.id // could be a hole, since it is not detected in the process monitor
@@ -2830,7 +2887,7 @@ func (p *Probe) applyProcessBlockingPolicy(id string, pid int, pg *share.CLUSPro
 	return true
 }
 
-//////
+// ////
 func (p *Probe) HandleProcessPolicyChange(id string, pid int, pg *share.CLUSProcessProfile, bAddContainer, bBlocking bool) {
 	if p.bProfileEnable {
 		p.processProfileReeval(id, pg, bAddContainer)
@@ -2850,12 +2907,12 @@ func (p *Probe) SetNvProtect(bDisable bool) {
 	p.disableNvProtect = bDisable
 	log.WithFields(log.Fields{"state": !p.disableNvProtect, "IsNvProtectAlerted": p.IsNvProtectAlerted}).Info("PROC")
 	if p.disableNvProtect {
-		p.IsNvProtectAlerted = false  // reset
+		p.IsNvProtectAlerted = false // reset
 	}
 }
 
-//// Modern shell commands and their paths
-//// handle the real path later as needed
+// // Modern shell commands and their paths
+// // handle the real path later as needed
 var commonShellName map[string]string = map[string]string{
 	"bash": "/bin/bash",
 	"sh":   "/bin/sh",
@@ -2931,7 +2988,7 @@ func (p *Probe) PatchContainerProcess(pid int, bEval bool) bool {
 		}
 
 		// is it a process inside a cgroup
-		if c, ok := p.addContainerCandidateFromProc(proc); ok {
+		if c, ok := p.addContainerCandidateFromProc(proc, ""); ok {
 			p.updateProcess(proc)
 			proc.user = p.getUserName(proc.ppid, proc.euid) // get parent's username
 			proc.path, _ = global.SYS.GetFilePath(proc.pid) // exe path
@@ -3039,17 +3096,17 @@ func (p *Probe) IsAllowedShieldProcess(id, mode, svcGroup string, proc *procInte
 		bRuncChild = global.RT.IsRuntimeProcess(proc.pname, nil)
 		if !bRuncChild {
 			pid := proc.pid
-			for i := 0; i < 4; i++ {	// upto 4 ancestors
+			for i := 0; i < 4; i++ { // upto 4 ancestors
 				// ppid could be updated, read it again
 				if _, ppid, err := global.SYS.GetProcessName(pid); err != nil || ppid <= 1 {
-					if i== 0 && err != nil {	// process left, pstree failed, trace back 8 entries, could be more restrictive
+					if i == 0 && err != nil { // process left, pstree failed, trace back 8 entries, could be more restrictive
 						for j := 1; j <= 8; j++ {
 							ppid = proc.ppid - j
 							if ppid == c.rootPid {
 								mLog.WithFields(log.Fields{"pid": ppid}).Debug("SHD: rootPid")
 								break
 							}
-							if pp, ok := p.pidProcMap[ppid]; ok && len(pp.name) > 1 {	// "" or "."
+							if pp, ok := p.pidProcMap[ppid]; ok && len(pp.name) > 1 { // "" or "."
 								if c, ok := p.pidContainerMap[ppid]; ok && c.id == "" { // only node process
 									bRuncChild = global.RT.IsRuntimeProcess(pp.name, nil)
 									if bRuncChild {
@@ -3068,7 +3125,7 @@ func (p *Probe) IsAllowedShieldProcess(id, mode, svcGroup string, proc *procInte
 						break
 					}
 
-					if p, ok := p.pidProcMap[ppid]; ok && len(p.name) > 1 {	// "" or "."
+					if p, ok := p.pidProcMap[ppid]; ok && len(p.name) > 1 { // "" or "."
 						name = p.name
 					} else if path, err := global.SYS.GetFilePath(ppid); err == nil { // exe path
 						name = filepath.Base(path)
@@ -3079,7 +3136,7 @@ func (p *Probe) IsAllowedShieldProcess(id, mode, svcGroup string, proc *procInte
 						mLog.WithFields(log.Fields{"ppid": ppid, "pname": name}).Debug("SHD:")
 						break
 					}
-					pid = ppid	// next ancestor
+					pid = ppid // next ancestor
 				}
 			}
 		}
@@ -3091,17 +3148,17 @@ func (p *Probe) IsAllowedShieldProcess(id, mode, svcGroup string, proc *procInte
 		//  TODO: meet the qualifications
 		// if ppe.Name == proc.name && len(ppe.ProbeCmds) > 0 {
 		//	if bRuncChild {
-			//	norm := strings.TrimSuffix(strings.Join(proc.cmds, ","), ",")
-			//	for _, cmd := range ppe.ProbeCmds {
-			//		if strings.Contains(norm, cmd) {
-			//			// matched up to its grandparent process
-			//          bCanBeLearned = false
-			//			c.outsider.Remove(proc.pid)
-			//			c.children.Add(proc.pid)
-			//			mLog.WithFields(log.Fields{"id": id, "pid": proc.pid}).Debug()
-			//			break
-			//		}
-			//	}
+		//	norm := strings.TrimSuffix(strings.Join(proc.cmds, ","), ",")
+		//	for _, cmd := range ppe.ProbeCmds {
+		//		if strings.Contains(norm, cmd) {
+		//			// matched up to its grandparent process
+		//          bCanBeLearned = false
+		//			c.outsider.Remove(proc.pid)
+		//			c.children.Add(proc.pid)
+		//			mLog.WithFields(log.Fields{"id": id, "pid": proc.pid}).Debug()
+		//			break
+		//		}
+		//	}
 		//	}
 		//}
 	}
@@ -3179,8 +3236,8 @@ func (p *Probe) BuildProcessFamilyGroups(id string, rootPid int, bSandboxPod, bP
 	if !ok {
 		if bSandboxPod {
 			// some reused sandbox will not have a new prcesses
-			c = &procContainer {
-				id: id,
+			c = &procContainer{
+				id:       id,
 				children: utils.NewSet(rootPid),
 				outsider: utils.NewSet(), // empty
 				rootPid:  rootPid,
@@ -3188,7 +3245,7 @@ func (p *Probe) BuildProcessFamilyGroups(id string, rootPid int, bSandboxPod, bP
 				userns:   &userNs{users: make(map[int]string), uidMin: osutil.UserUidMin},
 				portsMap: make(map[osutil.SocketInfo]*procApp),
 				fInfo:    make(map[string]*fileInfo),
-				startAt: time.Now(),
+				startAt:  time.Now(),
 			}
 			p.containerMap[id] = c
 		} else {
@@ -3197,7 +3254,7 @@ func (p *Probe) BuildProcessFamilyGroups(id string, rootPid int, bSandboxPod, bP
 		}
 	}
 
-	p.cleanupProcessInContainer(id)	// remove dead processes
+	p.cleanupProcessInContainer(id) // remove dead processes
 
 	c.rootPid = rootPid
 	c.bPrivileged = bPrivileged
@@ -3211,7 +3268,7 @@ func (p *Probe) BuildProcessFamilyGroups(id string, rootPid int, bSandboxPod, bP
 	}
 
 	if proc, ok := p.pidProcMap[rootPid]; ok {
-		if proc.ppid > 0 {	// exclude its runtime init process
+		if proc.ppid > 0 { // exclude its runtime init process
 			allPids.Remove(proc.ppid)
 		}
 	}
