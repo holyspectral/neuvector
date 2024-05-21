@@ -1,6 +1,9 @@
 package probe
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
 	"os"
 	"reflect"
 	"runtime"
@@ -9,9 +12,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cilium/ebpf/ringbuf"
+	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/neuvector/neuvector/agent/dp"
+	"github.com/neuvector/neuvector/agent/probe/bpfprocess"
 	"github.com/neuvector/neuvector/agent/probe/netlink"
 	"github.com/neuvector/neuvector/agent/probe/ringbuffer"
 	"github.com/neuvector/neuvector/agent/workerlet"
@@ -22,10 +28,11 @@ import (
 	"github.com/neuvector/neuvector/share/utils"
 )
 
-////
+// //
 var mLog *log.Logger = log.New()
 
 const delayExitThreshold = time.Duration(time.Second * 1)
+
 type procDelayExit struct {
 	pid  int
 	id   string
@@ -33,7 +40,7 @@ type procDelayExit struct {
 }
 
 type Probe struct {
-	bProfileEnable       bool	// default: true
+	bProfileEnable       bool // default: true
 	agentPid             int
 	agentMntNsId         uint64
 	dpTaskCallback       dp.DPTaskCallback
@@ -49,7 +56,7 @@ type Probe struct {
 	isNeuvectorContainer func(id string) (string, bool)
 	disableNvProtect     bool
 	bKubePlatform        bool
-	kubeFlavor			 string
+	kubeFlavor           string
 	walkerTask           *workerlet.Tasker
 	nsProc               *netlink.NetlinkSocket
 	nsInet               *netlink.NetlinkSocket
@@ -104,6 +111,8 @@ type Probe struct {
 	fsnCtr              *FileNotificationCtr // anchor profile helper
 	exitProcSlices      []*procDelayExit
 	IsNvProtectAlerted  bool
+
+	bpfProcessCtrl *bpfprocess.BPFProcessControl
 }
 
 func (p *Probe) cbOpenNetlinkSockets(param interface{}) {
@@ -550,6 +559,56 @@ func New(pc *ProbeConfig, logLevel string) (*Probe, error) {
 		p.rerunKubeBench("", "")
 	}
 
+	// Allow the current process to lock memory for eBPF resources.
+	if err := rlimit.RemoveMemlock(); err != nil {
+		log.WithError(err).Error("failed to remove memory lock for ebpf")
+	}
+
+	// TODO: Initiate ebpf process
+	bpfProcessCtrl := bpfprocess.NewBPFProcessControl()
+	if err := bpfProcessCtrl.LoadObjects(); err != nil {
+		log.WithError(err).Error("failed to load bpf objects kprobe")
+	}
+	p.bpfProcessCtrl = bpfProcessCtrl
+
+	// TODO: Move to a later stage?
+	if err := bpfProcessCtrl.StartKProbe(); err != nil {
+		log.WithError(err).Error("failed to start kprobe")
+	}
+
+	go func() {
+		// ebpf main thread
+		eventRB := bpfProcessCtrl.GetEventRingBuffer()
+
+		rd, err := ringbuf.NewReader(eventRB)
+		if err != nil {
+			log.WithError(err).Fatal("failed to open ring buffer")
+		}
+
+		defer rd.Close()
+
+		// TODO: Provide metrics
+		var event bpfprocess.ProcessEvent
+		for {
+			record, err := rd.Read()
+			if err != nil {
+				if errors.Is(err, ringbuf.ErrClosed) {
+					log.Println("received signal, exiting..")
+					return
+				}
+				log.WithError(err).Warn("failed to read from ring buffer")
+			}
+
+			// TODO: endian
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &event); err != nil {
+				log.Printf("parsing ringbuf event: %s", err)
+				continue
+			}
+			log.Printf("PID: %d, PPID: %d, UID: %d\n", event.Pid, event.Ppid, event.Uid)
+			log.Printf("[Test] Conn: %s, Exec: %s\n", string(event.Buffer[event.CommIndex:]), string(event.Buffer[event.ExecIndex:]))
+		}
+	}()
+
 	if p.pidNetlink {
 		go p.netlinkProcWorker()  // socket event worker
 		go p.netlinkProcMonitor() // routine monitor
@@ -596,6 +655,8 @@ func (p *Probe) Close() {
 		close(ch)
 	}
 	p.intfMonMux.Unlock()
+
+	p.bpfProcessCtrl.Cleanup()
 	log.Info("done")
 }
 
@@ -693,8 +754,8 @@ func (p *Probe) ReportDockerCp(id, containerName string, toContainer bool) {
 	}()
 }
 
-///// by policy order
-func (p *Probe) addProcessControl(id, setting, svcGroup string, pid int, ppe_list []*share.CLUSProcessProfileEntry) {
+// /// by policy order
+func (p *Probe) addProcessControl(id, setting, svcGroup string, pid int, process []*share.CLUSProcessProfileEntry) {
 	if p.fAccessCtl != nil {
 		for _, ppe := range ppe_list {
 			mLog.WithFields(log.Fields{"name": ppe.Name, "path": ppe.Path, "action": ppe.Action}).Debug("PROC:")
@@ -713,7 +774,7 @@ func (p *Probe) addProcessControl(id, setting, svcGroup string, pid int, ppe_lis
 	}
 }
 
-/////
+// ///
 func (p *Probe) RemoveProcessControl(id string) {
 	if p.fAccessCtl != nil {
 		if p.fAccessCtl.RemoveContainerControl(id) {
@@ -736,6 +797,7 @@ func (p *Probe) addContainerFAccessBlackList(id string, list []string) {
 }
 
 const skipJarEventPeriod = time.Duration(time.Second * 30)
+
 func (p *Probe) ProcessFsnEvent(id string, files []string, finfo fileInfo) {
 	if finfo.bExec || finfo.bJavaPkg {
 		mLog.WithFields(log.Fields{"id": id, "files": files, "finfo": finfo}).Debug("FSN:")
@@ -758,7 +820,7 @@ func (p *Probe) ProcessFsnEvent(id string, files []string, finfo fileInfo) {
 	if !p.disableNvProtect {
 		if role, ok := p.isNeuvectorContainer(id); ok {
 			// NV Protect alerts
-			var violated [] string
+			var violated []string
 			for _, f := range files {
 				if strings.HasPrefix(f, "/bin/") || strings.HasPrefix(f, "/sbin/") || strings.HasPrefix(f, "/usr/bin/") || strings.HasPrefix(f, "/usr/sbin/") {
 					violated = append(violated, f)

@@ -878,8 +878,8 @@ func (p *Probe) evalNewRunningApp(pid int) {
 	p.unlockProcMux() // minimum section lock
 }
 
-func (p *Probe) addContainerCandidateFromProc(proc *procInternal) (*procContainer, bool) {
-	c, res := p.addContainerCandidate(proc, false)
+func (p *Probe) addContainerCandidateFromProc(proc *procInternal, containerId string) (*procContainer, bool) {
+	c, res := p.addContainerCandidate(proc, containerId, false)
 	if res == 1 {
 		//	log.WithFields(log.Fields{"pid": proc.pid}).Info("PROC: Found new container from process")
 		return c, true
@@ -1087,7 +1087,38 @@ func (p *Probe) rootEscalationCheck_uidChange(proc *procInternal, c *procContain
 	}
 }
 
-func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc *procInternal, pp *procInternal) {
+func (p *Probe) handleProcFork(pid, ppid int, name string, oldproc *procInternal, newproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
+	// Usually these two information are available at the same time.
+	if oldproc != nil && newproc != nil {
+		p.pidProcMap[oldproc.pid] = oldproc
+		p.pidProcMap[newproc.pid] = newproc
+
+		// The normal flow to create a container:
+		// 1. fork/clone
+		// 2. Set cgroup.
+		// 3. Execute entrypoint.
+		//
+		// We don't know if the new process is a container process until we receive proc exec.  Assign an intermediate value for now.
+		var id string
+		// TODO: addContainerCandidateFromProc checks /proc/xxx/cgroup, which can miss data.
+		if c1, ok := p.addContainerCandidateFromProc(oldproc, containerId); ok {
+			inContainer = true
+			if c, ok := p.containerMap[c1.id]; ok {
+				// TODO: Confirm this.
+				p.addContainerProcess(c, oldproc.pid) // add parent
+				p.addContainerProcess(c, newproc.pid) // add parent
+			} else {
+				// Potential race condition?
+				log.WithFields(log.Fields{"pid": pid, "ppid": ppid, "id": id}).Warn("Process not in a known container list. Race condition?")
+			}
+		}
+	} else {
+		return p.updateProcFromFork(pid, ppid, name)
+	}
+	return inContainer, oldproc, newproc
+}
+
+func (p *Probe) updateProcFromFork(pid, ppid int, name string) (inContainer bool, pc *procInternal, pp *procInternal) {
 	var insideContainer bool
 	now := time.Now()
 
@@ -1138,7 +1169,7 @@ func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc
 				insideContainer = c.id != ""
 				proc.ppid = ppid
 			} else {
-				if c1, ok := p.addContainerCandidateFromProc(proc); ok {
+				if c1, ok := p.addContainerCandidateFromProc(proc, ""); ok {
 					insideContainer = c1.id != ""
 				} else { // a hole by reBuiltProcessTables
 					//	log.WithFields(log.Fields{"pid": pid, "ppid": ppid}).Debug("PROC: Process not in conatiner map")
@@ -1192,7 +1223,7 @@ func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc
 
 		// check parent if the /proc/xxx/cgroup exists
 		var id string
-		if c1, ok := p.addContainerCandidateFromProc(proc_p); ok {
+		if c1, ok := p.addContainerCandidateFromProc(proc_p, ""); ok {
 			insideContainer = true
 			id = c1.id // just copy id
 		}
@@ -1210,7 +1241,18 @@ func (p *Probe) handleProcFork(pid, ppid int, name string) (inContainer bool, pc
 	return insideContainer, proc, nil
 }
 
-func (p *Probe) handleProcExec(pid int, bInit bool) (bKubeProc bool) {
+func (p *Probe) handleProcExec(pid int, bInit bool, proc *procInternal) (bKubeProc bool) {
+	// Usually these two information are available at the same time.
+	if proc != nil {
+		p.pidProcMap[proc.pid] = proc
+	} else {
+		return p.updateProcFromExec(pid, bInit)
+	}
+	// TODO
+	return false
+}
+
+func (p *Probe) updateProcFromExec(pid int, bInit bool) (bKubeProc bool) {
 	// log.Debug("PROC: exec: ", pid)
 	var proc *procInternal
 	var c, c1 *procContainer
@@ -1230,7 +1272,7 @@ func (p *Probe) handleProcExec(pid int, bInit bool) (bKubeProc bool) {
 				// patch for older docker version realtime event glitches
 				// Older docker (re)assigns cgroup attributes for all worker
 				// after its "setkey" operations
-				if c1, ok = p.addContainerCandidateFromProc(proc); ok {
+				if c1, ok = p.addContainerCandidateFromProc(proc, ""); ok {
 					id = c1.id // just copy id
 				}
 			}
@@ -1267,7 +1309,7 @@ func (p *Probe) handleProcExec(pid int, bInit bool) (bKubeProc bool) {
 				action:       share.PolicyActionAllow,
 			}
 
-			if c1, ok = p.addContainerCandidateFromProc(proc); ok {
+			if c1, ok = p.addContainerCandidateFromProc(proc, ""); ok {
 				id = c1.id // just copy id
 				p.pidProcMap[proc.pid] = proc
 				proc.user = p.getUserName(proc.ppid, proc.euid) // get parent's username
@@ -1610,17 +1652,31 @@ func (p *Probe) initReadProcesses() bool {
 	return foundKube
 }
 
-func (p *Probe) addContainerCandidate(proc *procInternal, scanMode bool) (*procContainer, int) {
+// When containerId is not empty, use the containerID.
+// "host": the event comes from host.
+// 64 character-long string: the event comes from container.
+// Other case: we don't know. Please retrieve the data from /proc/.
+func (p *Probe) addContainerCandidate(proc *procInternal, containerId string, scanMode bool) (*procContainer, int) {
 	var c *procContainer
 	var ok bool
+	var containerInContainer bool
+	var err error
+	var found bool
+	var id string
 
 	// check if the /proc/xxx/cgroup exists
-	id, containerInContainer, err, found := global.SYS.GetContainerIDByPID(proc.pid)
-	if !found {
-		if osutil.IsPidValid(proc.pid) {
-			log.WithFields(log.Fields{"error": err}).Debug()
+	if containerId == "" {
+		id, containerInContainer, err, found = global.SYS.GetContainerIDByPID(proc.pid)
+		if !found {
+			if osutil.IsPidValid(proc.pid) {
+				log.WithFields(log.Fields{"error": err}).Debug()
+			}
+			return nil, -1 // not ready
 		}
-		return nil, -1 // not ready
+	} else if containerId == "host" {
+		id = ""
+	} else {
+		id = containerId
 	}
 
 	// In container-in-container enviroment, the id should be container-in-container type.
@@ -1648,7 +1704,7 @@ func (p *Probe) addContainerCandidate(proc *procInternal, scanMode bool) (*procC
 func (p *Probe) walkNewProcesses() {
 	for pc := range p.newProcesses.Iter() {
 		proc := pc.(*procInternal)
-		_, res := p.addContainerCandidate(proc, true)
+		_, res := p.addContainerCandidate(proc, "", true)
 		if res == -1 {
 			if proc.retry >= retryReadProcMax { // 3-4 sec span
 				p.newProcesses.Remove(proc)
@@ -1697,7 +1753,7 @@ func (p *Probe) scanNewProcess(pids utils.Set) {
 
 			//if its parent in the pidProcMap, handle and remove it, otherwise wait for next round
 			if _, ok = p.pidProcMap[proc.ppid]; ok {
-				insideContainer, proc_c, proc_p := p.handleProcFork(pid, proc.ppid, name)
+				insideContainer, proc_c, proc_p := p.handleProcFork(pid, proc.ppid, name, nil, nil, "")
 
 				//// for host processes
 				if !insideContainer {
@@ -2023,7 +2079,7 @@ func (p *Probe) inspectNewProcesses(bInit bool) {
 				if proc.name != "" && proc.path != "" {
 					if !proc.execScanDone {
 						proc.execScanDone = true
-						if p.handleProcExec(proc.pid, true) {
+						if p.handleProcExec(proc.pid, true, nil) {
 							p.inspectProcess.Remove(itr)
 						}
 					}
@@ -2830,7 +2886,7 @@ func (p *Probe) evaluateApp(pid int, id string, bReScanCgroup bool) {
 				proc.ppath, _ = global.SYS.GetFilePath(proc.ppid)
 				idn := id
 				if bReScanCgroup {
-					if c1, ok := p.addContainerCandidateFromProc(proc); ok && c1.id != "" {
+					if c1, ok := p.addContainerCandidateFromProc(proc, ""); ok && c1.id != "" {
 						mLog.WithFields(log.Fields{"name": proc.name, "pid": proc.pid, "id": c1.id}).Debug("PROC: patch")
 						p.addProcHistory(c1.id, proc, true)
 						idn = c1.id // could be a hole, since it is not detected in the process monitor
@@ -2976,7 +3032,7 @@ func (p *Probe) PatchContainerProcess(pid int, bEval bool) bool {
 		}
 
 		// is it a process inside a cgroup
-		if c, ok := p.addContainerCandidateFromProc(proc); ok {
+		if c, ok := p.addContainerCandidateFromProc(proc, ""); ok {
 			p.updateProcess(proc)
 			proc.user = p.getUserName(proc.ppid, proc.euid) // get parent's username
 			proc.path, _ = global.SYS.GetFilePath(proc.pid) // exe path

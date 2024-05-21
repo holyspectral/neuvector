@@ -132,14 +132,15 @@ func (p *Probe) checkProcessNetlinkSocket() error {
 	return errors.New("Receive mcast fails")
 }
 
+// Sam: work from here.
 func (p *Probe) netLinkHandler(e *netlinkProcEvent) {
 	// log.WithFields(log.Fields{"event": e}).Debug()
 	p.lockProcMux() // minimum section lock
 	switch e.Event {
 	case netlink.PROC_EVENT_FORK:
-		p.handleProcFork(e.Pid, e.UParam1, "") // pid, ppid
+		p.handleProcFork(e.Pid, e.UParam1, "", nil, nil, "") // pid, ppid
 	case netlink.PROC_EVENT_EXEC:
-		p.handleProcExec(e.Pid, false) // pid
+		p.handleProcExec(e.Pid, false, nil) // pid
 	case netlink.PROC_EVENT_EXIT:
 		p.handleProcExit(e.Pid)
 	case netlink.PROC_EVENT_UID:
@@ -219,7 +220,7 @@ func (p *Probe) reBuiltProcessTables() {
 	pidSet := osutil.GetAllProcesses()
 	p.pidProcMap = p.buildProcessMap(pidSet)
 	for _, proc := range p.pidProcMap {
-		p.addContainerCandidate(proc, true)
+		p.addContainerCandidate(proc, "", true)
 	}
 }
 
@@ -251,12 +252,12 @@ func (p *Probe) patchProcessTables() {
 			proc.pname, _, _, _ = osutil.GetProcessUIDs(proc.ppid)
 			proc.path, _ = global.SYS.GetFilePath(proc.pid) // exe path
 			proc.cmds, _ = global.SYS.ReadCmdLine(proc.pid)
-			if c, ok := p.addContainerCandidateFromProc(proc); ok {
+			if c, ok := p.addContainerCandidateFromProc(proc, ""); ok {
 				p.addProcHistory(c.id, proc, true)
 			}
 		} else if c, ok := p.pidContainerMap[pid]; ok && c.id == "" {
 			if !global.RT.IsRuntimeProcess(procE.name, nil) {
-				if c1, ok := p.addContainerCandidateFromProc(procE); ok && c1.id != "" {
+				if c1, ok := p.addContainerCandidateFromProc(procE, ""); ok && c1.id != "" {
 					mLog.WithFields(log.Fields{"name": procE.name, "pid": procE.pid, "id": c1.id}).Debug("PROC: patch")
 					p.addProcHistory(c1.id, procE, true)
 				}

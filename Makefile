@@ -37,6 +37,7 @@ copy_enf:
 	#
 	cp neuvector/monitor/monitor ${STAGE_DIR}/usr/local/bin/
 	cp neuvector/agent/agent ${STAGE_DIR}/usr/local/bin/
+	cp neuvector/agent/probe/bpfprocess/*.o ${STAGE_DIR}/usr/local/bin/
 	cp neuvector/agent/workerlet/pathWalker/pathWalker ${STAGE_DIR}/usr/local/bin/
 	cp neuvector/dp/dp ${STAGE_DIR}/usr/local/bin/
 	cp neuvector/agent/nvbench/kube_runner.tmpl ${STAGE_DIR}/usr/local/bin/scripts/tmpl/
