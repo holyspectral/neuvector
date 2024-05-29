@@ -116,6 +116,22 @@ github.com/chai2010/gettext-go
 github.com/chai2010/gettext-go/mo
 github.com/chai2010/gettext-go/plural
 github.com/chai2010/gettext-go/po
+# github.com/cilium/ebpf v0.15.0
+## explicit; go 1.21.0
+github.com/cilium/ebpf
+github.com/cilium/ebpf/asm
+github.com/cilium/ebpf/btf
+github.com/cilium/ebpf/internal
+github.com/cilium/ebpf/internal/epoll
+github.com/cilium/ebpf/internal/kallsyms
+github.com/cilium/ebpf/internal/kconfig
+github.com/cilium/ebpf/internal/sys
+github.com/cilium/ebpf/internal/sysenc
+github.com/cilium/ebpf/internal/tracefs
+github.com/cilium/ebpf/internal/unix
+github.com/cilium/ebpf/link
+github.com/cilium/ebpf/ringbuf
+github.com/cilium/ebpf/rlimit
 # github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0
 ## explicit
 github.com/codegangsta/inject
@@ -633,6 +649,9 @@ go.starlark.net/syntax
 # golang.org/x/crypto v0.21.0
 ## explicit; go 1.18
 golang.org/x/crypto/pbkdf2
+# golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2
+## explicit; go 1.18
+golang.org/x/exp/constraints
 # golang.org/x/net v0.23.0
 ## explicit; go 1.18
 golang.org/x/net/bpf
