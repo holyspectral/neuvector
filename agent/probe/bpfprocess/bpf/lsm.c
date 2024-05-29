@@ -23,6 +23,13 @@ struct string_lpm_trie
 	__u8 data[MAX_BUF_SIZE];
 };
 
+struct local_cpu_data
+{
+	__u32 type;
+	struct pt_regs *ctx;
+	__u32 lastIndex;
+};
+
 #define MAX_EVENT_BUFFER 1024
 #define MAX_EVENT_BUFFER_HALF (1024 >> 1)
 #define MAX_EVENT_BUFFER_HALF_MASK (MAX_EVENT_BUFFER_HALF - 1)
@@ -47,6 +54,8 @@ struct process_event
 	__u32 currIndex;
 	__u32 commIndex;
 	__u32 execIndex;
+	__u32 containerIDIndex;
+	__u32 lastIndex;
 	__u8 buffer[MAX_EVENT_BUFFER]; // comm, and more
 };
 
@@ -105,6 +114,14 @@ struct
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(struct local_cpu_data));
+} local_cpu_data_map SEC(".maps");
+
+struct
+{
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__uint(key_size, sizeof(__u32));
 	__uint(value_size, CONTAINERID_SIZE);
 } cid_heap SEC(".maps");
 
@@ -122,9 +139,13 @@ struct
 	__uint(max_entries, 1 << 24);
 } ringbuf_events SEC(".maps");
 
-static inline __attribute__((always_inline)) u32 PushEventData(struct process_event *event, char *data)
+static inline __attribute__((always_inline)) u32 PushEventData(struct process_event *event, char *data, u32 *lastIndex)
 {
 	if (event->currIndex >= MAX_EVENT_BUFFER_HALF)
+	{
+		return -1;
+	}
+	if (lastIndex == NULL)
 	{
 		return -1;
 	}
@@ -133,8 +154,116 @@ static inline __attribute__((always_inline)) u32 PushEventData(struct process_ev
 
 	u32 oldIndex = event->currIndex;
 	event->currIndex = (event->currIndex + sz) & MAX_EVENT_BUFFER_HALF_MASK;
+	*lastIndex = event->currIndex;
+
 	return oldIndex;
 	// bpf_printk("[fork]: buffer: %d \"%s\" %d", sz, event->buffer, (MAX_EVENT_BUFFER_HALF - event->currIndex));
+}
+
+static inline __attribute__((always_inline)) bool
+isSeperator(char c)
+{
+	return (c == '\0' || c == '.' || c == '-' || c == '=');
+}
+
+// This function gets potential container ID by enumerating the cgroup path of the current task, i.e., /proc/self/cgroup.
+// TODO: CORE
+// TODO: We can get container ID from its parent PID to speed up when we want more examination.
+// TODO: Test cgroup v1.
+static inline __attribute__((always_inline)) int
+GetContainerID(int cidlen, char *buf, int len)
+{
+	// NOTE: A container is normally created following this order:
+	// 1. Fork
+	// 2. Create cgroup.
+	// 3. Write the process ID into cgroup.
+	// 4. Execve(), which will triggers bprm_creds_for_exec.
+
+	// How to parse cgroupfs:
+	// proc_cgroup_show(): https://elixir.bootlin.com/linux/v6.8/source/kernel/cgroup/cgroup.c#L6246
+	// cgroup_path_ns_locked(): https://elixir.bootlin.com/linux/v6.8/source/kernel/cgroup/cgroup.c#L2363
+	// While kernfs_path_from_node() requires root->kn to generate its path,
+	// we want to traverse the whole path to find container ID, so we don't have to care about root.
+	//
+	// To find cgroup root, we have to take care about cgroup v1 and v2, e.g.:
+	// A few possibilities are here.  Check __cset_cgroup_from_root()
+	// 1. cset == init_css_set => The process is still being initialized(TODO)
+	// 2. root == cgrp_dfl_root => cgroup v2 = Get cset->dfl_cgrp.
+	// 3. Non default cgroup root => cgroup v1 => Check each of cset->cgrp_links and see if it's the root.
+
+	// Overall flow:
+	// task_struct => cgroup via task_cgroup_from_root(() => path via cgroup_path_ns_locked()
+	// Note: cur->cgroups is not reliable when the process is moved between cgroup, but it's normally fine.
+
+	struct task_struct *cur = bpf_get_current_task_btf();
+	struct kernfs_node *kn;
+	if (cur->cgroups != NULL && cur->cgroups->dfl_cgrp != NULL && cur->cgroups->dfl_cgrp->kn != NULL)
+	{
+		kn = cur->cgroups->dfl_cgrp->kn;
+		for (int i = 0; i < MAX_CGROUP_TRAVERSAL_DEPTH && kn != NULL; i++)
+		{
+
+#pragma unroll
+			for (int i = 0; i < MAX_BUF_SIZE; i++)
+			{
+				buf[i] = 0;
+			}
+
+			u32 len = bpf_core_read_str(buf, MAX_BUF_SIZE, kn->name);
+
+			//__builtin_memcpy(buf, kn->name, MAX_BUF_SIZE);
+			// NOTE: back-edge from insn 60 to 61 means that you have a loop. Use #pragma unroll.
+
+			// Find valid container ID
+			//
+			u32 from = 0, to = 0;
+
+			// Note: If the for loop seems to expand unlimitedly, make sure you use a macro instead of a integer used in for loop boundary.
+			// For example, for (i = 0; i < 1; i++) will fail.
+			// Similarly, you can't use break inside a loop.
+			bool finished = false;
+#pragma unroll
+			for (i = 0; i < MAX_BUF_SIZE - CONTAINERID_SIZE; i++)
+			{
+				if (i + CONTAINERID_SIZE > len)
+				{
+					finished = true;
+				}
+				if (buf[i] == '\0')
+				{
+					finished = true;
+				}
+				if (finished)
+				{
+					continue;
+				}
+
+				if ((i == 0 || isSeperator(buf[i - 1])) &&
+					isSeperator(buf[i + CONTAINERID_SIZE]))
+				{
+					// A potential container ID
+					bool bContainerID = true;
+					for (int j = 0; j < CONTAINERID_SIZE; j++)
+					{
+						char c = buf[i + j];
+						if ((c > '9' && c < '0') && (c > 'z' && c < 'a'))
+						{
+							bContainerID = false;
+							break;
+						}
+					}
+					if (!bContainerID)
+						continue;
+
+					buf[i + CONTAINERID_SIZE] = '\0';
+					return i;
+				}
+			}
+
+			kn = kn->parent;
+		}
+	}
+	return 0;
 }
 
 SEC("kprobe/tail_call_0")
@@ -143,6 +272,12 @@ int create_event(struct pt_regs *ctx)
 	int zero = 0;
 	char *tmp = (char *)bpf_map_lookup_elem(&tmp_heap, &zero);
 	if (tmp == NULL)
+	{
+		return -1;
+	}
+
+	struct local_cpu_data *data = (struct local_cpu_data *)bpf_map_lookup_elem(&local_cpu_data_map, &zero);
+	if (data == NULL)
 	{
 		return -1;
 	}
@@ -157,6 +292,7 @@ int create_event(struct pt_regs *ctx)
 	struct task_struct *task = (struct task_struct *)PT_REGS_PARM1_CORE(ctx);
 	struct task_struct *parent = BPF_CORE_READ(task, parent);
 
+	process_event->type = data->type;
 	process_event->pid = BPF_CORE_READ(task, pid);
 	process_event->tgid = BPF_CORE_READ(task, tgid);
 	process_event->uid = BPF_CORE_READ(task, cred, uid.val);
@@ -166,7 +302,7 @@ int create_event(struct pt_regs *ctx)
 
 	// bpf_core_read_str(process_event->comm, sizeof(process_event->comm), &task->comm);
 	// BPF_CORE_READ_STR_INTO(&process_event->comm, task, comm);
-	process_event->commIndex = PushEventData(process_event, (const void *)__builtin_preserve_access_index(&((typeof((task)))((task)))->comm));
+	process_event->commIndex = PushEventData(process_event, (const void *)__builtin_preserve_access_index(&((typeof((task)))((task)))->comm), &data->lastIndex);
 	// bpf_printk("[fork]: buffer: %s", process_event->buffer);
 
 	process_event->ppid = BPF_CORE_READ(parent, pid);
@@ -182,7 +318,8 @@ int create_event(struct pt_regs *ctx)
 	bpf_printk("[fork]: parent pid: %d, tgid: %d, comm: %s", process_event->ppid, process_event->ptgid, parent->comm);
 
 	// Basic information#2
-	bpf_printk("[fork]: uid: %d, euid: %d, puid: %d, peuid: %d", process_event->uid, process_event->euid, process_event->puid, process_event->peuid);
+	bpf_printk("[fork]: uid: %d, euid: %d", process_event->uid, process_event->euid);
+	bpf_printk("[fork]: puid: %d, peuid: %d", process_event->puid, process_event->peuid);
 
 	// Command line & executable path
 	struct dentry *dentry = BPF_CORE_READ(task, mm, exe_file, f_path.dentry);
@@ -195,7 +332,21 @@ int create_event(struct pt_regs *ctx)
 		return -1;
 	}
 
-	process_event->execIndex = PushEventData(process_event, &tmp[off]);
+	process_event->execIndex = PushEventData(process_event, &tmp[off], &data->lastIndex);
+
+	// Get Container ID.
+
+	int index = GetContainerID(CONTAINERID_SIZE, tmp, MAX_BUF_SIZE);
+	if (index != 0)
+	{
+		process_event->containerIDIndex = PushEventData(process_event, &tmp[index], &data->lastIndex);
+	}
+	else
+	{
+		process_event->containerIDIndex = data->lastIndex;
+	}
+
+	process_event->lastIndex = data->lastIndex;
 
 	bpf_printk("[fork]: exec: %s", &tmp[off]);
 	//  bpf_probe_read_kernel_str(process_event->buffer, sizeof(struct process_event), &(tmp[off]));
@@ -292,99 +443,6 @@ int BPF_PROG(lsm_file_open, struct file *file)
 }
 
 #endif
-
-static inline __attribute__((always_inline)) bool
-isSeperator(char c)
-{
-	return (c == '\0' || c == '.' || c == '-' || c == '=');
-}
-
-// This function gets potential container ID by enumerating the cgroup path of the current task, i.e., /proc/self/cgroup.
-// TODO: CORE
-// TODO: We can get container ID from its parent PID to speed up when we want more examination.
-// TODO: Test cgroup v1.
-static inline __attribute__((always_inline)) int
-GetContainerID(char *cid, int cidlen, char *buf, int len)
-{
-	// NOTE: A container is normally created following this order:
-	// 1. Fork
-	// 2. Create cgroup.
-	// 3. Write the process ID into cgroup.
-	// 4. Execve(), which will triggers bprm_creds_for_exec.
-
-	// How to parse cgroupfs:
-	// proc_cgroup_show(): https://elixir.bootlin.com/linux/v6.8/source/kernel/cgroup/cgroup.c#L6246
-	// cgroup_path_ns_locked(): https://elixir.bootlin.com/linux/v6.8/source/kernel/cgroup/cgroup.c#L2363
-	// While kernfs_path_from_node() requires root->kn to generate its path,
-	// we want to traverse the whole path to find container ID, so we don't have to care about root.
-	//
-	// To find cgroup root, we have to take care about cgroup v1 and v2, e.g.:
-	// A few possibilities are here.  Check __cset_cgroup_from_root()
-	// 1. cset == init_css_set => The process is still being initialized(TODO)
-	// 2. root == cgrp_dfl_root => cgroup v2 = Get cset->dfl_cgrp.
-	// 3. Non default cgroup root => cgroup v1 => Check each of cset->cgrp_links and see if it's the root.
-
-	// Overall flow:
-	// task_struct => cgroup via task_cgroup_from_root(() => path via cgroup_path_ns_locked()
-	// Note: cur->cgroups is not reliable when the process is moved between cgroup, but it's normally fine.
-
-	struct task_struct *cur = bpf_get_current_task_btf();
-	struct kernfs_node *kn;
-	if (cur->cgroups != NULL && cur->cgroups->dfl_cgrp != NULL && cur->cgroups->dfl_cgrp->kn != NULL)
-	{
-		kn = cur->cgroups->dfl_cgrp->kn;
-		for (int i = 0; i < MAX_CGROUP_TRAVERSAL_DEPTH && kn != NULL; i++)
-		{
-
-#pragma unroll
-			for (int i = 0; i < MAX_BUF_SIZE; i++)
-			{
-				buf[i] = 0;
-			}
-
-			u32 len = bpf_core_read_str(buf, MAX_BUF_SIZE, kn->name);
-
-			//__builtin_memcpy(buf, kn->name, MAX_BUF_SIZE);
-			// NOTE: back-edge from insn 60 to 61 means that you have a loop. Use #pragma unroll.
-
-			// Find valid container ID
-			//
-			u32 from = 0, to = 0;
-
-			// Note: If the for loop seems to expand unlimitedly, make sure you use a macro instead of a integer used in for loop boundary.
-			// For example, for (i = 0; i < 1; i++) will fail.
-			// Similarly, you can't use break inside a loop.
-			bool finished = false;
-#pragma unroll
-			for (i = 0; i < MAX_BUF_SIZE - CONTAINERID_SIZE; i++)
-			{
-				if (i + CONTAINERID_SIZE > len)
-				{
-					finished = true;
-				}
-				if (buf[i] == '\0')
-				{
-					finished = true;
-				}
-				if (finished)
-				{
-					continue;
-				}
-
-				if ((i == 0 || isSeperator(buf[i - 1])) &&
-					isSeperator(buf[i + CONTAINERID_SIZE]))
-				{
-					// A potential container ID
-					// TODO: Extra check to make sure it's valid.
-					__builtin_memcpy(cid, &buf[i], CONTAINERID_SIZE);
-				}
-			}
-
-			kn = kn->parent;
-		}
-	}
-	return 0;
-}
 
 /*
 // This function checks if the process executed would comply the policy specified.
@@ -656,6 +714,55 @@ int kprobe_proc_fork_connector(struct pt_regs *ctx)
 	{
 		return -1;
 	}
+
+	struct local_cpu_data *data = (struct local_cpu_data *)bpf_map_lookup_elem(&local_cpu_data_map, &zero);
+	if (data == NULL)
+	{
+		return -1;
+	}
+	data->type = PROC_FORK_EVENT_TYPE;
+
+	bpf_tail_call(ctx, &programs_map, 0);
+	return 0;
+}
+
+SEC("kprobe/proc_exec_connector")
+int kprobe_proc_exec_connector(struct pt_regs *ctx)
+{
+	int zero = 0;
+	char *tmp = (char *)bpf_map_lookup_elem(&tmp_heap, &zero);
+	if (tmp == NULL)
+	{
+		return -1;
+	}
+
+	struct local_cpu_data *data = (struct local_cpu_data *)bpf_map_lookup_elem(&local_cpu_data_map, &zero);
+	if (data == NULL)
+	{
+		return -1;
+	}
+	data->type = PROC_EXEC_EVENT_TYPE;
+
+	bpf_tail_call(ctx, &programs_map, 0);
+	return 0;
+}
+
+SEC("kprobe/proc_exit_connector")
+int kprobe_proc_exit_connector(struct pt_regs *ctx)
+{
+	int zero = 0;
+	char *tmp = (char *)bpf_map_lookup_elem(&tmp_heap, &zero);
+	if (tmp == NULL)
+	{
+		return -1;
+	}
+
+	struct local_cpu_data *data = (struct local_cpu_data *)bpf_map_lookup_elem(&local_cpu_data_map, &zero);
+	if (data == NULL)
+	{
+		return -1;
+	}
+	data->type = PROC_EXIT_EVENT_TYPE;
 
 	bpf_tail_call(ctx, &programs_map, 0);
 	return 0;

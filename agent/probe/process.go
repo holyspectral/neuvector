@@ -1089,33 +1089,36 @@ func (p *Probe) rootEscalationCheck_uidChange(proc *procInternal, c *procContain
 
 func (p *Probe) handleProcFork(pid, ppid int, name string, oldproc *procInternal, newproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
 	// Usually these two information are available at the same time.
+	// In fork, oldproc and newproc will be in the same container as no cgroup change happens here.
+	// However, child process can then be moved to a cgroup and becomes a container.
+	// We detect that when we handle execve event.
 	if oldproc != nil && newproc != nil {
-		p.pidProcMap[oldproc.pid] = oldproc
-		p.pidProcMap[newproc.pid] = newproc
-
-		// The normal flow to create a container:
-		// 1. fork/clone
-		// 2. Set cgroup.
-		// 3. Execute entrypoint.
-		//
-		// We don't know if the new process is a container process until we receive proc exec.  Assign an intermediate value for now.
-		var id string
-		// TODO: addContainerCandidateFromProc checks /proc/xxx/cgroup, which can miss data.
-		if c1, ok := p.addContainerCandidateFromProc(oldproc, containerId); ok {
-			inContainer = true
-			if c, ok := p.containerMap[c1.id]; ok {
-				// TODO: Confirm this.
-				p.addContainerProcess(c, oldproc.pid) // add parent
-				p.addContainerProcess(c, newproc.pid) // add parent
-			} else {
-				// Potential race condition?
-				log.WithFields(log.Fields{"pid": pid, "ppid": ppid, "id": id}).Warn("Process not in a known container list. Race condition?")
-			}
-		}
+		return p.updateForkFromEbpf(pid, ppid, oldproc, newproc, containerId)
 	} else {
 		return p.updateProcFromFork(pid, ppid, name)
 	}
-	return inContainer, oldproc, newproc
+}
+
+func (p *Probe) updateForkFromEbpf(pid, ppid int, oldproc *procInternal, newproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
+	// TODO: addContainerCandidateFromProc checks /proc/xxx/cgroup, which can miss data.
+	// However, we need to call this function in order to setup containerMap and children/outsider.
+	c, ok := p.addContainerCandidateFromProc(oldproc, containerId)
+	if !ok {
+		log.Warn("no container data")
+		return false, oldproc, newproc
+	}
+
+	if _, ok := p.pidProcMap[ppid]; !ok {
+		p.pidProcMap[ppid] = oldproc
+		p.inspectProcess.Add(oldproc)
+
+		p.addContainerProcess(c, pid)
+	}
+
+	p.pidProcMap[pid] = newproc
+	p.inspectProcess.Add(newproc)
+	p.addContainerProcess(c, newproc.pid)
+	return containerId != "", oldproc, newproc
 }
 
 func (p *Probe) updateProcFromFork(pid, ppid int, name string) (inContainer bool, pc *procInternal, pp *procInternal) {
@@ -1241,14 +1244,47 @@ func (p *Probe) updateProcFromFork(pid, ppid int, name string) (inContainer bool
 	return insideContainer, proc, nil
 }
 
-func (p *Probe) handleProcExec(pid int, bInit bool, proc *procInternal) (bKubeProc bool) {
+func (p *Probe) handleProcExec(pid int, bInit bool, proc *procInternal, containerId string) (bKubeProc bool) {
 	// Usually these two information are available at the same time.
 	if proc != nil {
-		p.pidProcMap[proc.pid] = proc
+		return p.updateExecFromEbpf(pid, bInit, proc, containerId)
 	} else {
 		return p.updateProcFromExec(pid, bInit)
 	}
-	// TODO
+}
+
+func (p *Probe) updateExecFromEbpf(pid int, bInit bool, proc *procInternal, containerId string) (bKubeProc bool) {
+
+	if _, ok := p.pidProcMap[pid]; !ok {
+		p.addContainerCandidateFromProc(proc, containerId)
+	}
+
+	bEvalFlag := !p.isDockerDaemonProcess(proc, containerId)
+
+	if proc.path != "" && proc.path != "/" {
+		p.addProcHistory(containerId, proc, true) // every detected exec events
+	}
+
+	if bEvalFlag && proc.name != "" {
+		if bInit {
+			go p.evalNewRunningApp(proc.pid) // no sequential issue
+		} else {
+			cur := len(p.chanEvalAppPid)
+			if cur == cap(p.chanEvalAppPid) {
+				log.WithFields(log.Fields{"id": containerId, "proc": proc.name}).Error("PROC: chan overflow, ignore")
+			} else {
+				p.chanEvalAppPid <- proc.pid
+				cur++ // added
+				if cur > p.profileMaxChanEvalCnt {
+					p.profileMaxChanEvalCnt = cur
+				}
+			}
+		}
+	}
+
+	if _, ok := kubeProcs[proc.name]; ok {
+		return p.informKubeBench(proc)
+	}
 	return false
 }
 
@@ -2079,7 +2115,7 @@ func (p *Probe) inspectNewProcesses(bInit bool) {
 				if proc.name != "" && proc.path != "" {
 					if !proc.execScanDone {
 						proc.execScanDone = true
-						if p.handleProcExec(proc.pid, true, nil) {
+						if p.handleProcExec(proc.pid, true, nil, "") {
 							p.inspectProcess.Remove(itr)
 						}
 					}

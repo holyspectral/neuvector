@@ -11,6 +11,10 @@
 
 #define MAX_PATH_DEPTH 4
 
+#define PROC_FORK_EVENT_TYPE 0
+#define PROC_EXEC_EVENT_TYPE 1
+#define PROC_EXIT_EVENT_TYPE 2
+
 /*
 // This function checks prefix using BPF_MAP_TYPE_LPM_TRIE
 static inline __attribute__((always_inline)) int MatchPrefix(char cid[64], const char *str, uint len)

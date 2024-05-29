@@ -22,23 +22,32 @@ type BPFProcessControl struct {
 	links map[string]link.Link
 }
 
+const (
+	PROC_FORK_EVENT_TYPE = iota
+	PROC_EXEC_EVENT_TYPE
+	PROC_EXIT_EVENT_TYPE
+)
+
 type ProcessEvent struct {
-	Pid       uint32
-	Tgid      uint32
-	Uid       uint32
-	Euid      uint32
-	Gid       uint32
-	Egid      uint32
-	Ppid      uint32
-	Ptgid     uint32
-	Puid      uint32
-	Peuid     uint32
-	Pgid      uint32
-	Pegid     uint32
-	CurrIndex uint32
-	CommIndex uint32
-	ExecIndex uint32
-	Buffer    [1024]uint8
+	Type             uint32
+	Pid              uint32
+	Tgid             uint32
+	Uid              uint32
+	Euid             uint32
+	Gid              uint32
+	Egid             uint32
+	Ppid             uint32
+	Ptgid            uint32
+	Puid             uint32
+	Peuid            uint32
+	Pgid             uint32
+	Pegid            uint32
+	CurrIndex        uint32
+	CommIndex        uint32
+	ExecIndex        uint32
+	ContainerIDIndex uint32
+	LastIndex        uint32
+	Buffer           [1024]uint8
 }
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -type process_event -type string_lpm_trie bpf bpf/lsm.c bpf/kprobe.c -- -I./bpf/headers
@@ -143,7 +152,7 @@ func (bpc *BPFProcessControl) InstallLSMHooks() error {
 }
 */
 
-func (bpc *BPFProcessControl) InstallKprobes() (link.Link, error) {
+func (bpc *BPFProcessControl) InstallKprobes() (links map[string]link.Link, err error) {
 
 	/*
 		kp, err := link.Kprobe("sys_execve", bpc.bpfObjects.KprobeExecve, nil)
@@ -159,12 +168,38 @@ func (bpc *BPFProcessControl) InstallKprobes() (link.Link, error) {
 	}
 	*/
 
+	links = make(map[string]link.Link, 0)
+
+	defer func() {
+		if err != nil {
+			for _, link := range links {
+				link.Close()
+			}
+		}
+	}()
+
 	kp, err := link.Kprobe("proc_fork_connector", bpc.bpfObjects.KprobeProcForkConnector, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to install hooks on proc_fork_connector: %w", err)
 	}
 
-	return kp, nil
+	links["proc_fork_connector"] = kp
+
+	kp, err = link.Kprobe("proc_exec_connector", bpc.bpfObjects.KprobeProcExecConnector, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to install hooks on proc_fork_connector: %w", err)
+	}
+
+	links["proc_exec_connector"] = kp
+
+	kp, err = link.Kprobe("proc_exit_connector", bpc.bpfObjects.KprobeProcExitConnector, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to install hooks on proc_fork_connector: %w", err)
+	}
+
+	links["proc_exit_connector"] = kp
+
+	return links, nil
 }
 
 func (bpc *BPFProcessControl) LoadObjects() error {
@@ -201,11 +236,12 @@ func (bpc *BPFProcessControl) StartLSMHooks() error {
 */
 
 func (bpc *BPFProcessControl) StartKProbe() error {
-	kp, err := bpc.InstallKprobes()
+	links, err := bpc.InstallKprobes()
 	if err != nil {
 		return fmt.Errorf("failed to attach to kprobe: %w", err)
 	}
-	bpc.links[KPROBE_LINK] = kp
+
+	bpc.links = links
 
 	return nil
 }

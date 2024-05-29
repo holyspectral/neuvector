@@ -1,9 +1,6 @@
 package probe
 
 import (
-	"bytes"
-	"encoding/binary"
-	"errors"
 	"os"
 	"reflect"
 	"runtime"
@@ -12,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 
@@ -576,38 +572,7 @@ func New(pc *ProbeConfig, logLevel string) (*Probe, error) {
 		log.WithError(err).Error("failed to start kprobe")
 	}
 
-	go func() {
-		// ebpf main thread
-		eventRB := bpfProcessCtrl.GetEventRingBuffer()
-
-		rd, err := ringbuf.NewReader(eventRB)
-		if err != nil {
-			log.WithError(err).Fatal("failed to open ring buffer")
-		}
-
-		defer rd.Close()
-
-		// TODO: Provide metrics
-		var event bpfprocess.ProcessEvent
-		for {
-			record, err := rd.Read()
-			if err != nil {
-				if errors.Is(err, ringbuf.ErrClosed) {
-					log.Println("received signal, exiting..")
-					return
-				}
-				log.WithError(err).Warn("failed to read from ring buffer")
-			}
-
-			// TODO: endian
-			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &event); err != nil {
-				log.Printf("parsing ringbuf event: %s", err)
-				continue
-			}
-			log.Printf("PID: %d, PPID: %d, UID: %d\n", event.Pid, event.Ppid, event.Uid)
-			log.Printf("[Test] Conn: %s, Exec: %s\n", string(event.Buffer[event.CommIndex:]), string(event.Buffer[event.ExecIndex:]))
-		}
-	}()
+	go p.ebpfWorker()
 
 	if p.pidNetlink {
 		go p.netlinkProcWorker()  // socket event worker

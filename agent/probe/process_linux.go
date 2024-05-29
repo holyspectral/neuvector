@@ -1,15 +1,20 @@
 package probe
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"syscall"
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf/ringbuf"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/neuvector/neuvector/agent/probe/bpfprocess"
 	"github.com/neuvector/neuvector/agent/probe/netlink"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/global"
@@ -133,20 +138,111 @@ func (p *Probe) checkProcessNetlinkSocket() error {
 }
 
 // Sam: work from here.
-func (p *Probe) netLinkHandler(e *netlinkProcEvent) {
-	// log.WithFields(log.Fields{"event": e}).Debug()
+func (p *Probe) ebpfWorker() {
+	// ebpf main thread
+	eventRB := p.bpfProcessCtrl.GetEventRingBuffer()
+
+	rd, err := ringbuf.NewReader(eventRB)
+	if err != nil {
+		log.WithError(err).Fatal("failed to open ring buffer")
+	}
+
+	defer rd.Close()
+
+	// TODO: Provide metrics
+	var event bpfprocess.ProcessEvent
+	for {
+		record, err := rd.Read()
+		if err != nil {
+			if errors.Is(err, ringbuf.ErrClosed) {
+				log.Println("received signal, exiting..")
+				return
+			}
+			log.WithError(err).Warn("failed to read from ring buffer")
+		}
+
+		// TODO: endian
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &event); err != nil {
+			log.Printf("parsing ringbuf event: %s", err)
+			continue
+		}
+
+		exePath := string(event.Buffer[event.ExecIndex:event.LastIndex])
+
+		pi := procInternal{
+			pname: path.Base(exePath),
+			ppath: exePath,
+			name:  path.Base(exePath),
+			path:  exePath,
+			cmds:  []string{"todo"},
+			user:  p.getUserName(int(event.Ppid), int(event.Euid)),
+			pid:   int(event.Pid),
+			ppid:  int(event.Ppid),
+			sid:   0,
+			pgid:  0,
+			ruid:  int(event.Uid),
+			euid:  int(event.Euid),
+		}
+
+		containerID := string(event.Buffer[event.ContainerIDIndex:event.LastIndex])
+		execPath := string(event.Buffer[event.ExecIndex:event.ContainerIDIndex])
+
+		log.WithFields(log.Fields{
+			"container": containerID,
+			"pid":       int(event.Pid),
+			"ppid":      int(event.Ppid),
+			"exec":      execPath,
+		}).Info("[ebpf] event")
+		if event.Type == bpfprocess.PROC_FORK_EVENT_TYPE {
+			ppi := pi
+			ppi.pid = int(event.Ppid)
+			ppi.ppid = int(event.Ppid) // TODO
+			p.ebpfHandler(int(event.Type), &pi, &ppi, containerID)
+		} else {
+			p.ebpfHandler(int(event.Type), &pi, nil, containerID)
+		}
+		// log.Printf("Type: %d PID: %d, PPID: %d, UID: %d\n", event.Type, event.Pid, event.Ppid, event.Uid)
+		// log.Printf("[Test] Comm: %s, Exec: %s\n", string(event.Buffer[event.CommIndex:event.ExecIndex]), string(event.Buffer[event.ExecIndex:event.LastIndex]))
+	}
+}
+
+func (p *Probe) ebpfHandler(eventType int, pi *procInternal, ppi *procInternal, containerID string) {
+	// TODO: ppi
+	// TODO: UID change.
+
+	log.WithFields(log.Fields{"type": eventType, "pi": pi, "ppi": ppi, "id": containerID}).Info()
+
 	p.lockProcMux() // minimum section lock
-	switch e.Event {
-	case netlink.PROC_EVENT_FORK:
-		p.handleProcFork(e.Pid, e.UParam1, "", nil, nil, "") // pid, ppid
-	case netlink.PROC_EVENT_EXEC:
-		p.handleProcExec(e.Pid, false, nil) // pid
-	case netlink.PROC_EVENT_EXIT:
-		p.handleProcExit(e.Pid)
-	case netlink.PROC_EVENT_UID:
-		p.handleProcUIDChange(e.Pid, e.UParam1, e.UParam2) // pid, ruid, euid
+	switch eventType {
+	case bpfprocess.PROC_FORK_EVENT_TYPE:
+		p.handleProcFork(pi.pid, pi.ppid, "", pi, ppi, containerID) // pid, ppid
+	case bpfprocess.PROC_EXEC_EVENT_TYPE:
+		p.handleProcExec(pi.pid, false, pi, containerID) // pid
+	case bpfprocess.PROC_EXIT_EVENT_TYPE:
+		p.handleProcExit(pi.pid)
+		//case netlink.PROC_EVENT_UID:
+		//	p.handleProcUIDChange(e.Pid, e.UParam1, e.UParam2) // pid, ruid, euid
 	}
 	p.unlockProcMux() // minimum section lock
+}
+
+func (p *Probe) netLinkHandler(e *netlinkProcEvent) {
+	/*
+		// log.WithFields(log.Fields{"event": e}).Debug()
+		p.lockProcMux() // minimum section lock
+		switch e.Event {
+		case netlink.PROC_EVENT_FORK:
+			p.handleProcFork(e.Pid, e.UParam1, "", nil, nil, "") // pid, ppid
+		case netlink.PROC_EVENT_EXEC:
+			p.handleProcExec(e.Pid, false, nil) // pid
+		case netlink.PROC_EVENT_EXIT:
+			p.handleProcExit(e.Pid)
+		case netlink.PROC_EVENT_UID:
+			p.handleProcUIDChange(e.Pid, e.UParam1, e.UParam2) // pid, ruid, euid
+		}
+		p.unlockProcMux() // minimum section lock
+	*/
+	return
 }
 
 func (p *Probe) parseNetLinkProcEvent(msg *syscall.NetlinkMessage) *netlinkProcEvent {

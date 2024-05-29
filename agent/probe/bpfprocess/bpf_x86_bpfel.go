@@ -13,22 +13,25 @@ import (
 )
 
 type bpfProcessEvent struct {
-	Pid       uint32
-	Tgid      uint32
-	Uid       uint32
-	Euid      uint32
-	Gid       uint32
-	Egid      uint32
-	Ppid      uint32
-	Ptgid     uint32
-	Puid      uint32
-	Peuid     uint32
-	Pgid      uint32
-	Pegid     uint32
-	CurrIndex uint32
-	CommIndex uint32
-	ExecIndex uint32
-	Buffer    [1024]uint8
+	Type             uint32
+	Pid              uint32
+	Tgid             uint32
+	Uid              uint32
+	Euid             uint32
+	Gid              uint32
+	Egid             uint32
+	Ppid             uint32
+	Ptgid            uint32
+	Puid             uint32
+	Peuid            uint32
+	Pgid             uint32
+	Pegid            uint32
+	CurrIndex        uint32
+	CommIndex        uint32
+	ExecIndex        uint32
+	ContainerIDIndex uint32
+	LastIndex        uint32
+	Buffer           [1024]uint8
 }
 
 type bpfStringLpmTrie struct {
@@ -78,6 +81,8 @@ type bpfSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
 	CreateEvent             *ebpf.ProgramSpec `ebpf:"create_event"`
+	KprobeProcExecConnector *ebpf.ProgramSpec `ebpf:"kprobe_proc_exec_connector"`
+	KprobeProcExitConnector *ebpf.ProgramSpec `ebpf:"kprobe_proc_exit_connector"`
 	KprobeProcForkConnector *ebpf.ProgramSpec `ebpf:"kprobe_proc_fork_connector"`
 }
 
@@ -85,13 +90,14 @@ type bpfProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	BufferHeap    *ebpf.MapSpec `ebpf:"buffer_heap"`
-	CidHeap       *ebpf.MapSpec `ebpf:"cid_heap"`
-	FilenameHeap  *ebpf.MapSpec `ebpf:"filename_heap"`
-	FilenameMaps  *ebpf.MapSpec `ebpf:"filename_maps"`
-	ProgramsMap   *ebpf.MapSpec `ebpf:"programs_map"`
-	RingbufEvents *ebpf.MapSpec `ebpf:"ringbuf_events"`
-	TmpHeap       *ebpf.MapSpec `ebpf:"tmp_heap"`
+	BufferHeap      *ebpf.MapSpec `ebpf:"buffer_heap"`
+	CidHeap         *ebpf.MapSpec `ebpf:"cid_heap"`
+	FilenameHeap    *ebpf.MapSpec `ebpf:"filename_heap"`
+	FilenameMaps    *ebpf.MapSpec `ebpf:"filename_maps"`
+	LocalCpuDataMap *ebpf.MapSpec `ebpf:"local_cpu_data_map"`
+	ProgramsMap     *ebpf.MapSpec `ebpf:"programs_map"`
+	RingbufEvents   *ebpf.MapSpec `ebpf:"ringbuf_events"`
+	TmpHeap         *ebpf.MapSpec `ebpf:"tmp_heap"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -113,13 +119,14 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	BufferHeap    *ebpf.Map `ebpf:"buffer_heap"`
-	CidHeap       *ebpf.Map `ebpf:"cid_heap"`
-	FilenameHeap  *ebpf.Map `ebpf:"filename_heap"`
-	FilenameMaps  *ebpf.Map `ebpf:"filename_maps"`
-	ProgramsMap   *ebpf.Map `ebpf:"programs_map"`
-	RingbufEvents *ebpf.Map `ebpf:"ringbuf_events"`
-	TmpHeap       *ebpf.Map `ebpf:"tmp_heap"`
+	BufferHeap      *ebpf.Map `ebpf:"buffer_heap"`
+	CidHeap         *ebpf.Map `ebpf:"cid_heap"`
+	FilenameHeap    *ebpf.Map `ebpf:"filename_heap"`
+	FilenameMaps    *ebpf.Map `ebpf:"filename_maps"`
+	LocalCpuDataMap *ebpf.Map `ebpf:"local_cpu_data_map"`
+	ProgramsMap     *ebpf.Map `ebpf:"programs_map"`
+	RingbufEvents   *ebpf.Map `ebpf:"ringbuf_events"`
+	TmpHeap         *ebpf.Map `ebpf:"tmp_heap"`
 }
 
 func (m *bpfMaps) Close() error {
@@ -128,6 +135,7 @@ func (m *bpfMaps) Close() error {
 		m.CidHeap,
 		m.FilenameHeap,
 		m.FilenameMaps,
+		m.LocalCpuDataMap,
 		m.ProgramsMap,
 		m.RingbufEvents,
 		m.TmpHeap,
@@ -139,12 +147,16 @@ func (m *bpfMaps) Close() error {
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
 	CreateEvent             *ebpf.Program `ebpf:"create_event"`
+	KprobeProcExecConnector *ebpf.Program `ebpf:"kprobe_proc_exec_connector"`
+	KprobeProcExitConnector *ebpf.Program `ebpf:"kprobe_proc_exit_connector"`
 	KprobeProcForkConnector *ebpf.Program `ebpf:"kprobe_proc_fork_connector"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
 		p.CreateEvent,
+		p.KprobeProcExecConnector,
+		p.KprobeProcExitConnector,
 		p.KprobeProcForkConnector,
 	)
 }
