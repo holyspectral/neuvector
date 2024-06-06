@@ -1087,7 +1087,7 @@ func (p *Probe) rootEscalationCheck_uidChange(proc *procInternal, c *procContain
 	}
 }
 
-func (p *Probe) handleProcFork(pid, ppid int, name string, oldproc *procInternal, newproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
+func (p *Probe) handleProcFork(pid, ppid int, name string, newproc *procInternal, oldproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
 	// Usually these two information are available at the same time.
 	// In fork, oldproc and newproc will be in the same container as no cgroup change happens here.
 	// However, child process can then be moved to a cgroup and becomes a container.
@@ -1100,6 +1100,7 @@ func (p *Probe) handleProcFork(pid, ppid int, name string, oldproc *procInternal
 }
 
 func (p *Probe) updateForkFromEbpf(pid, ppid int, oldproc *procInternal, newproc *procInternal, containerId string) (inContainer bool, pc *procInternal, pp *procInternal) {
+
 	// TODO: addContainerCandidateFromProc checks /proc/xxx/cgroup, which can miss data.
 	// However, we need to call this function in order to setup containerMap and children/outsider.
 	c, ok := p.addContainerCandidateFromProc(oldproc, containerId)
@@ -1108,11 +1109,19 @@ func (p *Probe) updateForkFromEbpf(pid, ppid int, oldproc *procInternal, newproc
 		return false, oldproc, newproc
 	}
 
-	if _, ok := p.pidProcMap[ppid]; !ok {
+	if ppi, ok := p.pidProcMap[ppid]; !ok {
+		oldproc.action = share.PolicyActionAllow
+		newproc.action = share.PolicyActionAllow
+
 		p.pidProcMap[ppid] = oldproc
 		p.inspectProcess.Add(oldproc)
 
 		p.addContainerProcess(c, pid)
+	} else {
+		oldproc.action = ppi.action
+		oldproc.riskType = ppi.riskType
+		newproc.action = ppi.action
+		newproc.riskType = ppi.riskType
 	}
 
 	p.pidProcMap[pid] = newproc
@@ -1255,8 +1264,25 @@ func (p *Probe) handleProcExec(pid int, bInit bool, proc *procInternal, containe
 
 func (p *Probe) updateExecFromEbpf(pid int, bInit bool, proc *procInternal, containerId string) (bKubeProc bool) {
 
-	if _, ok := p.pidProcMap[pid]; !ok {
+	// Setup new proc if it doesn't exist
+	// If it exists, update the existing entry's name, path and cmds.
+	if existingproc, ok := p.pidProcMap[pid]; !ok {
 		p.addContainerCandidateFromProc(proc, containerId)
+	} else {
+		existingproc.name = proc.name
+		existingproc.path = proc.path
+		existingproc.cmds = proc.cmds
+	}
+
+	p.addContainerCandidateFromProc(proc, containerId) // TODO
+
+	if c, ok := p.pidContainerMap[pid]; ok {
+		if c.id == "" {
+			// container entrypoint starts with runc in root cgroup.
+			// Therefore no container ID will be present.
+			// We recheck it when we receive a execve event.
+
+		}
 	}
 
 	bEvalFlag := !p.isDockerDaemonProcess(proc, containerId)

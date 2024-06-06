@@ -16,6 +16,7 @@ const int CONTAINERID_SIZE = 64;
 
 #define NO_LSM
 #define NO_KPROBE_ENFORCEMENT
+#define CGROUP_V1
 
 struct string_lpm_trie
 {
@@ -51,10 +52,14 @@ struct process_event
 	__u32 pgid;
 	__u32 pegid;
 
+	__u32 processgroupid;
+	__u32 sid;
+
 	__u32 currIndex;
 	__u32 commIndex;
 	__u32 execIndex;
 	__u32 containerIDIndex;
+	__u32 cmdLineIndex;
 	__u32 lastIndex;
 	__u8 buffer[MAX_EVENT_BUFFER]; // comm, and more
 };
@@ -149,14 +154,54 @@ static inline __attribute__((always_inline)) u32 PushEventData(struct process_ev
 	{
 		return -1;
 	}
+
 	// sz includes line endings.
 	u8 sz = bpf_probe_read_kernel_str(&event->buffer[event->currIndex & MAX_EVENT_BUFFER_HALF_MASK], (MAX_EVENT_BUFFER_HALF - event->currIndex - 1) & MAX_EVENT_BUFFER_HALF_MASK, data);
 
-	u32 oldIndex = event->currIndex;
-	event->currIndex = (event->currIndex + sz) & MAX_EVENT_BUFFER_HALF_MASK;
-	*lastIndex = event->currIndex;
+	// Treat empty string as error too.
+	if (sz > 1)
+	{
+		// Remove null character by moving currIndex.
+		u32 oldIndex = event->currIndex;
+		event->currIndex = (event->currIndex + (sz - 1)) & MAX_EVENT_BUFFER_HALF_MASK;
+		*lastIndex = event->currIndex;
 
-	return oldIndex;
+		return oldIndex;
+	}
+
+	return event->currIndex;
+
+	// bpf_printk("[fork]: buffer: %d \"%s\" %d", sz, event->buffer, (MAX_EVENT_BUFFER_HALF - event->currIndex));
+}
+
+static inline __attribute__((always_inline)) u32 PushEventData2(struct process_event *event, char *data, u32 len, u32 *lastIndex)
+{
+	if (event->currIndex >= MAX_EVENT_BUFFER_HALF)
+	{
+		return -1;
+	}
+	if (lastIndex == NULL)
+	{
+		return -1;
+	}
+
+	// TODO: Not efficient.
+	bpf_probe_read_kernel(&event->buffer[event->currIndex & MAX_EVENT_BUFFER_HALF_MASK], (MAX_EVENT_BUFFER_HALF - event->currIndex - 1) & MAX_EVENT_BUFFER_HALF_MASK, data);
+
+	u8 sz = len;
+	// Treat empty string as error too.
+	if (sz > 1)
+	{
+		// Remove null character by moving currIndex.
+		u32 oldIndex = event->currIndex;
+		event->currIndex = (event->currIndex + (sz - 1)) & MAX_EVENT_BUFFER_HALF_MASK;
+		*lastIndex = event->currIndex;
+
+		return oldIndex;
+	}
+
+	return event->currIndex;
+
 	// bpf_printk("[fork]: buffer: %d \"%s\" %d", sz, event->buffer, (MAX_EVENT_BUFFER_HALF - event->currIndex));
 }
 
@@ -197,9 +242,21 @@ GetContainerID(int cidlen, char *buf, int len)
 
 	struct task_struct *cur = bpf_get_current_task_btf();
 	struct kernfs_node *kn;
+
+	struct cgroup *cg;
+
+	// TODO: Automatically fallback.
+
+#ifdef CGROUP_V1
+
+	if (cur->cgroups != NULL && cur->cgroups->subsys[cpu_cgrp_id] != NULL && cur->cgroups->subsys[cpu_cgrp_id]->cgroup != NULL && cur->cgroups->subsys[cpu_cgrp_id]->cgroup->kn != NULL)
+	{
+		kn = cur->cgroups->subsys[cpu_cgrp_id]->cgroup->kn;
+#else
 	if (cur->cgroups != NULL && cur->cgroups->dfl_cgrp != NULL && cur->cgroups->dfl_cgrp->kn != NULL)
 	{
 		kn = cur->cgroups->dfl_cgrp->kn;
+#endif
 		for (int i = 0; i < MAX_CGROUP_TRAVERSAL_DEPTH && kn != NULL; i++)
 		{
 
@@ -210,6 +267,7 @@ GetContainerID(int cidlen, char *buf, int len)
 			}
 
 			u32 len = bpf_core_read_str(buf, MAX_BUF_SIZE, kn->name);
+			bpf_printk("path: %s, len: %d", buf, len);
 
 			//__builtin_memcpy(buf, kn->name, MAX_BUF_SIZE);
 			// NOTE: back-edge from insn 60 to 61 means that you have a loop. Use #pragma unroll.
@@ -241,12 +299,14 @@ GetContainerID(int cidlen, char *buf, int len)
 				if ((i == 0 || isSeperator(buf[i - 1])) &&
 					isSeperator(buf[i + CONTAINERID_SIZE]))
 				{
+					// TODO: Let userspace to parse it?
+					/*
 					// A potential container ID
 					bool bContainerID = true;
 					for (int j = 0; j < CONTAINERID_SIZE; j++)
 					{
 						char c = buf[i + j];
-						if ((c > '9' && c < '0') && (c > 'z' && c < 'a'))
+						if ((c > '9' || c < '0') && (c > 'f' || c < 'a'))
 						{
 							bContainerID = false;
 							break;
@@ -254,6 +314,7 @@ GetContainerID(int cidlen, char *buf, int len)
 					}
 					if (!bContainerID)
 						continue;
+					*/
 
 					buf[i + CONTAINERID_SIZE] = '\0';
 					return i;
@@ -262,6 +323,41 @@ GetContainerID(int cidlen, char *buf, int len)
 
 			kn = kn->parent;
 		}
+	}
+	return 0;
+}
+
+static inline __attribute__((always_inline)) int
+GetTaskCmdline(struct task_struct *task, char *buf, int len)
+{
+
+	struct mm_struct *mm = NULL;
+	mm = BPF_CORE_READ(task, mm);
+
+	if (mm != NULL)
+	{
+		unsigned long arg_start = BPF_CORE_READ(mm, arg_start);
+		unsigned long arg_end = BPF_CORE_READ(mm, arg_end);
+
+		if (arg_end < arg_start)
+		{
+			return 0;
+		}
+
+		bpf_probe_read_user(buf, len, arg_start);
+
+		// TODO: For debugging
+		/*
+		for (int i = 0; i < len; i++)
+		{
+			if (buf[i] == '\0')
+			{
+				buf[i] = '*';
+			}
+		}
+		bpf_printk("[fork]: cmdline: %s, length: %d", buf, arg_end - arg_start);
+		*/
+		return arg_end - arg_start;
 	}
 	return 0;
 }
@@ -305,12 +401,16 @@ int create_event(struct pt_regs *ctx)
 	process_event->commIndex = PushEventData(process_event, (const void *)__builtin_preserve_access_index(&((typeof((task)))((task)))->comm), &data->lastIndex);
 	// bpf_printk("[fork]: buffer: %s", process_event->buffer);
 
+	// TODO: Maybe we don't need these.
 	process_event->ppid = BPF_CORE_READ(parent, pid);
 	process_event->ptgid = BPF_CORE_READ(parent, tgid);
 	process_event->puid = BPF_CORE_READ(parent, cred, uid.val);
 	process_event->peuid = BPF_CORE_READ(parent, cred, euid.val);
 	process_event->pgid = BPF_CORE_READ(parent, cred, gid.val);
 	process_event->pegid = BPF_CORE_READ(parent, cred, egid.val);
+
+	process_event->processgroupid = BPF_CORE_READ(task, signal, pids[PIDTYPE_PGID], numbers[0].nr);
+	process_event->sid = BPF_CORE_READ(task, signal, pids[PIDTYPE_SID], numbers[0].nr);
 
 	// Basic information
 	bpf_printk("[fork]: current pid: %d, tgid: %d, comm: %s", process_event->pid, process_event->tgid, task->comm);
@@ -345,6 +445,15 @@ int create_event(struct pt_regs *ctx)
 	{
 		process_event->containerIDIndex = data->lastIndex;
 	}
+
+	// Get command line
+#define MAX_CMDLINE 256
+
+	int len = GetTaskCmdline(task, tmp, MAX_CMDLINE);
+	bpf_printk("[fork]: cmdline length: %d", len);
+	process_event->cmdLineIndex = PushEventData2(process_event, tmp, len, &data->lastIndex);
+
+	bpf_printk("[fork]: cmdline length: %d %d", process_event->cmdLineIndex, data->lastIndex);
 
 	process_event->lastIndex = data->lastIndex;
 

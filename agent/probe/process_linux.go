@@ -167,32 +167,33 @@ func (p *Probe) ebpfWorker() {
 			continue
 		}
 
-		exePath := string(event.Buffer[event.ExecIndex:event.LastIndex])
+		exePath := string(event.Buffer[event.ExecIndex:event.ContainerIDIndex])
+		containerID := string(event.Buffer[event.ContainerIDIndex:event.CmdLineIndex])
+		cmdlines := event.Buffer[event.CmdLineIndex:event.LastIndex]
+		cmds := bpfprocess.ConvertCmdlineToStringArrary(cmdlines)
 
 		pi := procInternal{
-			pname: path.Base(exePath),
-			ppath: exePath,
-			name:  path.Base(exePath),
-			path:  exePath,
-			cmds:  []string{"todo"},
-			user:  p.getUserName(int(event.Ppid), int(event.Euid)),
-			pid:   int(event.Pid),
-			ppid:  int(event.Ppid),
-			sid:   0,
-			pgid:  0,
-			ruid:  int(event.Uid),
-			euid:  int(event.Euid),
+			pname:     path.Base(exePath),
+			ppath:     exePath,
+			name:      path.Base(exePath),
+			path:      exePath,
+			cmds:      cmds,
+			user:      p.getUserName(int(event.Ppid), int(event.Euid)),
+			pid:       int(event.Pid),
+			ppid:      int(event.Ppid),
+			sid:       int(event.Sid),
+			pgid:      int(event.Processgroupid),
+			ruid:      int(event.Uid),
+			euid:      int(event.Euid),
+			startTime: time.Now(),
 		}
-
-		containerID := string(event.Buffer[event.ContainerIDIndex:event.LastIndex])
-		execPath := string(event.Buffer[event.ExecIndex:event.ContainerIDIndex])
 
 		log.WithFields(log.Fields{
 			"container": containerID,
-			"pid":       int(event.Pid),
-			"ppid":      int(event.Ppid),
-			"exec":      execPath,
+			"proc":      pi,
+			"type":      event.Type,
 		}).Info("[ebpf] event")
+
 		if event.Type == bpfprocess.PROC_FORK_EVENT_TYPE {
 			ppi := pi
 			ppi.pid = int(event.Ppid)
