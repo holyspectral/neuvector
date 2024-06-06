@@ -137,6 +137,10 @@ func (p *Probe) checkProcessNetlinkSocket() error {
 	return errors.New("Receive mcast fails")
 }
 
+func (p *Probe) IsEBPFProbeSupported() bool {
+	return true
+}
+
 // Sam: work from here.
 func (p *Probe) ebpfWorker() {
 	// ebpf main thread
@@ -228,21 +232,21 @@ func (p *Probe) ebpfHandler(eventType int, pi *procInternal, ppi *procInternal, 
 }
 
 func (p *Probe) netLinkHandler(e *netlinkProcEvent) {
-	/*
-		// log.WithFields(log.Fields{"event": e}).Debug()
-		p.lockProcMux() // minimum section lock
-		switch e.Event {
-		case netlink.PROC_EVENT_FORK:
-			p.handleProcFork(e.Pid, e.UParam1, "", nil, nil, "") // pid, ppid
-		case netlink.PROC_EVENT_EXEC:
-			p.handleProcExec(e.Pid, false, nil) // pid
-		case netlink.PROC_EVENT_EXIT:
-			p.handleProcExit(e.Pid)
-		case netlink.PROC_EVENT_UID:
-			p.handleProcUIDChange(e.Pid, e.UParam1, e.UParam2) // pid, ruid, euid
-		}
-		p.unlockProcMux() // minimum section lock
-	*/
+
+	// log.WithFields(log.Fields{"event": e}).Debug()
+	p.lockProcMux() // minimum section lock
+	switch e.Event {
+	case netlink.PROC_EVENT_FORK:
+		p.handleProcFork(e.Pid, e.UParam1, "", nil, nil, "") // pid, ppid
+	case netlink.PROC_EVENT_EXEC:
+		p.handleProcExec(e.Pid, false, nil, "") // pid
+	case netlink.PROC_EVENT_EXIT:
+		p.handleProcExit(e.Pid)
+	case netlink.PROC_EVENT_UID:
+		p.handleProcUIDChange(e.Pid, e.UParam1, e.UParam2) // pid, ruid, euid
+	}
+	p.unlockProcMux() // minimum section lock
+
 	return
 }
 

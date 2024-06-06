@@ -555,30 +555,31 @@ func New(pc *ProbeConfig, logLevel string) (*Probe, error) {
 		p.rerunKubeBench("", "")
 	}
 
-	// Allow the current process to lock memory for eBPF resources.
-	if err := rlimit.RemoveMemlock(); err != nil {
-		log.WithError(err).Error("failed to remove memory lock for ebpf")
-	}
+	// TODO: verifiy all pidNetlink check.
+	if p.IsEBPFProbeSupported() {
+		// Allow the current process to lock memory for eBPF resources.
+		if err := rlimit.RemoveMemlock(); err != nil {
+			log.WithError(err).Error("failed to remove memory lock for ebpf")
+		}
 
-	// TODO: Initiate ebpf process
-	bpfProcessCtrl := bpfprocess.NewBPFProcessControl()
-	if err := bpfProcessCtrl.LoadObjects(); err != nil {
-		log.WithError(err).Error("failed to load bpf objects kprobe")
-	}
-	p.bpfProcessCtrl = bpfProcessCtrl
+		bpfProcessCtrl := bpfprocess.NewBPFProcessControl()
+		if err := bpfProcessCtrl.LoadObjects(); err != nil {
+			log.WithError(err).Error("failed to load bpf objects kprobe")
+		}
+		p.bpfProcessCtrl = bpfProcessCtrl
 
-	// TODO: Move to a later stage?
-	if err := bpfProcessCtrl.StartKProbe(); err != nil {
-		log.WithError(err).Error("failed to start kprobe")
-	}
-
-	go p.ebpfWorker()
-
-	if p.pidNetlink {
-		go p.netlinkProcWorker()  // socket event worker
-		go p.netlinkProcMonitor() // routine monitor
+		// TODO: Move to a later stage?
+		if err := bpfProcessCtrl.StartKProbe(); err != nil {
+			log.WithError(err).Error("failed to start kprobe")
+		}
+		go p.ebpfWorker()
 	} else {
-		log.Info("PROC: Enter process scan mode")
+		if p.pidNetlink {
+			go p.netlinkProcWorker()  // socket event worker
+			go p.netlinkProcMonitor() // routine monitor
+		} else {
+			log.Info("PROC: Enter process scan mode")
+		}
 	}
 
 	go p.loop()
