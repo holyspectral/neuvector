@@ -26,10 +26,13 @@ type bpfProcessEvent struct {
 	Peuid            uint32
 	Pgid             uint32
 	Pegid            uint32
+	Processgroupid   uint32
+	Sid              uint32
 	CurrIndex        uint32
 	CommIndex        uint32
 	ExecIndex        uint32
 	ContainerIDIndex uint32
+	CmdLineIndex     uint32
 	LastIndex        uint32
 	Buffer           [1024]uint8
 }

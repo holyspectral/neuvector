@@ -1,6 +1,7 @@
 package bpfprocess
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -42,10 +43,13 @@ type ProcessEvent struct {
 	Peuid            uint32
 	Pgid             uint32
 	Pegid            uint32
+	Processgroupid   uint32
+	Sid              uint32
 	CurrIndex        uint32
 	CommIndex        uint32
 	ExecIndex        uint32
 	ContainerIDIndex uint32
+	CmdLineIndex     uint32
 	LastIndex        uint32
 	Buffer           [1024]uint8
 }
@@ -248,4 +252,14 @@ func (bpc *BPFProcessControl) StartKProbe() error {
 
 func (bpc *BPFProcessControl) Test() {
 	log.Println(bpc.bpfObjects.bpfPrograms)
+}
+
+func ConvertCmdlineToStringArrary(cmdline []byte) []string {
+
+	byteCmdlines := bytes.Split(cmdline, []byte{0})
+	var cmdlines []string
+	for _, cmd := range byteCmdlines {
+		cmdlines = append(cmdlines, string(cmd))
+	}
+	return cmdlines
 }
