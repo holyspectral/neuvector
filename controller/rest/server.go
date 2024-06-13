@@ -133,6 +133,7 @@ func server2REST(cs *share.CLUSServer) *api.RESTServer {
 			Enable:           cs.Enable,
 			DefaultRole:      cs.OIDC.DefaultRole,
 			GroupMappedRoles: cs.OIDC.GroupMappedRoles,
+			UseProxy:         cs.OIDC.UseProxy,
 		}
 		return &rs
 	}
@@ -892,11 +893,11 @@ func validateOIDCServer(cs *share.CLUSServer) error {
 		issuer = issuer[:q]
 	}
 
-	auth, token, jwks, userInfo, err := remoteAuther.OIDCDiscover(issuer)
+	auth, token, jwks, userInfo, err := remoteAuther.OIDCDiscover(issuer, coidc.UseProxy)
 	if err != nil {
 		if strings.HasSuffix(issuer, "/") {
 			issuer = issuer[:len(issuer)-1]
-			auth, token, jwks, userInfo, err = remoteAuther.OIDCDiscover(issuer)
+			auth, token, jwks, userInfo, err = remoteAuther.OIDCDiscover(issuer, coidc.UseProxy)
 		}
 
 		if err != nil {
@@ -989,6 +990,10 @@ func updateOIDCServer(cs *share.CLUSServer, oidc *api.RESTServerOIDCConfig, acc 
 	}
 	if oidc.GroupClaim != nil {
 		coidc.GroupClaim = *oidc.GroupClaim
+	}
+
+	if oidc.UseProxy != nil {
+		coidc.UseProxy = *oidc.UseProxy
 	}
 
 	return nil
@@ -1982,6 +1987,14 @@ func handlerServerTest(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 			e := "Server type mismatch"
 			log.Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
+			return
+		}
+
+		accReadAll := access.NewReaderAccessControl()
+		sc := cacher.GetSystemConfig(accReadAll)
+		if sc == nil {
+			log.Error("failed to get system config")
+			restRespError(w, http.StatusInternalServerError, api.RESTErrUnauthorized)
 			return
 		}
 

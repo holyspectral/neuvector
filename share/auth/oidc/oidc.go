@@ -15,6 +15,8 @@ import (
 
 	jose "github.com/go-jose/go-jose/v3"
 	"github.com/mitchellh/pointerstructure"
+	"github.com/neuvector/neuvector/share/httpclient"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
@@ -58,9 +60,14 @@ func ClientContext(ctx context.Context, client *http.Client) context.Context {
 }
 
 func doRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
-	client := http.DefaultClient
+	var client *http.Client
 	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
 		client = c
+	} else {
+		// We should have assigned oauth2.HTTPClient in all paths.
+		// For compliance reason, treat this as an error but fallback.
+		client = httpclient.CreateHTTPClient()
+		log.Error("oauth2.HTTPClient is not found.  Fallback to the default http.Client")
 	}
 	return client.Do(req.WithContext(ctx))
 }

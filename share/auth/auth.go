@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/neuvector/neuvector/controller/api"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/auth/oidc"
+	"github.com/neuvector/neuvector/share/httpclient"
 
 	"github.com/neuvector/neuvector/share/utils"
 )
@@ -47,7 +49,7 @@ type RemoteAuthInterface interface {
 	SAMLSPGetRedirectURL(csaml *share.CLUSServerSAML, redir *api.RESTTokenRedirect, overrides map[string]string) (string, error)
 	// Return Name ID, session index, and attributes.
 	SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.RESTAuthToken) (string, string, map[string][]string, error)
-	OIDCDiscover(issuer string) (string, string, string, string, error)
+	OIDCDiscover(issuer string, useProxy bool) (string, string, string, string, error)
 	OIDCGetRedirectURL(csaml *share.CLUSServerOIDC, redir *api.RESTTokenRedirect) (string, error)
 	OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAuthToken) (map[string]interface{}, error)
 }
@@ -66,22 +68,27 @@ const defaultLDAPAuthTimeout = time.Second * 10
 const oidcUserInfoTimeout = time.Duration(time.Second * 20)
 const oidcGroupInfoTimeout = time.Duration(time.Second * 20)
 
+type LDAPAuthConfig struct {
+	InsecureSkipVerify bool
+	CACerts            string
+}
+
 // 1. Refer to https://github.com/grafana/grafana/issues/2441 about why we set UseSSL and SkipTLS this way
 // 2. When running in a container, use --env LDAP_TLS_VERIFY_CLIENT=try to disable client certificate validation
 func (a *remoteAuth) LDAPAuth(cldap *share.CLUSServerLDAP, username, password string) (map[string]string, []string, error) {
 	client := &LDAPClient{
-		BaseDN:             cldap.BaseDN,
-		GroupDN:            cldap.GroupDN,
-		Host:               cldap.Hostname,
-		Port:               int(cldap.Port),
-		UseSSL:             cldap.SSL,
-		SkipTLS:            true,
-		InsecureSkipVerify: true,
-		BindDN:             cldap.BindDN,
-		BindPassword:       cldap.BindPasswd,
-		Attributes:         []string{"dn", "gidNumber"},
-		Timeout:            defaultLDAPAuthTimeout,
+		BaseDN:       cldap.BaseDN,
+		GroupDN:      cldap.GroupDN,
+		Host:         cldap.Hostname,
+		Port:         int(cldap.Port),
+		UseSSL:       cldap.SSL,
+		SkipTLS:      true,
+		BindDN:       cldap.BindDN,
+		BindPassword: cldap.BindPasswd,
+		Attributes:   []string{"dn", "gidNumber"},
+		Timeout:      defaultLDAPAuthTimeout,
 	}
+
 	if client.GroupDN == "" {
 		client.GroupDN = cldap.BaseDN
 	}
@@ -102,7 +109,7 @@ func (a *remoteAuth) LDAPAuth(cldap *share.CLUSServerLDAP, username, password st
 		return nil, nil, err
 	}
 	if dn == "" {
-		return nil, nil, errors.New("Authentication failed")
+		return nil, nil, errors.New("authentication failed")
 	}
 
 	dn = ldap.EscapeFilter(dn)
@@ -225,17 +232,15 @@ func (a *remoteAuth) SAMLSPGetRedirectURL(csaml *share.CLUSServerSAML, redir *ap
 		return "", err
 	}
 
-	if overrides != nil {
-		// Allow unit-tests to override elements
-		for k, v := range overrides {
-			path, err := etree.CompilePath("./samlp:AuthnRequest")
-			if err != nil {
-				return "", fmt.Errorf("failed to parse xml path: %w", err)
-			}
-			for _, e := range doc.FindElementsPath(path) {
-				attr := e.SelectAttr(k)
-				attr.Value = v
-			}
+	// Allow unit-tests to override elements
+	for k, v := range overrides {
+		path, err := etree.CompilePath("./samlp:AuthnRequest")
+		if err != nil {
+			return "", fmt.Errorf("failed to parse xml path: %w", err)
+		}
+		for _, e := range doc.FindElementsPath(path) {
+			attr := e.SelectAttr(k)
+			attr.Value = v
 		}
 	}
 
@@ -263,17 +268,15 @@ func (a *remoteAuth) SAMLSPGetLogoutURL(csaml *share.CLUSServerSAML, redir *api.
 		return "", fmt.Errorf("failed to build saml slo document: %w", err)
 	}
 
-	if overrides != nil {
-		// Allow unit-tests to override elements
-		for k, v := range overrides {
-			path, err := etree.CompilePath("./samlp:LogoutRequest")
-			if err != nil {
-				return "", fmt.Errorf("failed to parse xml path: %w", err)
-			}
-			for _, e := range doc.FindElementsPath(path) {
-				attr := e.SelectAttr(k)
-				attr.Value = v
-			}
+	// Allow unit-tests to override elements
+	for k, v := range overrides {
+		path, err := etree.CompilePath("./samlp:LogoutRequest")
+		if err != nil {
+			return "", fmt.Errorf("failed to parse xml path: %w", err)
+		}
+		for _, e := range doc.FindElementsPath(path) {
+			attr := e.SelectAttr(k)
+			attr.Value = v
 		}
 	}
 
@@ -291,7 +294,7 @@ func (a *remoteAuth) SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.REST
 	// Token is the whole query parameters.
 	q, err := url.ParseQuery(tokenData.Token)
 	if err != nil {
-		return "", "", nil, errors.New("Invalid URL query format")
+		return "", "", nil, errors.New("invalid URL query format")
 	}
 	resp := q.Get("SAMLResponse")
 	if resp == "" {
@@ -319,10 +322,18 @@ func (a *remoteAuth) SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.REST
 	return assertionInfo.NameID, assertionInfo.SessionIndex, out, nil
 }
 
-func (a *remoteAuth) OIDCDiscover(issuer string) (string, string, string, string, error) {
+func (a *remoteAuth) OIDCDiscover(issuer string, useProxy bool) (string, string, string, string, error) {
 	var lastError error
+	var client *http.Client
+	if useProxy {
+		client = httpclient.CreateHTTPClient()
+	} else {
+		client = httpclient.CreateNoProxyHTTPClient()
+	}
 	for i := 0; i < 3; i++ {
-		if eps, err := oidc.Discover(context.Background(), issuer); err != nil {
+		ctx := oidc.ClientContext(context.Background(), client)
+
+		if eps, err := oidc.Discover(ctx, issuer); err != nil {
 			lastError = err
 			log.WithFields(log.Fields{"error": err}).Debug("oidc discover failed")
 		} else {
@@ -340,11 +351,11 @@ func (a *remoteAuth) generateState() string {
 
 func (a *remoteAuth) verifyState(state string) error {
 	if tsStr := utils.DecryptURLSafe(state); tsStr == "" {
-		return errors.New("Invalid state: wrong encryption")
+		return errors.New("invalid state: wrong encryption")
 	} else if ts, err := strconv.ParseInt(tsStr, 10, 64); err != nil {
-		return errors.New("Invalid state: wrong format")
+		return errors.New("invalid state: wrong format")
 	} else if time.Now().Unix()-ts > stateTimeout {
-		return errors.New("Invalid state: expired")
+		return errors.New("invalid state: expired")
 	}
 	return nil
 }
@@ -377,7 +388,16 @@ func (a *remoteAuth) OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAu
 		return nil, errors.New("OpenID Connect code not present")
 	}
 
-	token, err := cfg.Exchange(context.Background(), tokenData.Token)
+	var client *http.Client
+	if coidc.UseProxy {
+		client = httpclient.CreateHTTPClient()
+	} else {
+		client = httpclient.CreateNoProxyHTTPClient()
+	}
+
+	ctx := oidc.ClientContext(context.Background(), client)
+
+	token, err := cfg.Exchange(ctx, tokenData.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -387,9 +407,9 @@ func (a *remoteAuth) OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAu
 		return nil, errors.New("OpenID Connect token not present")
 	}
 
-	keySet := oidc.NewRemoteKeySet(context.Background(), coidc.JWKSURL, nil)
+	keySet := oidc.NewRemoteKeySet(ctx, coidc.JWKSURL, nil)
 	verifier := oidc.NewVerifier(keySet, &oidc.Config{ClientID: coidc.ClientID}, coidc.Issuer)
-	idToken, err := verifier.Verify(context.Background(), rawIDToken)
+	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, err
 	}
@@ -400,10 +420,10 @@ func (a *remoteAuth) OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAu
 	}
 
 	// Make UserInfo request
-	ctx, cancel := context.WithTimeout(context.Background(), oidcUserInfoTimeout)
+	timeout, cancel := context.WithTimeout(ctx, oidcUserInfoTimeout)
 	defer cancel()
 
-	userInfo, err2 := oidc.UserInfoReq(ctx, coidc.UserInfoURL, oauth2.StaticTokenSource(token))
+	userInfo, err2 := oidc.UserInfoReq(timeout, coidc.UserInfoURL, oauth2.StaticTokenSource(token))
 	if err2 != nil {
 		log.WithFields(log.Fields{"error": err2}).Error("Failed on UserInfo request")
 		return claims, err
@@ -411,9 +431,9 @@ func (a *remoteAuth) OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAu
 
 	// Check group info
 	if claims["groups"] == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), oidcGroupInfoTimeout)
+		timeout, cancel := context.WithTimeout(ctx, oidcGroupInfoTimeout)
 		defer cancel()
-		if groups, err := oidc.GetAzureGroupInfo(ctx, claims, oauth2.StaticTokenSource(token)); err != nil {
+		if groups, err := oidc.GetAzureGroupInfo(timeout, claims, oauth2.StaticTokenSource(token)); err != nil {
 			log.WithError(err).Debug("oidc: failed to fallback to distrubited group info")
 		} else {
 			claims["groups"] = groups

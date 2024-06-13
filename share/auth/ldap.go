@@ -1,11 +1,12 @@
 package auth
 
 import (
-	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/neuvector/neuvector/share/httpclient"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/ldap.v2"
 )
@@ -20,11 +21,12 @@ type LDAPClient struct {
 	GroupFilter        string
 	Host               string
 	ServerName         string
+	RootCAs            *x509.CertPool
 	UserFilter         string
 	Port               int
-	InsecureSkipVerify bool
-	UseSSL             bool
-	SkipTLS            bool
+	InsecureSkipVerify bool // Skip TLS authentication
+	UseSSL             bool // Use SSL/TLS to connect to LDAP server
+	SkipTLS            bool // Do not fallback to TLS
 	Timeout            time.Duration
 }
 
@@ -42,16 +44,13 @@ func (lc *LDAPClient) Connect() error {
 
 			// Reconnect with TLS
 			if !lc.SkipTLS {
-				err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
+				err = l.StartTLS(httpclient.GetTLSConfig())
 				if err != nil {
 					return err
 				}
 			}
 		} else {
-			l, err = ldap.DialTLS("tcp", address, &tls.Config{
-				InsecureSkipVerify: lc.InsecureSkipVerify,
-				ServerName:         lc.ServerName,
-			})
+			l, err = ldap.DialTLS("tcp", address, httpclient.GetTLSConfig())
 			if err != nil {
 				return err
 			}
@@ -102,11 +101,11 @@ func (lc *LDAPClient) Authenticate(password string) (string, map[string]string, 
 	}
 
 	if len(sr.Entries) < 1 {
-		return "", nil, errors.New("User does not exist")
+		return "", nil, errors.New("user does not exist")
 	}
 
 	if len(sr.Entries) > 1 {
-		return "", nil, errors.New("Too many entries returned")
+		return "", nil, errors.New("too many entries returned")
 	}
 
 	userDN := sr.Entries[0].DN

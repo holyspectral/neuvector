@@ -302,7 +302,17 @@ func (ss *ScanService) SubmitScanResult(ctx context.Context, result *share.ScanR
 
 func (s *ScanService) GetCaps(ctx context.Context, v *share.RPCVoid) (*share.ControllerCaps, error) {
 	return &share.ControllerCaps{
-		CriticalVul: false,
+		CriticalVul:     false,
+		ScannerSettings: true,
+	}, nil
+}
+
+func (s *ScanService) GetScannerSettings(ctx context.Context, v *share.RPCVoid) (*share.ScannerSettings, error) {
+	acc := access.NewReaderAccessControl()
+	cfg := cacher.GetSystemConfig(acc)
+	return &share.ScannerSettings{
+		EnableTLSVerification: cfg.EnableTLSVerification,
+		CACerts:               cfg.GlobalCaCerts,
 	}, nil
 }
 

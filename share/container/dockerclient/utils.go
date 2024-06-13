@@ -11,7 +11,7 @@ import (
 type tcpFunc func(*net.TCPConn, time.Duration) error
 
 func newHTTPClient(u *url.URL, tlsConfig *tls.Config, timeout time.Duration, setUserTimeout tcpFunc) *http.Client {
-	httpTransport := &http.Transport{
+	httpTransport := &http.Transport{ // Use its own transport
 		TLSClientConfig: tlsConfig,
 	}
 
@@ -37,5 +37,5 @@ func newHTTPClient(u *url.URL, tlsConfig *tls.Config, timeout time.Duration, set
 		u.Host = "unix.sock"
 		u.Path = ""
 	}
-	return &http.Client{Transport: httpTransport}
+	return &http.Client{Transport: httpTransport} // Use its own transport
 }

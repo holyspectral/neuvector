@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -12,6 +14,8 @@ import (
 	"github.com/neuvector/neuvector/controller/scan"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/cluster"
+	"github.com/neuvector/neuvector/share/global"
+	"github.com/neuvector/neuvector/share/httpclient"
 	"github.com/neuvector/neuvector/share/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -288,6 +292,8 @@ func (m CacheMethod) GetSystemConfig(acc *access.AccessControl) *api.RESTSystemC
 		ModeAutoM2P:               systemConfigCache.ModeAutoM2P,
 		ModeAutoM2PDuration:       systemConfigCache.ModeAutoM2PDuration,
 		NoTelemetryReport:         systemConfigCache.NoTelemetryReport,
+		EnableTLSVerification:     systemConfigCache.EnableTLSVerification,
+		GlobalCaCerts:             systemConfigCache.GlobalCaCerts,
 	}
 	if systemConfigCache.SyslogIP != nil {
 		rconf.SyslogServer = systemConfigCache.SyslogIP.String()
@@ -419,6 +425,23 @@ func (m CacheMethod) GetSystemConfigClusterName(acc *access.AccessControl) strin
 	return systemConfigCache.ClusterName
 }
 
+func parseProxy(proxy *share.CLUSProxy) string {
+	if proxy != nil && proxy.Enable {
+		url, err := url.Parse(proxy.URL)
+		if err != nil {
+			return ""
+		}
+		if proxy.Username != "" {
+			return fmt.Sprintf("%s://%s:%s@%s:%s/",
+				url.Scheme, proxy.Username, proxy.Password, url.Hostname(), url.Port())
+		} else {
+			return fmt.Sprintf("%s://%s:%s/",
+				url.Scheme, url.Hostname(), url.Port())
+		}
+	}
+	return ""
+}
+
 func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
 	log.WithFields(log.Fields{"type": cluster.ClusterNotifyName[nType], "key": key}).Debug()
 
@@ -453,6 +476,43 @@ func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byt
 			scheduleDlpRuleCalculation(true)
 		}
 		automodeConfigUpdate(cfg, systemConfigCache)
+
+		// Setup default TLS config.
+
+		var pool *x509.CertPool
+
+		if cfg.GlobalCaCerts != "" {
+			pool = x509.NewCertPool()
+			pool.AppendCertsFromPEM([]byte(cfg.GlobalCaCerts))
+		}
+
+		// Use configured proxy if available, otherwise use container runtime's settings
+		// Note: at the time of writing, these settings are only available in docker.
+		httpProxy := parseProxy(&cfg.RegistryHttpProxy)
+		httpsProxy := parseProxy(&cfg.RegistryHttpsProxy)
+		var noProxy string
+		if global.RT != nil { // Not always available especially in unit test
+
+			rtHttpProxy, rtHttpsProxy, rtNoProxy := global.RT.GetProxy()
+
+			if httpProxy == "" {
+				httpProxy = rtHttpProxy
+			}
+			if httpsProxy == "" {
+				httpsProxy = rtHttpsProxy
+			}
+			if noProxy == "" {
+				noProxy = rtNoProxy
+			}
+		}
+
+		httpclient.SetDefaultTLSClientConfig(&httpclient.TLSClientSettings{
+			TLSconfig: &tls.Config{
+				InsecureSkipVerify: !cfg.EnableTLSVerification,
+				RootCAs:            pool,
+			},
+		}, httpProxy, httpsProxy, noProxy)
+
 	case cluster.ClusterNotifyDelete:
 		// Triggered at configuration import
 		cfg = common.DefaultSystemConfig

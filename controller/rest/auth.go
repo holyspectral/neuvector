@@ -1728,6 +1728,11 @@ func getOIDCUserFromClaims(claims map[string]interface{}, customGroupClaim strin
 
 func remotePasswordAuth(cs *share.CLUSServer, pw *api.RESTAuthPassword) (*share.CLUSUser, error) {
 	if cs.LDAP != nil {
+		accReadAll := access.NewReaderAccessControl()
+		sc := cacher.GetSystemConfig(accReadAll)
+		if sc == nil {
+			return nil, errors.New("ldap: failed to read system config")
+		}
 		_, groups, err := remoteAuther.LDAPAuth(cs.LDAP, pw.Username, pw.Password)
 		if err != nil {
 			return nil, err

@@ -411,7 +411,7 @@ func createHttpClient(proxyOption int8, timeout time.Duration) (*http.Client, st
 	var proxy share.CLUSProxy
 
 	// refer to http.DefaultTransport
-	transport := &http.Transport{
+	transport := &http.Transport{ // Use its own transport
 		Proxy: getProxyURL,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -439,7 +439,7 @@ func createHttpClient(proxyOption int8, timeout time.Duration) (*http.Client, st
 		}
 	}
 	httpClient := &http.Client{
-		Transport: transport,
+		Transport: transport, // Use its own transport
 		Timeout:   timeout,
 	}
 	jar, err := cookiejar.New(nil)

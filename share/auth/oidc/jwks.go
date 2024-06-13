@@ -173,6 +173,7 @@ func (r *remoteKeySet) updateKeys() ([]jose.JSONWebKey, time.Time, error) {
 		return nil, time.Time{}, fmt.Errorf("oidc: can't create request: %v", err)
 	}
 
+	// r.ctx is set in NewRemoteKeySet()
 	resp, err := doRequest(r.ctx, req)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("oidc: get keys failed %v", err)

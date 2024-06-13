@@ -1571,7 +1571,7 @@ type openshifVersion struct {
 
 func getVersion(url string) (string, error) {
 	client := &http.Client{
-		Transport: &http.Transport{
+		Transport: &http.Transport{ // Use its own transport
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},

@@ -1,17 +1,16 @@
 package scan
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/neuvector/neuvector/share"
+	"github.com/neuvector/neuvector/share/httpclient"
 	"github.com/neuvector/neuvector/share/utils"
 )
 
@@ -71,49 +70,33 @@ func (r *gitlab) gitUrl(pathTemplate string, args ...interface{}) string {
 	return ur
 }
 
-func newHttpClient(proxy string, insecure bool) (*http.Client, error) {
-	hc := &http.Client{
+func newHttpClient(proxy string) *http.Client {
+	client := &http.Client{
 		Timeout: gitTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: insecure,
-			},
-		},
 	}
+
 	if proxy != "" {
-		pxyUrl, err := url.Parse(proxy)
-		if err != nil {
-			return nil, err
-		}
-		hc.Transport = &http.Transport{
-			Proxy: http.ProxyURL(pxyUrl),
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: insecure,
-			},
-		}
+		client.Transport = httpclient.GetSharedTransport()
+	} else {
+		client.Transport = httpclient.GetNoProxySharedTransport()
 	}
-	return hc, nil
+
+	return client
 }
 
-func (r *gitlab) newGitlabClient() error {
-	var err error
+func (r *gitlab) newGitlabClient() {
 	var proxy string
 	if !r.ignoreProxy {
 		proxy = GetProxy(r.apiUrl)
 	}
-	r.gitlabClient, err = newHttpClient(proxy, true)
-	return err
+	r.gitlabClient = newHttpClient(proxy)
 }
 
 func (r *gitlab) Login(cfg *share.CLUSRegistryConfig) (error, string) {
 	r.apiUrl = cfg.GitlabApiUrl
 	r.privateToken = cfg.GitlabPrivateToken
 
-	if err := r.newGitlabClient(); err != nil {
-		smd.scanLog.WithFields(log.Fields{"error": err}).Error("")
-		return err, err.Error()
-	}
-
+	r.newGitlabClient()
 	r.newRegClient(cfg.Registry, cfg.Username, cfg.Password)
 	r.rc.Alive()
 

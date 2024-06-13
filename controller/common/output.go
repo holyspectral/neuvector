@@ -2,12 +2,9 @@ package common
 
 import (
 	"bytes"
-	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"reflect"
 	"strings"
 	"syscall"
@@ -17,6 +14,7 @@ import (
 
 	"github.com/neuvector/neuvector/controller/api"
 	"github.com/neuvector/neuvector/share"
+	"github.com/neuvector/neuvector/share/httpclient"
 	"github.com/neuvector/neuvector/share/utils"
 	syslog "github.com/neuvector/neuvector/share/utils/srslog"
 )
@@ -310,39 +308,10 @@ func (w *Webhook) httpRequest(data []byte, ctype string, proxy *share.CLUSProxy)
 		Timeout: requestTimeout,
 	}
 
-	var authHdr string
-	if proxy != nil && proxy.Username != "" {
-		authHdr = "Basic " + base64.StdEncoding.EncodeToString([]byte(proxy.Username+":"+proxy.Password))
-	}
-
-	if strings.HasPrefix(w.url, "https://") {
-		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-		if proxy != nil {
-			transport.Proxy = func(r *http.Request) (*url.URL, error) {
-				return url.Parse(proxy.URL)
-			}
-			if authHdr != "" {
-				transport.ProxyConnectHeader = http.Header{}
-				transport.ProxyConnectHeader.Add(
-					"Proxy-Authorization", authHdr,
-				)
-			}
-		}
-
-		client.Transport = transport
-	} else if strings.HasPrefix(w.url, "http://") {
-		if proxy != nil {
-			transport := &http.Transport{
-				Proxy: func(r *http.Request) (*url.URL, error) {
-					return url.Parse(proxy.URL)
-				},
-			}
-			client.Transport = transport
-		}
+	if proxy != nil {
+		client.Transport = httpclient.GetSharedTransport()
+	} else {
+		client.Transport = httpclient.GetNoProxySharedTransport()
 	}
 
 	var err error
@@ -350,10 +319,6 @@ func (w *Webhook) httpRequest(data []byte, ctype string, proxy *share.CLUSProxy)
 	retry := 0
 	for retry < 3 {
 		req, _ := http.NewRequest("POST", w.url, bytes.NewReader(data))
-		// if authHdr is not empty, proxy must be enabled.
-		if strings.HasPrefix(w.url, "http://") && authHdr != "" {
-			req.Header.Add("Proxy-Authorization", authHdr)
-		}
 		req.Header.Set("Content-Type", ctype)
 
 		resp, err = client.Do(req)

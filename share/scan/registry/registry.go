@@ -1,15 +1,14 @@
 package registry
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/neuvector/neuvector/share/httpclient"
 	"github.com/neuvector/neuvector/share/httptrace"
 )
 
@@ -29,41 +28,16 @@ type Registry struct {
 const nonDataTimeout = 20 * time.Second
 const longTimeout = 300 * time.Second
 
-func NewSecure(registryUrl, token, username, password, proxy string, trace httptrace.HTTPTrace) (*Registry, uint, error) {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: false,
-		},
-	}
-	if proxy != "" {
-		pxyUrl, err := url.Parse(proxy)
-		if err != nil {
-			return nil, ErrorUrl, err
-		}
-		transport.Proxy = http.ProxyURL(pxyUrl)
-	}
-
-	r := newFromTransport(registryUrl, token, username, password, transport, trace)
-	return r, ErrorNone, nil
-}
-
 /*
- * Create a new Registry, as with New, using an http.Transport that disables
- * SSL certificate verification.
+ * Create a new Registry
  */
-func NewInsecure(registryUrl, token, username, password, proxy string, trace httptrace.HTTPTrace) (*Registry, uint, error) {
-	// same as http.DefaultTransport
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
+func New(registryUrl, token, username, password, proxy string, trace httptrace.HTTPTrace) (*Registry, uint, error) {
+	var transport *http.Transport
+
 	if proxy != "" {
-		pxyUrl, err := url.Parse(proxy)
-		if err != nil {
-			return nil, ErrorUrl, err
-		}
-		transport.Proxy = http.ProxyURL(pxyUrl)
+		transport = httpclient.GetSharedTransport()
+	} else {
+		transport = httpclient.GetNoProxySharedTransport()
 	}
 
 	r := newFromTransport(registryUrl, token, username, password, transport, trace)

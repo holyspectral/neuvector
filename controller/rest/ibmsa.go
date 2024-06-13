@@ -595,7 +595,7 @@ func ibmsaGetToken(cfg *share.CLUSIBMSAConfig) (string, error) {
 
 	if ibmTokenHttpClient == nil {
 		ibmTokenHttpClient = &http.Client{
-			Transport: &http.Transport{
+			Transport: &http.Transport{ // Use its own transport
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -652,7 +652,7 @@ func ibmsaCreateOccurence(url string, value []byte, cfg *share.CLUSIBMSAConfig) 
 
 	if ibmsaHttpClient == nil {
 		ibmsaHttpClient = &http.Client{
-			Transport: &http.Transport{
+			Transport: &http.Transport{ // Use its own transport
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
@@ -765,7 +765,7 @@ func ibmsaGetNvNote(accessToken, noteID string, cfg *share.CLUSIBMSAConfig) erro
 
 	if ibmsaHttpClient == nil {
 		ibmsaHttpClient = &http.Client{
-			Transport: &http.Transport{
+			Transport: &http.Transport{ // Use its own transport
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
