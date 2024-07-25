@@ -68,9 +68,8 @@ func discoverAuthzEndpoint(endpoint string) (string, error) {
 	cfg := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-
 	c := &http.Client{
-		Transport: cfg, // Use its own transport
+		Transport: cfg,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -111,7 +110,7 @@ func loginOpenShift(endpoint, username, password string) (*http.Response, error)
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	c := &http.Client{
-		Transport: cfg, // Use its own transport
+		Transport: cfg,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -140,7 +139,7 @@ func logoutOpenShift(endpoint, token string) error {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	c := &http.Client{
-		Transport: cfg, // Use its own transport
+		Transport: cfg,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -213,9 +212,8 @@ func (d *kubernetes) GetPlatformUserGroups(token string) ([]string, error) {
 	cfg := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-
 	c := &http.Client{
-		Transport: cfg, // Use its own transport
+		Transport: cfg,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},

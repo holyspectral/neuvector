@@ -92,16 +92,17 @@ func dockerConnect(endpoint string, sys *system.SystemTools) (Runtime, error) {
 	}
 
 	sockPath := endpoint
-	id, _, err := sys.GetSelfContainerID() // ref, not reliable
+	id, _, err := sys.GetSelfContainerID()	// ref, not reliable
 	sockPath, err = getContainerSocketPath(client, id, endpoint)
 	if err == nil {
 		log.WithFields(log.Fields{"selfID": id, "sockPath": sockPath}).Info()
 	}
 
+
 	driver := dockerDriver{sys: sys, endpoint: endpoint, endpointHost: sockPath, client: client,
-		version: ver, info: info, selfID: id}
+		                   version: ver, info: info, selfID: id,}
 	driver.rtProcMap = utils.NewSet("runc", "docker-runc", "docker", "docker-runc-current",
-		"docker-containerd-shim-current", "containerd-shim-runc-v1", "containerd-shim-runc-v2", "containerd", "containerd-shim")
+	         "docker-containerd-shim-current", "containerd-shim-runc-v1", "containerd-shim-runc-v2", "containerd", "containerd-shim")
 	driver.pidHost = IsPidHost()
 	return &driver, nil
 }

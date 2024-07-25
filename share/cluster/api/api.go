@@ -545,7 +545,7 @@ func NewClient(config *Config) (*Client, error) {
 				return net.Dial("unix", parts[1])
 			}
 			config.HttpClient = &http.Client{
-				Transport: trans, // Use its own transport
+				Transport: trans,
 			}
 		default:
 			return nil, fmt.Errorf("Unknown protocol scheme: %s", parts[0])
@@ -577,7 +577,7 @@ func NewClient(config *Config) (*Client, error) {
 // config.
 func NewHttpClient(transport *http.Transport, tlsConf TLSConfig) (*http.Client, error) {
 	client := &http.Client{
-		Transport: transport, // Use its own transport
+		Transport: transport,
 	}
 
 	// TODO (slackpad) - Once we get some run time on the HTTP/2 support we
@@ -903,12 +903,12 @@ func parseQueryMeta(resp *http.Response, q *QueryMeta) error {
 func decodeBody(resp *http.Response, out interface{}) error {
 	// Neuvector: improve memory usage which incurs from manipulating buffering data
 	data, err := io.ReadAll(resp.Body)
-	if err == nil && data != nil {
+	if err==nil && data != nil {
 		return json.Unmarshal(data, out)
 	}
 	return err
-	// dec := json.NewDecoder(resp.Body)
-	// return dec.Decode(out)
+//	dec := json.NewDecoder(resp.Body)
+//	return dec.Decode(out)
 }
 
 // encodeBody is used to encode a request body

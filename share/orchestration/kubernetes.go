@@ -18,12 +18,12 @@ import (
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/system"
 	sk "github.com/neuvector/neuvector/share/system/sidekick"
 	"github.com/neuvector/neuvector/share/utils"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -145,7 +145,7 @@ func getVersion(tag string, verToGet int, useToken bool) (string, error) {
 	}
 
 	client := &http.Client{
-		Transport: &http.Transport{ // Use its own transport
+		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
