@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"crypto/md5"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -1944,18 +1945,6 @@ func handlerSystemGetRBAC(w http.ResponseWriter, r *http.Request, ps httprouter.
 	var resp api.RESTK8sNvRbacStatus = api.RESTK8sNvRbacStatus{
 		NvUpgradeInfo: &api.RESTCheckUpgradeInfo{},
 	}
-	var clusterRoleErrors, clusterRoleBindingErrors, roleErrors, roleBindingErrors, nvCrdSchemaErrors []string
-	if k8sPlatform {
-		clusterRoleErrors, clusterRoleBindingErrors, roleErrors, roleBindingErrors =
-			resource.VerifyNvK8sRBAC(localDev.Host.Flavor, "", false)
-		if checkCrdSchemaFunc != nil {
-			var leader bool
-			if lead := atomic.LoadUint32(&_isLeader); lead == 1 {
-				leader = true
-			}
-			nvCrdSchemaErrors = checkCrdSchemaFunc(leader, false, false, cctx.CspType)
-		}
-	}
 
 	var nvUpgradeInfo share.CLUSCheckUpgradeInfo
 	if value, _ := cluster.Get(share.CLUSTelemetryStore + "controller"); value != nil {
@@ -1981,6 +1970,15 @@ func handlerSystemGetRBAC(w http.ResponseWriter, r *http.Request, ps httprouter.
 		resp.NvUpgradeInfo = nil
 	}
 
+	var acceptedManagerAlerts []string
+	for _, key := range []string{share.AlertNvNewVerAvailable, share.AlertNvInMultiVersions, share.AlertCveDbTooOld} {
+		if acceptedAlerts.Contains(key) {
+			// this manager-generated alert key has been accepted. put it in the response
+			acceptedManagerAlerts = append(acceptedManagerAlerts, key)
+		}
+	}
+
+	// Get accepted alert list from the current user
 	var accepted []string
 	if user, _, _ := clusHelper.GetUserRev(common.ReservedNvSystemUser, access.NewReaderAccessControl()); user != nil {
 		accepted = user.AcceptedAlerts
@@ -1988,14 +1986,28 @@ func handlerSystemGetRBAC(w http.ResponseWriter, r *http.Request, ps httprouter.
 	if user, _, _ := clusHelper.GetUserRev(login.fullname, acc); user != nil {
 		accepted = append(accepted, user.AcceptedAlerts...)
 	}
+
+	acceptedAlerts := utils.NewSetFromStringSlice(accepted)
+	alerts, err := GetSystemRBACAlerts(func(key int, alert string) bool {
+		b := sha256.Sum256([]byte(alert))
+		alertHash := hex.EncodeToString(b[:])
+		if acceptedAlerts.Contains(alertHash) {
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		log.WithError(err).Warn("failed to get system rbac alerts")
+		restRespError(w, http.StatusInternalServerError, api.RESTErrClusterWrongData)
+	}
+
 	acceptedAlerts := utils.NewSetFromStringSlice(accepted)
 	var acceptable [5]map[string]string
-	var acceptableAlerts api.RESTK8sNvAcceptableAlerts
-	for i, alerts := range [][]string{clusterRoleErrors, clusterRoleBindingErrors, roleErrors, roleBindingErrors, nvCrdSchemaErrors} {
-		if len(alerts) > 0 {
+	for i, prefilterAlerts := range []*map[string]string{&alerts.ClusterRoleErrors, &alerts.ClusterRoleBindingErrors, &alerts.RoleBindingErrors, &alerts.NvCrdSchemaErrors} {
+		if len(*prefilterAlerts) > 0 {
 			acceptable[i] = make(map[string]string, 0)
 			for _, alert := range alerts {
-				b := md5.Sum([]byte(alert))
+				b := sha256.Sum256([]byte(alert))
 				key := hex.EncodeToString(b[:])
 				if !acceptedAlerts.Contains(key) {
 					// this alert has not been accepted yet. put it in the response
@@ -2004,23 +2016,31 @@ func handlerSystemGetRBAC(w http.ResponseWriter, r *http.Request, ps httprouter.
 			}
 		}
 	}
-	acceptableAlerts.ClusterRoleErrors = acceptable[0]
-	acceptableAlerts.ClusterRoleBindingErrors = acceptable[1]
-	acceptableAlerts.RoleErrors = acceptable[2]
-	acceptableAlerts.RoleBindingErrors = acceptable[3]
-	acceptableAlerts.NvCrdSchemaErrors = acceptable[4]
-	resp.AcceptableAlerts = &api.RESTK8sNvAcceptableAlerts{
-		ClusterRoleErrors:        acceptable[0],
-		ClusterRoleBindingErrors: acceptable[1],
-		RoleErrors:               acceptable[2],
-		RoleBindingErrors:        acceptable[3],
-		NvCrdSchemaErrors:        acceptable[4],
+
+	resp.AcceptableAlerts = alerts
+	resp.AcceptedAlerts = acceptedManagerAlerts
+	restRespSuccess(w, r, &resp, acc, login, nil, "Get missing Kubernetes RBAC")
+}
+
+func GetSystemRBACAlerts(filterFunc func(int, string) bool) (*api.RESTK8sNvAcceptableAlerts, error) {
+
+	var clusterRoleErrors, clusterRoleBindingErrors, roleErrors, roleBindingErrors, nvCrdSchemaErrors []string
+	if k8sPlatform {
+		clusterRoleErrors, clusterRoleBindingErrors, roleErrors, roleBindingErrors =
+			resource.VerifyNvK8sRBAC(localDev.Host.Flavor, "", false)
+		if checkCrdSchemaFunc != nil {
+			var leader bool
+			if lead := atomic.LoadUint32(&_isLeader); lead == 1 {
+				leader = true
+			}
+			nvCrdSchemaErrors = checkCrdSchemaFunc(leader, false, false, cctx.CspType)
+		}
 	}
 
+	otherAlerts := map[string]string{}
 	fedRole := cacher.GetFedMembershipRoleNoAuth()
 	if (fedRole == api.FedRoleMaster && (acc.IsFedReader() || acc.IsFedAdmin() || acc.HasPermFed())) ||
 		(fedRole == api.FedRoleJoint && acc.HasGlobalPermissions(share.PERMS_CLUSTER_READ, 0)) {
-		otherAlerts := map[string]string{}
 		// _fedClusterLeft(206), _fedClusterDisconnected(204)
 		//disconnectedStates := utils.NewSet(_fedClusterLeft, _fedClusterDisconnected)
 		var ids map[string]bool
@@ -2048,16 +2068,15 @@ func handlerSystemGetRBAC(w http.ResponseWriter, r *http.Request, ps httprouter.
 		}
 	}
 
-	var acceptedManagerAlerts []string
-	for _, key := range []string{share.AlertNvNewVerAvailable, share.AlertNvInMultiVersions, share.AlertCveDbTooOld} {
-		if acceptedAlerts.Contains(key) {
-			// this manager-generated alert key has been accepted. put it in the response
-			acceptedManagerAlerts = append(acceptedManagerAlerts, key)
-		}
+	return &api.RESTK8sNvAcceptableAlerts{
+		ClusterRoleErrors:        acceptable[0],
+		ClusterRoleBindingErrors: acceptable[1],
+		RoleErrors:               acceptable[2],
+		RoleBindingErrors:        acceptable[3],
+		NvCrdSchemaErrors:        acceptable[4],
+		OtherAlerts:              otherAlerts,
 	}
-	resp.AcceptedAlerts = acceptedManagerAlerts
 
-	restRespSuccess(w, r, &resp, acc, login, nil, "Get missing Kubernetes RBAC")
 }
 
 func configLog(ev share.TLogEvent, login *loginSession, msg string) {
@@ -2662,4 +2681,8 @@ func getFedDisconnectAlert(fedRole, id string, acc *access.AccessControl) (strin
 	key := hex.EncodeToString(b[:])
 
 	return key, alert
+}
+
+func handlerSystemGetAlerts(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
 }
