@@ -815,7 +815,7 @@ type CLUSSystemConfig struct {
 	NoTelemetryReport     bool                      `json:"no_telemetry_report,omitempty"`
 	RemoteRepositories    []CLUSRemoteRepository    `json:"remote_repositories"`
 	EnableTLSVerification bool                      `json:"enable_tls_verification"`
-	GlobalCaCerts         string                    `json:"cacerts"`
+	GlobalCaCerts         []string                  `json:"cacerts"`
 }
 
 type CLUSSystemConfigAutoscale struct {

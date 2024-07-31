@@ -1768,7 +1768,7 @@ type RESTSystemConfigConfig struct {
 	NoTelemetryReport         *bool                            `json:"no_telemetry_report,omitempty"`
 	RemoteRepositories        *[]RESTRemoteRepository          `json:"remote_repositories,omitempty"`
 	EnableTLSVerification     *bool                            `json:"enable_tls_verification"`
-	GlobalCaCerts             *string                          `json:"cacerts"`
+	GlobalCaCerts             *[]string                        `json:"cacerts"`
 	// InternalSubnets      *[]string `json:"configured_internal_subnets,omitempty"`
 }
 
@@ -1841,8 +1841,8 @@ type RESTSystemConfigProxyCfgV2 struct {
 }
 
 type RESTSystemConfigTlsCfg struct {
-	EnableTLSVerification *bool   `json:"enable_tls_verification"`
-	GlobalCaCerts         *string `json:"cacerts"`
+	EnableTLSVerification *bool     `json:"enable_tls_verification"`
+	GlobalCaCerts         *[]string `json:"cacerts"`
 }
 
 type RESTSystemConfigMiscCfgV2 struct {
@@ -1934,7 +1934,7 @@ type RESTSystemConfig struct {
 	CspType                   string                    `json:"csp_type"`
 	RemoteRepositories        []RESTRemoteRepository    `json:"remote_repositories"`
 	EnableTLSVerification     bool                      `json:"enable_tls_verification"`
-	GlobalCaCerts             string                    `json:"cacerts"`
+	GlobalCaCerts             []string                  `json:"cacerts"`
 }
 
 type RESTSystemConfigData struct {
@@ -2021,8 +2021,8 @@ type RESTSystemConfigModeAutoV2 struct {
 }
 
 type RESTSystemConfigTls struct {
-	EnableTLSVerification bool   `json:"enable_tls_verification"`
-	GlobalCaCerts         string `json:"cacerts"`
+	EnableTLSVerification bool     `json:"enable_tls_verification"`
+	GlobalCaCerts         []string `json:"cacerts"`
 }
 
 type RESTSystemConfigV2 struct {

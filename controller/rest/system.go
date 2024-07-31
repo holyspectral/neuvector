@@ -1548,9 +1548,11 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			}
 
 			if rc.GlobalCaCerts != nil {
-				if err := verifyCACerts([]byte(*rc.GlobalCaCerts)); err != nil {
-					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
-					return kick, err
+				for _, cacert := range *rc.GlobalCaCerts {
+					if err := verifyCACerts([]byte(cacert)); err != nil {
+						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
+						return kick, err
+					}
 				}
 				cconf.GlobalCaCerts = *rc.GlobalCaCerts
 			}

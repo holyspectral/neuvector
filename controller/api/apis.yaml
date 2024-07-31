@@ -8443,8 +8443,10 @@ definitions:
         type: boolean
         example: false
       cacerts:
-        type: string
-        example: "-----BEGIN CERTIFICATE-----..."
+        type: array
+        items:
+          type: string
+        example: ["-----BEGIN CERTIFICATE-----...", "-----BEGIN CERTIFICATE-----..."]
   RESTSystemConfigAutoscaleConfig:
     type: object
     properties:

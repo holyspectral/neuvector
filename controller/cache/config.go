@@ -481,9 +481,13 @@ func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byt
 
 		var pool *x509.CertPool
 
-		if cfg.GlobalCaCerts != "" {
+		if len(cfg.GlobalCaCerts) > 0 {
 			pool = x509.NewCertPool()
-			pool.AppendCertsFromPEM([]byte(cfg.GlobalCaCerts))
+			for _, cacert := range cfg.GlobalCaCerts {
+				if ok := pool.AppendCertsFromPEM([]byte(cacert)); !ok {
+					log.WithFields(log.Fields{"cacert": cacert}).Warn("failed to parse ca cert")
+				}
+			}
 		}
 
 		// Use configured proxy if available, otherwise use container runtime's settings

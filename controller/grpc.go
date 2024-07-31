@@ -312,7 +312,7 @@ func (s *ScanService) GetScannerSettings(ctx context.Context, v *share.RPCVoid) 
 	cfg := cacher.GetSystemConfig(acc)
 	return &share.ScannerSettings{
 		EnableTLSVerification: cfg.EnableTLSVerification,
-		CACerts:               cfg.GlobalCaCerts,
+		CACerts:               strings.Join(cfg.GlobalCaCerts, "\n"),
 	}, nil
 }
 
