@@ -479,8 +479,9 @@ func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byt
 
 		// Setup default TLS config.
 
+		// If GlobalCaCerts is not empty, create a CertPool and assign it to tls.Config.
+		// It will replace the default CertPool which comes from system/container image.
 		var pool *x509.CertPool
-
 		if len(cfg.GlobalCaCerts) > 0 {
 			pool = x509.NewCertPool()
 			for _, cacert := range cfg.GlobalCaCerts {

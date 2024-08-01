@@ -1990,14 +1990,6 @@ func handlerServerTest(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 			return
 		}
 
-		accReadAll := access.NewReaderAccessControl()
-		sc := cacher.GetSystemConfig(accReadAll)
-		if sc == nil {
-			log.Error("failed to get system config")
-			restRespError(w, http.StatusInternalServerError, api.RESTErrUnauthorized)
-			return
-		}
-
 		_, groups, err := remoteAuther.LDAPAuth(cs.LDAP, rs.TestLDAP.Username, rs.TestLDAP.Password)
 		if err != nil {
 			log.WithFields(log.Fields{

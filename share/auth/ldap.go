@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"time"
@@ -21,7 +20,6 @@ type LDAPClient struct {
 	GroupFilter        string
 	Host               string
 	ServerName         string
-	RootCAs            *x509.CertPool
 	UserFilter         string
 	Port               int
 	InsecureSkipVerify bool // Skip TLS authentication
@@ -101,11 +99,11 @@ func (lc *LDAPClient) Authenticate(password string) (string, map[string]string, 
 	}
 
 	if len(sr.Entries) < 1 {
-		return "", nil, errors.New("user does not exist")
+		return "", nil, errors.New("User does not exist")
 	}
 
 	if len(sr.Entries) > 1 {
-		return "", nil, errors.New("too many entries returned")
+		return "", nil, errors.New("Too many entries returned")
 	}
 
 	userDN := sr.Entries[0].DN

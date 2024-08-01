@@ -68,11 +68,6 @@ const defaultLDAPAuthTimeout = time.Second * 10
 const oidcUserInfoTimeout = time.Duration(time.Second * 20)
 const oidcGroupInfoTimeout = time.Duration(time.Second * 20)
 
-type LDAPAuthConfig struct {
-	InsecureSkipVerify bool
-	CACerts            string
-}
-
 // 1. Refer to https://github.com/grafana/grafana/issues/2441 about why we set UseSSL and SkipTLS this way
 // 2. When running in a container, use --env LDAP_TLS_VERIFY_CLIENT=try to disable client certificate validation
 func (a *remoteAuth) LDAPAuth(cldap *share.CLUSServerLDAP, username, password string) (map[string]string, []string, error) {
@@ -294,7 +289,7 @@ func (a *remoteAuth) SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.REST
 	// Token is the whole query parameters.
 	q, err := url.ParseQuery(tokenData.Token)
 	if err != nil {
-		return "", "", nil, errors.New("invalid URL query format")
+		return "", "", nil, errors.New("Invalid URL query format")
 	}
 	resp := q.Get("SAMLResponse")
 	if resp == "" {
@@ -351,11 +346,11 @@ func (a *remoteAuth) generateState() string {
 
 func (a *remoteAuth) verifyState(state string) error {
 	if tsStr := utils.DecryptURLSafe(state); tsStr == "" {
-		return errors.New("invalid state: wrong encryption")
+		return errors.New("Invalid state: wrong encryption")
 	} else if ts, err := strconv.ParseInt(tsStr, 10, 64); err != nil {
-		return errors.New("invalid state: wrong format")
+		return errors.New("Invalid state: wrong format")
 	} else if time.Now().Unix()-ts > stateTimeout {
-		return errors.New("invalid state: expired")
+		return errors.New("Invalid state: expired")
 	}
 	return nil
 }
