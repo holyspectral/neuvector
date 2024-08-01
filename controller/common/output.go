@@ -308,13 +308,14 @@ func (w *Webhook) httpRequest(data []byte, ctype string, proxy *share.CLUSProxy)
 		Timeout: requestTimeout,
 	}
 
-	if proxy != nil {
-		client.Transport = httpclient.GetSharedTransport()
-	} else {
-		client.Transport = httpclient.GetNoProxySharedTransport()
+	proxyURL := httpclient.ParseProxy(proxy)
+	t, err := httpclient.GetTransport(proxyURL)
+	if err != nil {
+		log.WithError(err).Warn("failed to get transport")
+		return fmt.Errorf("failed to get transport: %w", err)
 	}
+	client.Transport = t
 
-	var err error
 	var resp *http.Response
 	retry := 0
 	for retry < 3 {

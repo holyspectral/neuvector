@@ -425,23 +425,6 @@ func (m CacheMethod) GetSystemConfigClusterName(acc *access.AccessControl) strin
 	return systemConfigCache.ClusterName
 }
 
-func parseProxy(proxy *share.CLUSProxy) string {
-	if proxy != nil && proxy.Enable {
-		url, err := url.Parse(proxy.URL)
-		if err != nil {
-			return ""
-		}
-		if proxy.Username != "" {
-			return fmt.Sprintf("%s://%s:%s@%s:%s/",
-				url.Scheme, proxy.Username, proxy.Password, url.Hostname(), url.Port())
-		} else {
-			return fmt.Sprintf("%s://%s:%s/",
-				url.Scheme, url.Hostname(), url.Port())
-		}
-	}
-	return ""
-}
-
 func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
 	log.WithFields(log.Fields{"type": cluster.ClusterNotifyName[nType], "key": key}).Debug()
 
@@ -493,8 +476,8 @@ func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byt
 
 		// Use configured proxy if available, otherwise use container runtime's settings
 		// Note: at the time of writing, these settings are only available in docker.
-		httpProxy := parseProxy(&cfg.RegistryHttpProxy)
-		httpsProxy := parseProxy(&cfg.RegistryHttpsProxy)
+		httpProxy := httpclient.ParseProxy(&cfg.RegistryHttpProxy)
+		httpsProxy := httpclient.ParseProxy(&cfg.RegistryHttpsProxy)
 		var noProxy string
 		if global.RT != nil { // Not always available especially in unit test
 

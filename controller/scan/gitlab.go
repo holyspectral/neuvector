@@ -75,11 +75,12 @@ func newHttpClient(proxy string) *http.Client {
 		Timeout: gitTimeout,
 	}
 
-	if proxy != "" {
-		client.Transport = httpclient.GetSharedTransport()
-	} else {
-		client.Transport = httpclient.GetNoProxySharedTransport()
+	t, err := httpclient.GetTransport(proxy)
+	if err != nil {
+		log.WithError(err).Warn("failed to get transport")
+		return nil
 	}
+	client.Transport = t
 
 	return client
 }

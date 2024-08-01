@@ -14,8 +14,8 @@ When proxy or TLS config is changed, SetDefaultTLSClientConfig() should be calle
 			pool.AppendCertsFromPEM([]byte(cfg.GlobalCaCerts))
 		}
 
-		httpProxy := parseProxy(&cfg.RegistryHttpProxy)
-		httpsProxy := parseProxy(&cfg.RegistryHttpsProxy)
+		httpProxy := httpclient.ParseProxy(&cfg.RegistryHttpProxy)
+		httpsProxy := httpclient.ParseProxy(&cfg.RegistryHttpsProxy)
 		var noProxy string
 
 		httpclient.SetDefaultTLSClientConfig(&httpclient.TLSClientSettings{

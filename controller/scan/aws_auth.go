@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/httpclient"
@@ -64,11 +65,14 @@ func extractToken(token string, proxyEndpoint string) (*awsEcrAuth, error) {
 
 func newClient(proxy string) *http.Client {
 	var client http.Client
-	if proxy != "" {
-		client.Transport = httpclient.GetSharedTransport()
-	} else {
-		client.Transport = httpclient.GetNoProxySharedTransport()
+
+	t, err := httpclient.GetTransport(proxy)
+	if err != nil {
+		log.WithError(err).Warn("failed to get transport")
+		return nil
 	}
+	client.Transport = t
+
 	return &client
 }
 

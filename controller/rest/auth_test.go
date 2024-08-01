@@ -69,7 +69,7 @@ func (a *mockRemoteAuth) SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.
 	}
 }
 
-func (a *mockRemoteAuth) OIDCDiscover(issuer string, useProxy bool) (string, string, string, string, error) {
+func (a *mockRemoteAuth) OIDCDiscover(issuer string, proxy string) (string, string, string, string, error) {
 	return "", "", "", "", nil
 }
 

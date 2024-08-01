@@ -49,7 +49,7 @@ type RemoteAuthInterface interface {
 	SAMLSPGetRedirectURL(csaml *share.CLUSServerSAML, redir *api.RESTTokenRedirect, overrides map[string]string) (string, error)
 	// Return Name ID, session index, and attributes.
 	SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.RESTAuthToken) (string, string, map[string][]string, error)
-	OIDCDiscover(issuer string, useProxy bool) (string, string, string, string, error)
+	OIDCDiscover(issuer string, proxy string) (string, string, string, string, error)
 	OIDCGetRedirectURL(csaml *share.CLUSServerOIDC, redir *api.RESTTokenRedirect) (string, error)
 	OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAuthToken) (map[string]interface{}, error)
 }
@@ -317,14 +317,15 @@ func (a *remoteAuth) SAMLSPAuth(csaml *share.CLUSServerSAML, tokenData *api.REST
 	return assertionInfo.NameID, assertionInfo.SessionIndex, out, nil
 }
 
-func (a *remoteAuth) OIDCDiscover(issuer string, useProxy bool) (string, string, string, string, error) {
+func (a *remoteAuth) OIDCDiscover(issuer string, proxy string) (string, string, string, string, error) {
 	var lastError error
-	var client *http.Client
-	if useProxy {
-		client = httpclient.CreateHTTPClient()
-	} else {
-		client = httpclient.CreateNoProxyHTTPClient()
+
+	client, err := httpclient.CreateHTTPClient(proxy)
+	if err != nil {
+		log.WithError(err).Warn("failed to get transport")
+		return "", "", "", "", nil
 	}
+
 	for i := 0; i < 3; i++ {
 		ctx := oidc.ClientContext(context.Background(), client)
 
@@ -384,10 +385,22 @@ func (a *remoteAuth) OIDCAuth(coidc *share.CLUSServerOIDC, tokenData *api.RESTAu
 	}
 
 	var client *http.Client
+	var err error
 	if coidc.UseProxy {
-		client = httpclient.CreateHTTPClient()
+		proxy, err := httpclient.GetProxy(coidc.Issuer)
+		if err != nil {
+			log.WithError(err).Warn("failed to get proxy")
+			// continue
+		}
+		client, err = httpclient.CreateHTTPClient(proxy)
+		if err != nil {
+			log.WithError(err).Warn("failed to create HTTP client")
+		}
 	} else {
-		client = httpclient.CreateNoProxyHTTPClient()
+		client, err = httpclient.CreateHTTPClient("")
+		if err != nil {
+			log.WithError(err).Warn("failed to create HTTP client")
+		}
 	}
 
 	ctx := oidc.ClientContext(context.Background(), client)

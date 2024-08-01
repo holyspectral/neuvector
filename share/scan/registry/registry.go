@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/httpclient"
 	"github.com/neuvector/neuvector/share/httptrace"
 )
@@ -34,11 +35,20 @@ const longTimeout = 300 * time.Second
 func New(registryUrl, token, username, password, proxy string, trace httptrace.HTTPTrace) (*Registry, uint, error) {
 	var transport *http.Transport
 
-	if proxy != "" {
-		transport = httpclient.GetSharedTransport()
-	} else {
-		transport = httpclient.GetNoProxySharedTransport()
+	proxyURL := httpclient.ParseProxy(&share.CLUSProxy{
+		Enable:   true,
+		URL:      proxy,
+		Username: username,
+		Password: password,
+	})
+
+	t, err := httpclient.GetTransport(proxyURL)
+	if err != nil {
+		log.WithError(err).Warn("failed to get transport")
+		return nil, 0, fmt.Errorf("failed to get transport: %w", err)
 	}
+
+	transport = t
 
 	r := newFromTransport(registryUrl, token, username, password, transport, trace)
 	return r, ErrorNone, nil
