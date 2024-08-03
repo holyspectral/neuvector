@@ -27,6 +27,7 @@ import (
 	"github.com/neuvector/neuvector/controller/scan"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/cluster"
+	"github.com/neuvector/neuvector/share/httpclient"
 	scanUtils "github.com/neuvector/neuvector/share/scan"
 	"github.com/neuvector/neuvector/share/system"
 	"github.com/neuvector/neuvector/share/utils"
@@ -313,6 +314,9 @@ func (s *ScanService) GetScannerSettings(ctx context.Context, v *share.RPCVoid) 
 	return &share.ScannerSettings{
 		EnableTLSVerification: cfg.EnableTLSVerification,
 		CACerts:               strings.Join(cfg.GlobalCaCerts, "\n"),
+		HttpProxy:             httpclient.GetHttpProxy(),
+		HttpsProxy:            httpclient.GetHttpsProxy(),
+		NoProxy:               "",
 	}, nil
 }
 

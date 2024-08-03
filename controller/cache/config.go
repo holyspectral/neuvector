@@ -501,6 +501,8 @@ func systemConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byt
 			},
 		}, httpProxy, httpsProxy, noProxy)
 
+		// TODO: SetSCannerSettings
+
 	case cluster.ClusterNotifyDelete:
 		// Triggered at configuration import
 		cfg = common.DefaultSystemConfig

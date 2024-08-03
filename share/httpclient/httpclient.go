@@ -230,3 +230,17 @@ func CreateHTTPClient(proxy string) (*http.Client, error) {
 		Transport: transport,
 	}, nil
 }
+
+func GetHttpProxy() string {
+	lock.RLock()
+	defer lock.RUnlock()
+
+	return httpProxyConfig
+}
+
+func GetHttpsProxy() string {
+	lock.RLock()
+	defer lock.RUnlock()
+
+	return httpsProxyConfig
+}
