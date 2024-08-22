@@ -1,7 +1,7 @@
 package kv
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -1303,8 +1303,8 @@ func ValidateWebhookCert() {
 						}
 					}
 					if cert != nil {
-						b := md5.Sum([]byte(cert.Cert))
-						log.WithFields(log.Fields{"cn": certInfo.cn, "cert": hex.EncodeToString(b[:])}).Info("md5")
+						b := sha256.Sum256([]byte(cert.Cert))
+						log.WithFields(log.Fields{"cn": certInfo.cn, "cert": hex.EncodeToString(b[:])}).Info("sha256")
 						certInfo.verified = true
 					}
 				}

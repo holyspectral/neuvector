@@ -228,10 +228,6 @@ func CreatePostSyncJob(ctx context.Context, client dynamic.Interface, namespace 
 		newjob.Spec.Template.Spec.Containers[0].Command = append(newjob.Spec.Template.Spec.Containers[0].Command, "--fresh-install")
 	}
 
-	if os.Getenv("ENABLE_ROTATION") != "" {
-		newjob.Spec.Template.Spec.Containers[0].Command = append(newjob.Spec.Template.Spec.Containers[0].Command, "--enable-rotation")
-	}
-
 	unstructedJob, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&newjob)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert target job: %w", err)

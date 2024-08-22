@@ -6,7 +6,7 @@ import "C"
 import (
 	"bufio"
 	"compress/gzip"
-	"crypto/md5"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -707,7 +707,7 @@ func handlerSystemWebhookCreate(w http.ResponseWriter, r *http.Request, ps httpr
 			return
 		}
 
-		for i, _ := range cconf.Webhooks {
+		for i := range cconf.Webhooks {
 			if cconf.Webhooks[i].Name == rwh.Name {
 				log.WithFields(log.Fields{"name": rwh.Name}).Error("Duplicate webhook name")
 				restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, "Duplicate webhook name")
@@ -828,7 +828,7 @@ func handlerSystemWebhookConfig(w http.ResponseWriter, r *http.Request, ps httpr
 		}
 
 		var found bool
-		for i, _ := range cconf.Webhooks {
+		for i := range cconf.Webhooks {
 			if cconf.Webhooks[i].Name == rwh.Name {
 				cconf.Webhooks[i] = share.CLUSWebhook{
 					Name:     rwh.Name,
@@ -948,7 +948,7 @@ func handlerSystemWebhookDelete(w http.ResponseWriter, r *http.Request, ps httpr
 		}
 
 		var found bool
-		for i, _ := range cconf.Webhooks {
+		for i := range cconf.Webhooks {
 			if cconf.Webhooks[i].Name == name {
 				// No retain order. Show API sort the webhook list.
 				s := len(cconf.Webhooks)
@@ -2136,7 +2136,7 @@ func getAlertGroup(alerts []string, alertType api.AlertType, acceptedAlerts util
 
 	if len(alerts) > 0 {
 		for _, alert := range alerts {
-			b := md5.Sum([]byte(alert))
+			b := sha256.Sum256([]byte(alert))
 			key := hex.EncodeToString(b[:])
 			if !acceptedAlerts.Contains(key) {
 				alertGroup.Data = append(alertGroup.Data, &api.RESTNvAlert{
@@ -2191,7 +2191,7 @@ func handlerSystemGetAlerts(w http.ResponseWriter, r *http.Request, ps httproute
 	var resp api.RESTNvAlerts = api.RESTNvAlerts{
 		NvUpgradeInfo: &api.RESTCheckUpgradeInfo{},
 	}
-	
+
 	// populate neuvector_upgrade_info
 	if nvUpgradeInfo := getNvUpgradeInfo(); nvUpgradeInfo != nil {
 		resp.NvUpgradeInfo = nvUpgradeInfo
@@ -2229,14 +2229,14 @@ func handlerSystemGetAlerts(w http.ResponseWriter, r *http.Request, ps httproute
 		}
 		if len(otherAlertGroup.Data) > 0 {
 			resp.AcceptableAlerts.OtherAlerts = otherAlertGroup
-		}		
+		}
 	}
 	certAlertGroup := &api.RESTNvAlertGroup{
 		Type: api.AlertTypeTlsCertificate,
 	}
 	internalCaCertFile := path.Join(cluster.InternalCertDir, cluster.InternalCACert)
 	if internalCaCertExpireAlert, err := getInternalCertExpireAlert(internalCaCertFile); err == nil && internalCaCertExpireAlert != "" {
-		b := md5.Sum([]byte(internalCaCertExpireAlert))
+		b := sha256.Sum256([]byte(internalCaCertExpireAlert))
 		key := hex.EncodeToString(b[:])
 		if !acceptedAlerts.Contains(key) {
 			certAlertGroup.Data = append(certAlertGroup.Data, &api.RESTNvAlert{
@@ -2247,7 +2247,7 @@ func handlerSystemGetAlerts(w http.ResponseWriter, r *http.Request, ps httproute
 	}
 	internalCertFile := path.Join(cluster.InternalCertDir, cluster.InternalCert)
 	if internalCertExpireAlert, err := getInternalCertExpireAlert(internalCertFile); err == nil && internalCertExpireAlert != "" {
-		b := md5.Sum([]byte(internalCertExpireAlert))
+		b := sha256.Sum256([]byte(internalCertExpireAlert))
 		key := hex.EncodeToString(b[:])
 		if !acceptedAlerts.Contains(key) {
 			certAlertGroup.Data = append(certAlertGroup.Data, &api.RESTNvAlert{
@@ -2843,11 +2843,11 @@ func replaceFedSystemConfig(newCfg *share.CLUSSystemConfig) bool {
 func validateCertificate(certificate string) error {
 	block, _ := pem.Decode([]byte(certificate))
 	if block == nil {
-		return errors.New("Invalid certificate")
+		return errors.New("invalid certificate")
 	}
 	_, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.New("Invalid certificate")
+		return errors.New("invalid certificate")
 	}
 
 	// No need to check the specific type of public key; relying on x509.ParseCertificate() should be sufficient.
@@ -2866,7 +2866,7 @@ func getFedDisconnectAlert(fedRole, id string, acc *access.AccessControl) (strin
 	} else {
 		alert = "This cluster is disconnected from primary cluster"
 	}
-	b := md5.Sum([]byte(alert))
+	b := sha256.Sum256([]byte(alert))
 	key := hex.EncodeToString(b[:])
 
 	return key, alert
