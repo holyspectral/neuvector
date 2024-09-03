@@ -244,20 +244,20 @@ func LeadChangeNotify(leader bool) {
 	}
 }
 
-func cacheFedEvent(ev share.TLogEvent, msg, fullname, remote, session string, roles map[string]string) error {
+func cacheFedEvent(ev share.TLogEvent, msg, fullname, remote, session string, roles map[string][]string) error {
 	if ev >= share.CLUSEvFedPromote && ev <= share.CLUSEvFedPolicySync {
 		alog := share.CLUSEventLog{
-			Event:          ev,
-			HostID:         localDev.Host.ID,
-			HostName:       localDev.Host.Name,
-			ControllerID:   localDev.Ctrler.ID,
-			ControllerName: localDev.Ctrler.Name,
-			ReportedAt:     time.Now().UTC(),
-			User:           fullname,
-			UserRoles:      roles,
-			UserAddr:       remote,
-			UserSession:    session,
-			Msg:            msg,
+			Event:           ev,
+			HostID:          localDev.Host.ID,
+			HostName:        localDev.Host.Name,
+			ControllerID:    localDev.Ctrler.ID,
+			ControllerName:  localDev.Ctrler.Name,
+			ReportedAt:      time.Now().UTC(),
+			User:            fullname,
+			UserDomainRoles: roles,
+			UserAddr:        remote,
+			UserSession:     session,
+			Msg:             msg,
 		}
 		evqueue.Append(&alog)
 	}
@@ -1882,7 +1882,7 @@ func joinFed(w http.ResponseWriter, acc *access.AccessControl, login *loginSessi
 	reqTo := api.RESTFedJoinReqInternal{
 		User:         login.fullname, // user on joint cluster who triggered join-federation request
 		Remote:       login.remote,
-		UserRoles:    login.domainRoles,
+		UserRoles:    login.domainRoles.ConvertToLegacyDomainRole(),
 		FedKvVersion: kv.GetFedKvVer(),
 		RestVersion:  kv.GetRestVer(),
 		JoinTicket:   joinToken.JoinTicket,
@@ -2042,7 +2042,7 @@ func leaveFed(w http.ResponseWriter, acc *access.AccessControl, login *loginSess
 		JointTicket: jwtGenFedTicket(jointCluster.Secret, jwtFedJointTicketLife),
 		User:        login.fullname, // user on joint cluster who triggered leave-federation request
 		Remote:      login.remote,
-		UserRoles:   login.domainRoles,
+		UserRoles:   login.domainRoles.ConvertToLegacyDomainRole(),
 	}
 	var err99 error
 	if bodyTo, err := json.Marshal(&reqTo); err == nil {
@@ -2316,7 +2316,11 @@ func handlerJoinFedInternal(w http.ResponseWriter, r *http.Request, ps httproute
 		}
 		_, resp.CspType = common.GetMappedCspType(nil, &cctx.CspType) // master cluster's billing csp type
 		msg := fmt.Sprintf("Cluster %s(%s) joins federation", joinedCluster.Name, joinedCluster.RestInfo.Server)
-		cacheFedEvent(share.CLUSEvFedJoin, msg, reqData.User, reqData.Remote, "", reqData.UserRoles)
+		roles := map[string][]string{}
+		for domain, role := range reqData.UserRoles {
+			roles[domain] = []string{role}
+		}
+		cacheFedEvent(share.CLUSEvFedJoin, msg, reqData.User, reqData.Remote, "", roles)
 		jointCluster.ID = reqData.JointCluster.ID
 		go pingJointCluster(_tagJoinPending, "v1/fed/ping_internal", jointCluster, nil, access.NewAdminAccessControl())
 		restRespSuccess(w, r, &resp, nil, nil, nil, "Join federation by managed cluster's request")
@@ -2359,7 +2363,11 @@ func handlerLeaveFedInternal(w http.ResponseWriter, r *http.Request, ps httprout
 		if err := jwtValidateFedJoinTicket(req.JointTicket, joinedCluster.Secret); err == nil {
 			if status, code = removeFromFederation(&joinedCluster, accReadAll); status == http.StatusOK {
 				msg := fmt.Sprintf("Cluster %s(%s) leaves federation", joinedCluster.Name, joinedCluster.RestInfo.Server)
-				cacheFedEvent(share.CLUSEvFedLeave, msg, req.User, req.Remote, "", req.UserRoles)
+				roles := map[string][]string{}
+				for domain, role := range req.UserRoles {
+					roles[domain] = []string{role}
+				}
+				cacheFedEvent(share.CLUSEvFedLeave, msg, req.User, req.Remote, "", roles)
 				restRespSuccess(w, r, nil, nil, nil, nil, "Leave federation by managed cluster's request")
 				return
 			} else {

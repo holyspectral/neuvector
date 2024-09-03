@@ -981,7 +981,7 @@ func handlefedcfg(yaml_data []byte) (string, error) {
 	login := loginSession{
 		fullname:    common.ReservedNvSystemUser,
 		remote:      "configmap",
-		domainRoles: map[string]string{access.AccessDomainGlobal: api.UserRoleAdmin},
+		domainRoles: map[string][]string{access.AccessDomainGlobal: []string{api.UserRoleAdmin}},
 	}
 
 	membership := clusHelper.GetFedMembership()
@@ -1076,7 +1076,7 @@ func handlefedcfg(yaml_data []byte) (string, error) {
 		join := true
 		if membership.FedRole == api.FedRoleMaster {
 			// change from master role to joint role. demote from master cluster and then join another fed
-			login.domainRoles[access.AccessDomainGlobal] = api.UserRoleFedAdmin
+			login.domainRoles[access.AccessDomainGlobal] = []string{api.UserRoleFedAdmin}
 			if _, _, _, err = demoteFromMaster(nil, access.NewFedAdminAccessControl(), &login); err == nil {
 				waitForFedRoleChange(api.FedRoleNone)
 			}

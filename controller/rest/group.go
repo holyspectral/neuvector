@@ -1751,7 +1751,7 @@ func handlerGetGroupCfgImport(w http.ResponseWriter, r *http.Request, ps httprou
 }
 
 // if there are multiple yaml documents(separated by "---" line) in the yaml file, only the first document is parsed for import
-func importGroupPolicy(scope string, loginDomainRoles access.DomainRole, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
+func importGroupPolicy(scope string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)
 

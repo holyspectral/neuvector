@@ -4008,8 +4008,8 @@ type UserAccessControl struct {
 	LoginID             string
 	LoginType           int
 	Op                  string
-	Roles               map[string]string              // domain -> role
-	WRoles              map[string]string              // special domain(containing wildcard char) -> role
+	Roles               map[string][]string            // domain -> role
+	WRoles              map[string][]string            // special domain(containing wildcard char) -> role
 	ExtraPermits        map[string]share.NvPermissions // domain -> permissions. only for Rancher SSO
 	ApiCategoryID       int8
 	RequiredPermissions uint32

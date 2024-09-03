@@ -121,7 +121,7 @@ func checkUserAttrs(w *mockResponseWriter, server, user, role string, tmo uint32
 		return fmt.Errorf("Cannot find login user: %+v", loginSessions)
 	} else if login.fullname != utils.MakeUserFullname(server, user) {
 		return fmt.Errorf("Error in login user attributes: %+v", login.fullname)
-	} else if r, ok := login.domainRoles[""]; !ok || r != role {
+	} else if r, ok := login.domainRoles[""]; !ok || r[0] != role {
 		return fmt.Errorf("Error in login user role: %+v", login.fullname)
 	} else if tmo != 0 && login.timeout != tmo {
 		return fmt.Errorf("Error in login user timeout: %+v", login.fullname)
@@ -1011,9 +1011,9 @@ func TestJWTSignValidate(t *testing.T) {
 		EMail:    "gary@example.com",
 		Timeout:  300,
 	}
-	roles := access.DomainRole{
-		"":    api.UserRoleReader,
-		"ns1": api.UserRoleAdmin,
+	roles := access.DomainRoles{
+		"":    []string{api.UserRoleReader},
+		"ns1": []string{api.UserRoleAdmin},
 	}
 	remote := "10.1.2.3"
 

@@ -47,7 +47,7 @@ type loginSession struct {
 	lastSyncTimerAt    time.Time // last time calling other controllers for syncing the timer for the token with this login session
 	eolAt              time.Time // end of life
 	timer              *time.Timer
-	domainRoles        access.DomainRole        // map: domain -> role
+	domainRoles        access.DomainRoles       // map: domain -> role
 	extraDomainPermits access.DomainPermissions // map: domain -> extra permissions(other than in 'domainRoles'), only for Rancher SSO
 	loginType          int                      // 0=user (default), 1=apikey
 
@@ -64,7 +64,7 @@ type tokenClaim struct {
 	MainSessionID   string                   `json:"main_session_id"`   // from id in master login token's claim. empty when the token is generated for local cluster login
 	MainSessionUser string                   `json:"main_session_user"` // from fullname in master login token's claim. empty when the token is generated for local cluster login
 	Timeout         uint32                   `json:"timeout"`
-	Roles           access.DomainRole        `json:"roles"`                  // domain -> role
+	Roles           access.DomainRoles       `json:"roles"`                  // domain -> role
 	ExtraPermits    access.DomainPermissions `json:"extra_permissions"`      // extra domain -> permissions(other than in 'Roles'). only for Rancher SSO
 	NameID          string                   `json:"nameId,omitempty"`       // Used by SAML Single Logout
 	SessionIndex    string                   `json:"sessionIndex,omitempty"` // Used by SAML Single Logout
@@ -200,7 +200,7 @@ func newLoginSessionFromToken(token string, claims *tokenClaim, now time.Time) (
 	}
 }
 
-func newLoginSessionFromUser(user *share.CLUSUser, domainRoles access.DomainRole, extraDomainPermits access.DomainPermissions,
+func newLoginSessionFromUser(user *share.CLUSUser, domainRoles access.DomainRoles, extraDomainPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser string, sso *SsoSession) (*loginSession, int) {
 
 	// Note: JWT keys should be loaded in initJWTSignKey() before calling this function.
@@ -257,17 +257,17 @@ func _registerLoginSession(login *loginSession) int {
 	ibmsaSetup := false
 	importStatus := false
 	var timeout time.Duration
-	if r, ok := login.domainRoles[access.AccessDomainGlobal]; ok && (r == api.UserRoleIBMSA || r == api.UserRoleImportStatus) && len(login.domainRoles) == 1 {
-		if r == api.UserRoleIBMSA {
-			ibmsaSetup = true
-			timeout = time.Duration(jwtIbmSaTokenLife) // IBM Security Advisor has 30 minutes for setting up endpoint
-		} else {
-			importStatus = true
-			timeout = time.Duration(jwtImportStatusTokenLife)
-		}
+
+	if login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleIBMSA) {
+		ibmsaSetup = true
+		timeout = time.Duration(jwtIbmSaTokenLife) // IBM Security Advisor has 30 minutes for setting up endpoint
+	} else if login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus) {
+		importStatus = true
+		timeout = time.Duration(jwtImportStatusTokenLife)
 	} else {
 		timeout = getUserTimeout(login.timeout)
 	}
+
 	login.timer = time.AfterFunc(timeout, func() { login.expire() })
 	loginSessions[login.token] = login
 
@@ -283,7 +283,7 @@ func _registerLoginSession(login *loginSession) int {
 		}
 		if importStatus {
 			msg = fmt.Sprintf("User %s login (for retrieving import result)", login.fullname)
-			domainRoles = access.DomainRole{}
+			domainRoles = access.DomainRoles{}
 		}
 		authLog(share.CLUSEvAuthLogin, userName, login.remote, login.id, domainRoles, msg)
 	}
@@ -387,9 +387,9 @@ func (s *loginSession) _logout() {
 	} else {
 		userName = s.fullname
 	}
-	if r, ok := s.domainRoles[access.AccessDomainGlobal]; ok && r == api.UserRoleImportStatus && len(s.domainRoles) == 1 {
+	if s.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus) && len(s.domainRoles) == 1 {
 		msg = fmt.Sprintf("User %s logout (for retrieving import result)", userName)
-		domainRoles = access.DomainRole{}
+		domainRoles = access.DomainRoles{}
 	}
 	authLog(share.CLUSEvAuthLogout, userName, s.remote, s.id, domainRoles, msg)
 	s._delete()
@@ -398,7 +398,8 @@ func (s *loginSession) _logout() {
 // caller must own userMutex before calling this function
 func (s *loginSession) _expire() {
 	log.WithFields(log.Fields{"id": s.id, "user": s.fullname}).Debug()
-	if r, ok := s.domainRoles[access.AccessDomainGlobal]; ok && (r == api.UserRoleIBMSA || r == api.UserRoleImportStatus) && len(s.domainRoles) == 1 {
+	if len(s.domainRoles) == 1 && (s.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleIBMSA) ||
+		s.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus)) {
 		// do not write auth log for ibmsa/import_status token
 	} else {
 		var userName string
@@ -626,13 +627,13 @@ func restReq2User(r *http.Request) (*loginSession, int, string) {
 					return nil, userTimeout, rsessToken
 				}
 
-				roles := make(map[string]string)
+				roles := make(map[string][]string)
 				for role, domains := range apikeyAccount.RoleDomains {
 					for _, d := range domains {
-						roles[d] = role
+						roles[d] = []string{role}
 					}
 				}
-				roles[access.AccessDomainGlobal] = apikeyAccount.Role
+				roles[access.AccessDomainGlobal] = []string{apikeyAccount.Role}
 
 				_, _, err := access.GetUserPermissions(apikeyAccount.Role, apikeyAccount.RoleDomains, share.NvPermissions{}, nil)
 				if err != nil {
@@ -745,7 +746,9 @@ func restReq2User(r *http.Request) (*loginSession, int, string) {
 	}
 
 	// For auth token generated for IBM SA setup, it has a fixed 30 minutes time-out
-	if role, _ := login.domainRoles[access.AccessDomainGlobal]; role != api.UserRoleIBMSA && role != api.UserRoleImportStatus {
+	if !login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleIBMSA) &&
+		!login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus) {
+
 		login.timer.Reset(getUserTimeout(login.timeout))
 		login.lastAt = now
 		// on other controllers, if the token is already known, its login session timer is ticking based on the last request to other controllers.
@@ -823,18 +826,19 @@ func getAccessControl(w http.ResponseWriter, r *http.Request, op access.AccessOP
 	return acc, login
 }
 
-func authLog(ev share.TLogEvent, fullname, remote, session string, roles map[string]string, msg string) { //->
+// TODO: UserDomainRoles backward compatibility
+func authLog(ev share.TLogEvent, fullname, remote, session string, roles map[string][]string, msg string) { //->
 	clog := share.CLUSEventLog{
-		Event:          ev,
-		HostID:         localDev.Host.ID,
-		HostName:       localDev.Host.Name,
-		ControllerID:   localDev.Ctrler.ID,
-		ControllerName: localDev.Ctrler.Name,
-		ReportedAt:     time.Now().UTC(),
-		User:           fullname,
-		UserRoles:      roles,
-		UserAddr:       remote,
-		UserSession:    session,
+		Event:           ev,
+		HostID:          localDev.Host.ID,
+		HostName:        localDev.Host.Name,
+		ControllerID:    localDev.Ctrler.ID,
+		ControllerName:  localDev.Ctrler.Name,
+		ReportedAt:      time.Now().UTC(),
+		User:            fullname,
+		UserDomainRoles: roles,
+		UserAddr:        remote,
+		UserSession:     session,
 	}
 
 	if msg != "" {
@@ -963,7 +967,7 @@ func lookupShadowUser(server, provider, username, userid, email, role string, ro
 	return newUser, true
 }
 
-func loginUser(user *share.CLUSUser, masterRoles access.DomainRole, masterDomainsPermits access.DomainPermissions,
+func loginUser(user *share.CLUSUser, masterRoles access.DomainRoles, masterDomainsPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser, fedRole string, sso *SsoSession) (*loginSession, int) {
 
 	// 1. When a cluster is promoted to master cluster, the default admin user is automatically assigned fedAdmin role
@@ -975,7 +979,7 @@ func loginUser(user *share.CLUSUser, masterRoles access.DomainRole, masterDomain
 	// 7. Only interactive login with fedAdmin role on master cluster can access joint clusters
 	// 8. when an interactive fedAdmin login on master cluster access joint clusters, the remote token on joint cluster has admin role
 	// 9. when federal rules are deployed to joint clusters, there is no access control checking on joint clusters
-	roles := make(map[string]string)                // access.DomainRole
+	roles := make(map[string][]string)              // access.DomainRole
 	permits := make(map[string]share.NvPermissions) // access.DomainPermissions
 	if mainSessionID != _interactiveSessionID && !strings.HasPrefix(mainSessionID, _rancherSessionPrefix) {
 		// meaning it's a remote federal login from master cluster
@@ -995,10 +999,10 @@ func loginUser(user *share.CLUSUser, masterRoles access.DomainRole, masterDomain
 		// Convert role->domains to domain->role
 		for role, domains := range user.RoleDomains {
 			for _, d := range domains {
-				roles[d] = role
+				roles[d] = append(roles[d], role)
 			}
 		}
-		roles[access.AccessDomainGlobal] = user.Role
+		roles[access.AccessDomainGlobal] = user.Roles
 
 		// Convert permissions->domains to domain->permissions. for Rancher SSO only
 		for _, permitsDomains := range user.ExtraPermitsDomains {
@@ -1408,7 +1412,7 @@ func jwtValidateFedJoinTicket(encryptedTicket, secret string) error {
 }
 
 // permits is for Rancher SSO only
-func jwtGenerateToken(user *share.CLUSUser, domainRoles access.DomainRole, extraDomainPermits access.DomainPermissions,
+func jwtGenerateToken(user *share.CLUSUser, domainRoles access.DomainRoles, extraDomainPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser string, sso *SsoSession) (string, string, *tokenClaim) {
 
 	id := utils.GetRandomID(idLength, "")
@@ -1441,16 +1445,16 @@ func jwtGenerateToken(user *share.CLUSUser, domainRoles access.DomainRole, extra
 		c.NameID = sso.SAMLNameID
 		c.SessionIndex = sso.SAMLSessionIndex
 	}
-	if r, ok := domainRoles[access.AccessDomainGlobal]; ok && (r == api.UserRoleIBMSA || r == api.UserRoleImportStatus) && len(domainRoles) == 1 {
-		if r == api.UserRoleIBMSA {
-			c.Timeout = uint32(30 * 60) // jwtIbmSaTokenLife, 30 minutes
-			c.StandardClaims.ExpiresAt = now.Add(jwtIbmSaTokenLife).Unix()
-		} else {
-			c.Timeout = uint32(10 * 60) // jwtImportStatusTokenLife, 10 minutes
-			c.StandardClaims.ExpiresAt = now.Add(jwtImportStatusTokenLife).Unix()
-		}
+
+	if domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleIBMSA) {
+		c.Timeout = uint32(30 * 60) // jwtIbmSaTokenLife, 30 minutes
+		c.StandardClaims.ExpiresAt = now.Add(jwtIbmSaTokenLife).Unix()
+	} else if domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus) {
+		c.Timeout = uint32(10 * 60) // jwtImportStatusTokenLife, 10 minutes
+		c.StandardClaims.ExpiresAt = now.Add(jwtImportStatusTokenLife).Unix()
+	} else {
+		c.StandardClaims.IssuedAt = now.Add(_halfHourBefore).Unix() // so that token won't be invalidated among controllers because of system time diff & iat
 	}
-	c.StandardClaims.IssuedAt = now.Add(_halfHourBefore).Unix() // so that token won't be invalidated among controllers because of system time diff & iat
 
 	// Validate token
 	jwtCert := GetJWTSigningKey()
@@ -1524,6 +1528,11 @@ func jwtGenFedMasterToken(user *share.CLUSUser, login *loginSession, clusterID, 
 	//installID, _ := clusHelper.GetInstallationID()	// no need because it's not verified for master token(multi-clusters)
 	now := time.Now()
 
+	roles := map[string][]string{}
+	for domain, role := range user.RemoteRolePermits.DomainRole {
+		roles[domain] = []string{role}
+	}
+
 	c := tokenClaim{
 		Fullname:        user.Fullname,
 		Username:        user.Username,
@@ -1533,7 +1542,7 @@ func jwtGenFedMasterToken(user *share.CLUSUser, login *loginSession, clusterID, 
 		MainSessionID:   login.id,
 		MainSessionUser: login.fullname,
 		Timeout:         user.Timeout,
-		Roles:           user.RemoteRolePermits.DomainRole,
+		Roles:           roles,
 		ExtraPermits:    user.RemoteRolePermits.ExtraPermits,
 		StandardClaims: jwt.StandardClaims{
 			Id: id,
@@ -1604,6 +1613,7 @@ func getAuthServersInOrder(acc *access.AccessControl) []*share.CLUSServer {
 	return servers
 }
 
+// TODO: Combine the permission
 // At this time, the user has already authenticated by the remote server. The server also
 // tells us the user's group membership on the server. We lookup role from the group mapping.
 func getRoleFromGroupMapping(memberof []string, groupRoleMappings []*share.GroupRoleMapping, defaultRole string,
@@ -2127,11 +2137,15 @@ func fedMasterTokenAuth(userName, masterToken, secret string) (*share.CLUSUser, 
 	user.Timeout = claims.Timeout
 
 	roleDomains := make(map[string][]string)
-	for d, role := range claims.Roles {
+	for d, roles := range claims.Roles {
 		if d == access.AccessDomainGlobal {
-			user.Role = role
-		} else if role != api.UserRoleNone {
-			roleDomains[role] = append(roleDomains[role], d)
+			user.Roles = roles
+		} else {
+			for _, role := range roles {
+				if role != api.UserRoleNone {
+					roleDomains[role] = append(roleDomains[role], d)
+				}
+			}
 		}
 	}
 	user.RoleDomains = roleDomains

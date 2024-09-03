@@ -917,15 +917,16 @@ type CLUSRemoteRolePermits struct {
 }
 
 type CLUSUser struct {
-	Fullname            string                 `json:"fullname"`
-	Username            string                 `json:"username"`
-	PasswordHash        string                 `json:"password_hash"`
-	PwdResetTime        time.Time              `json:"pwd_reset_time"`
-	PwdHashHistory      []string               `json:"pwd_hash_history"` // not including the current password's hash
-	Domain              string                 `json:"domain"`           // This is not used. Other 'domain' maps to namespace, this is not.
-	Server              string                 `json:"server"`
-	EMail               string                 `json:"email"`
-	Role                string                 `json:"role"`
+	Fullname       string    `json:"fullname"`
+	Username       string    `json:"username"`
+	PasswordHash   string    `json:"password_hash"`
+	PwdResetTime   time.Time `json:"pwd_reset_time"`
+	PwdHashHistory []string  `json:"pwd_hash_history"` // not including the current password's hash
+	Domain         string    `json:"domain"`           // This is not used. Other 'domain' maps to namespace, this is not.
+	Server         string    `json:"server"`
+	EMail          string    `json:"email"`
+	//Role                string                 `json:"role"`
+	Roles               []string               `json:"roles"`
 	RoleOverride        bool                   `json:"role_oride"` // Used for shadow user
 	Timeout             uint32                 `json:"timeout"`
 	Locale              string                 `json:"locale"`
@@ -1492,29 +1493,31 @@ const (
 	CLUSAuditComplianceContainerFileBenchViolation
 )
 
+// TODO: backward compatibility
 type CLUSEventLog struct {
-	Event          TLogEvent                `json:"event"`
-	HostID         string                   `json:"host_id"`
-	HostName       string                   `json:"host_name"`
-	ControllerID   string                   `json:"controller_id"`
-	ControllerName string                   `json:"controller_name"`
-	AgentID        string                   `json:"agent_id"`
-	AgentName      string                   `json:"agent_name"`
-	WorkloadID     string                   `json:"workload_id"`
-	WorkloadName   string                   `json:"workload_name"`
-	ReportedAt     time.Time                `json:"reported_at"`
-	User           string                   `json:"user"`
-	UserRoles      map[string]string        `json:"user_roles"`       // domain -> role
-	UserPermits    map[string]NvPermissions `json:"user_permissions"` // domain -> permissions
-	UserAddr       string                   `json:"user_addr"`
-	UserSession    string                   `json:"user_session"`
-	RESTMethod     string                   `json:"rest_method,omitempty"`
-	RESTRequest    string                   `json:"rest_request,omitempty"`
-	RESTBody       string                   `json:"rest_body,omitempty"`
-	EnforcerLimit  int                      `json:"enforcer_limit,omitempty"`
-	LicenseExpire  time.Time                `json:"license_expire,omitempty"`
-	GroupName      string                   `json:"group_name"`
-	Msg            string                   `json:"message"`
+	Event          TLogEvent `json:"event"`
+	HostID         string    `json:"host_id"`
+	HostName       string    `json:"host_name"`
+	ControllerID   string    `json:"controller_id"`
+	ControllerName string    `json:"controller_name"`
+	AgentID        string    `json:"agent_id"`
+	AgentName      string    `json:"agent_name"`
+	WorkloadID     string    `json:"workload_id"`
+	WorkloadName   string    `json:"workload_name"`
+	ReportedAt     time.Time `json:"reported_at"`
+	User           string    `json:"user"`
+	//UserRoles       map[string]string        `json:"user_roles"`        // domain -> role
+	UserDomainRoles map[string][]string      `json:"user_domain_roles"` // domain -> roles
+	UserPermits     map[string]NvPermissions `json:"user_permissions"`  // domain -> permissions
+	UserAddr        string                   `json:"user_addr"`
+	UserSession     string                   `json:"user_session"`
+	RESTMethod      string                   `json:"rest_method,omitempty"`
+	RESTRequest     string                   `json:"rest_request,omitempty"`
+	RESTBody        string                   `json:"rest_body,omitempty"`
+	EnforcerLimit   int                      `json:"enforcer_limit,omitempty"`
+	LicenseExpire   time.Time                `json:"license_expire,omitempty"`
+	GroupName       string                   `json:"group_name"`
+	Msg             string                   `json:"message"`
 }
 
 type CLUSThreatLog struct {

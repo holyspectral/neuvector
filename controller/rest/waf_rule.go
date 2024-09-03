@@ -315,8 +315,8 @@ func validateWafRuleConfig(list []api.RESTWafRule) error {
 	return nil
 }
 
-//lock is alreay hold when call this function
-//clusHelper.AcquireLock(share.CLUSLockPolicyKey, clusterLockWait)
+// lock is alreay hold when call this function
+// clusHelper.AcquireLock(share.CLUSLockPolicyKey, clusterLockWait)
 func createDefaultWafSensor() {
 	kv.CreateDefWafRules(true)
 	kv.CreatePreWafSensor(true)
@@ -1130,7 +1130,7 @@ func handlerWafImport(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 }
 
 // if there are multiple yaml documents(separated by "---" line) in the yaml file, only the first document is parsed for import
-func importWaf(scope string, loginDomainRoles access.DomainRole, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
+func importWaf(scope string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)
 

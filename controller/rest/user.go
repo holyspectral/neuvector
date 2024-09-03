@@ -694,7 +694,7 @@ func handlerUserConfig(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 						// On master cluster, only users with fedAdmin role can:
 						// 1. assign/remove fedAdmin/fedReader role to/from users
 						// 2. delete users who have fedAdmin/fedReader role
-						if (login.domainRoles[access.AccessDomainGlobal] != api.UserRoleFedAdmin) && (fedRoles.Contains(newRole) || fedRoles.Contains(user.Role)) {
+						if !login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleFedAdmin) && (fedRoles.Contains(newRole) || fedRoles.Contains(user.Role)) {
 							err = common.ErrObjectAccessDenied
 						}
 					}

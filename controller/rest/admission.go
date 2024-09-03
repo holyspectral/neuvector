@@ -1498,7 +1498,7 @@ func handlerAdmCtrlImport(w http.ResponseWriter, r *http.Request, ps httprouter.
 	_importHandler(w, r, tid, share.IMPORT_TYPE_ADMCTRL, share.PREFIX_IMPORT_ADMCTRL, acc, login)
 }
 
-func importAdmCtrl(scope string, loginDomainRoles access.DomainRole, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
+func importAdmCtrl(scope string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)
 

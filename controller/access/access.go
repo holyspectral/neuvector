@@ -387,6 +387,7 @@ func clusUserRoleToREST(name string, r *share.CLUSUserRoleInternal) *api.RESTUse
 	return role
 }
 
+// TODO: support multiple roles
 // get the role's allowed permission on a domain(because some permissions do not apply to namespaces)
 func getRolePermitValues(roleName, domain string) (uint32, uint32) {
 	rolesMutex.RLock()
@@ -417,6 +418,19 @@ func getRolePermitValues(roleName, domain string) (uint32, uint32) {
 		}
 	}
 	return 0, 0
+}
+
+func getRolesPermitValues(roles []string, domain string) (readPermits uint32, writePermits uint32) {
+	rolesMutex.RLock()
+	defer rolesMutex.RUnlock()
+
+	for _, role := range roles {
+		r, w := getRolePermitValues(role, domain)
+		readPermits |= r
+		writePermits |= w
+	}
+
+	return
 }
 
 // get the permission's allowed permission on a domain(because some permissions do not apply to namespaces)
@@ -1362,17 +1376,40 @@ const (
 
 const AccessDomainGlobal = ""
 
-type DomainRole map[string]string // domain -> role
+type DomainRoles map[string][]string // domain -> roles
 
 type DomainPermissions map[string]share.NvPermissions // domain -> permissions (for Rancher SSO)
 
+// TODO: would it be too time-consuming?
+func (drs DomainRoles) ContainsDomainRole(domain string, role string) bool {
+	if drs != nil {
+		if roles, ok := drs[domain]; ok {
+			for _, r := range roles {
+				if r == role {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (drs DomainRoles) ConvertToLegacyDomainRole() map[string]string {
+	ret := map[string]string{}
+	for domain, roles := range drs {
+		ret[domain] = roles[0]
+	}
+	return ret
+}
+
+// TODO: Get permissions from multiple roles.
 // check if for global domain it has the specified permissions. required permission value being 0 means we don't care about that permission
-func (drs DomainRole) hasGlobalPermissions(readPermsRequired, writePermsRequired uint32) bool {
+func (drs DomainRoles) hasGlobalPermissions(readPermsRequired, writePermsRequired uint32) bool {
 	if len(drs) > 0 {
 		readPermsRequired &= share.PERMS_FED_READ
 		writePermsRequired &= share.PERMS_FED_WRITE
-		if role, ok := drs[AccessDomainGlobal]; ok {
-			readPermits, writePermits := getRolePermitValues(role, AccessDomainGlobal)
+		if roles, ok := drs[AccessDomainGlobal]; ok {
+			readPermits, writePermits := getRolesPermitValues(roles, AccessDomainGlobal)
 			if (readPermsRequired == (readPermits & readPermsRequired)) && (writePermsRequired == (writePermits & writePermsRequired)) {
 				return true
 			}
@@ -1382,10 +1419,10 @@ func (drs DomainRole) hasGlobalPermissions(readPermsRequired, writePermsRequired
 }
 
 // check if it has the specified permissions in any domain. required permission value being 0 means we don't care about that permission
-func (drs DomainRole) hasPermissions(_readPermitsRequired, _writePermsRequired uint32) bool {
+func (drs DomainRoles) hasPermissions(_readPermitsRequired, _writePermsRequired uint32) bool {
 	if len(drs) > 0 {
 		var readPermitsRequired, writePermsRequired uint32
-		for domain, role := range drs {
+		for domain, roles := range drs {
 			if domain == AccessDomainGlobal {
 				readPermitsRequired = _readPermitsRequired & share.PERMS_FED_READ
 				writePermsRequired = _writePermsRequired & share.PERMS_FED_WRITE
@@ -1393,7 +1430,7 @@ func (drs DomainRole) hasPermissions(_readPermitsRequired, _writePermsRequired u
 				readPermitsRequired = _readPermitsRequired & share.PERMS_DOMAIN_READ
 				writePermsRequired = _writePermsRequired & share.PERMS_DOMAIN_WRITE
 			}
-			readPermits, writePermits := getRolePermitValues(role, domain)
+			readPermits, writePermits := getRolesPermitValues(roles, domain)
 			if (readPermitsRequired == (readPermits & readPermitsRequired)) && (writePermsRequired == (writePermits & writePermsRequired)) {
 				return true
 			}
@@ -1436,8 +1473,8 @@ func (dps DomainPermissions) hasPermissions(_readPermitsRequired, _writePermsReq
 
 type AccessControl struct {
 	op     AccessOP
-	roles  DomainRole // domain -> role
-	wRoles DomainRole // special domain(containing wildcard char) -> role
+	roles  DomainRoles // domain -> role
+	wRoles DomainRoles // special domain(containing wildcard char) -> role
 
 	extraPermits DomainPermissions // domain -> permissions. only for Rancher SSO
 
@@ -1453,8 +1490,8 @@ type AccessControl struct {
 func NewAdminAccessControl() *AccessControl {
 	return &AccessControl{
 		op:            AccessOPWrite,
-		roles:         map[string]string{AccessDomainGlobal: api.UserRoleAdmin},
-		wRoles:        map[string]string{},
+		roles:         map[string][]string{AccessDomainGlobal: []string{api.UserRoleAdmin}},
+		wRoles:        map[string][]string{},
 		apiCategoryID: CONST_API_SKIP,
 	}
 }
@@ -1463,8 +1500,8 @@ func NewAdminAccessControl() *AccessControl {
 func NewFedAdminAccessControl() *AccessControl {
 	return &AccessControl{
 		op:            AccessOPWrite,
-		roles:         map[string]string{AccessDomainGlobal: api.UserRoleFedAdmin},
-		wRoles:        map[string]string{},
+		roles:         map[string][]string{AccessDomainGlobal: []string{api.UserRoleFedAdmin}},
+		wRoles:        map[string][]string{},
 		apiCategoryID: CONST_API_SKIP,
 	}
 }
@@ -1472,14 +1509,14 @@ func NewFedAdminAccessControl() *AccessControl {
 func NewReaderAccessControl() *AccessControl {
 	return &AccessControl{
 		op:            AccessOPRead,
-		roles:         map[string]string{AccessDomainGlobal: api.UserRoleReader},
-		wRoles:        map[string]string{},
+		roles:         map[string][]string{AccessDomainGlobal: []string{api.UserRoleReader}},
+		wRoles:        map[string][]string{},
 		apiCategoryID: CONST_API_SKIP,
 	}
 }
 
-func NewAccessControl(r *http.Request, op AccessOP, roles DomainRole, extraPermits DomainPermissions) *AccessControl {
-	wRoles := map[string]string{}
+func NewAccessControl(r *http.Request, op AccessOP, roles DomainRoles, extraPermits DomainPermissions) *AccessControl {
+	wRoles := map[string][]string{}
 	for domain, role := range roles {
 		if strings.Contains(domain, "*") {
 			wRoles[domain] = role
@@ -1526,9 +1563,14 @@ func (acc *AccessControl) BoostPermissions(toBoost uint32) *AccessControl {
 	}
 }
 
-func (acc *AccessControl) isDomainRoleAllowedToAccess(role, domain string, readPermitsRequired, writePermitsRequired uint32, accNotFromCaller bool) bool {
-	readPermits, writePermits := getRolePermitValues(role, domain)
-	if domain != AccessDomainGlobal || role != "" {
+func (acc *AccessControl) isDomainRoleAllowedToAccess(roles []string, domain string, readPermitsRequired, writePermitsRequired uint32, accNotFromCaller bool) bool {
+	readPermits, writePermits := getRolesPermitValues(roles, domain)
+	// TODO: think about this special case
+	noRole := false
+	if len(roles) == 1 && roles[0] == "" {
+		noRole = true
+	}
+	if domain != AccessDomainGlobal || noRole {
 		// Boost permissions only when the caller's global role is not None. Otherwise namespace user could be boosted to see other domain's objects.
 		// The purpose of permissions boost is to allow caller to see other types of objects, not to see other domain's objects.
 		readPermits |= acc.boostPermissions
@@ -1585,8 +1627,8 @@ func (acc *AccessControl) isOneAccessAllowed(domain string, readPermitsRequired,
 	// eg. return []string{AccessAllAsReader}, nil
 	if domain == share.AccessAllAsReader {
 		// the resource can be read by global/namespace users with specific permissions from its global/domain role, only global user with specific permissions can write
-		for d, role := range acc.roles { // acc has 'role' on namespace 'd'
-			readPermits, writePermits := getRolePermitValues(role, domain)
+		for d, roles := range acc.roles { // acc has 'role' on namespace 'd'
+			readPermits, writePermits := getRolesPermitValues(roles, domain)
 			readPermits |= acc.boostPermissions
 			writePermits |= acc.boostPermissions
 			if d == AccessDomainGlobal {
@@ -1613,8 +1655,8 @@ func (acc *AccessControl) isOneAccessAllowed(domain string, readPermitsRequired,
 	// keys in acc.roles may contain wildcard character as well
 	// 1. acc.roles contains a key/value for the domain. The value is used to do role/permission matching
 	// 2. acc.roles does not contain a key/value for the domain. skip
-	if role, ok := acc.roles[domain]; ok {
-		if acc.isDomainRoleAllowedToAccess(role, domain, readPermitsRequired, writePermitsRequired, accNotFromCaller) {
+	if roles, ok := acc.roles[domain]; ok {
+		if acc.isDomainRoleAllowedToAccess(roles, domain, readPermitsRequired, writePermitsRequired, accNotFromCaller) {
 			return true
 		}
 	}
@@ -1622,10 +1664,10 @@ func (acc *AccessControl) isOneAccessAllowed(domain string, readPermitsRequired,
 	// keys(user's domains) in acc.wRoles contain wildcard character. iterate thru all keys in acc.wRoles to see if the param domain is a subset of the key
 	// 1. domain(of resource object) is subset of a key. Use the key's value to do role/permission matching
 	// 2. domain(of resource object) is not subset of a key. skip this key and continue on next key
-	for wDomain, role := range acc.wRoles {
+	for wDomain, roles := range acc.wRoles {
 		if domain != AccessDomainGlobal { // { role -> "*" namespace } is role to namespace mapping. { role -> "*" } still cannot cover global namespace("") !!
 			if share.EqualMatch(wDomain, domain) { // if param domain matches a wildcard domain
-				if acc.isDomainRoleAllowedToAccess(role, domain, readPermitsRequired, writePermitsRequired, accNotFromCaller) {
+				if acc.isDomainRoleAllowedToAccess(roles, domain, readPermitsRequired, writePermitsRequired, accNotFromCaller) {
 					return true
 				}
 			}
@@ -1676,8 +1718,8 @@ func (acc *AccessControl) IsFedAdmin() bool {
 // returns true only when the access control object is created for user whose global role has the same permissions as fedReader role for read
 func (acc *AccessControl) IsFedReader() bool {
 	var readPermsRequired uint32 = share.PERMS_FED_READ
-	if role, ok := acc.roles[AccessDomainGlobal]; ok {
-		readPermits, writePermits := getRolePermitValues(role, AccessDomainGlobal)
+	if roles, ok := acc.roles[AccessDomainGlobal]; ok {
+		readPermits, writePermits := getRolesPermitValues(roles, AccessDomainGlobal)
 		if (readPermsRequired == (readPermits & readPermsRequired)) && (writePermits == 0) {
 			return true
 		}
@@ -1753,16 +1795,16 @@ func (acc *AccessControl) GetAdminDomains(writePermitsRequired uint32) []string 
 	/*if acc.roles.IsClusterAdmin() || acc.roles.IsFedAdmin() {
 		return nil
 	} else*/ //->
-	if role, ok := acc.roles[AccessDomainGlobal]; ok {
-		_, writePermits := getRolePermitValues(role, AccessDomainGlobal)
+	if roles, ok := acc.roles[AccessDomainGlobal]; ok {
+		_, writePermits := getRolesPermitValues(roles, AccessDomainGlobal)
 		if writePermitsRequired == (writePermits & writePermitsRequired) {
 			return nil
 		}
 	}
 
 	domains := utils.NewSet()
-	for domain, role := range acc.roles {
-		_, writePermits := getRolePermitValues(role, domain)
+	for domain, roles := range acc.roles {
+		_, writePermits := getRolesPermitValues(roles, domain)
 		if writePermitsRequired == (writePermits & writePermitsRequired) {
 			domains.Add(domain)
 		}
@@ -1863,16 +1905,6 @@ func (acc *AccessControl) AuthorizeOwn(obj share.AccessObject, f share.GetAccess
 	// }
 
 	return authz
-}
-
-func (acc *AccessControl) GetRoleDomains() map[string][]string {
-	var roleDomains = make(map[string][]string)
-
-	for d, role := range acc.roles {
-		roleDomains[role] = append(roleDomains[role], d)
-	}
-
-	return roleDomains
 }
 
 func ContainsNonSupportRole(role string) bool {

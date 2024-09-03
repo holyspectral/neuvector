@@ -422,8 +422,8 @@ func getDlpRuleID(dlpsensor *share.CLUSDlpSensor) uint32 {
 	}
 }
 
-//lock is alreay hold when call this function
-//clusHelper.AcquireLock(share.CLUSLockPolicyKey, clusterLockWait)
+// lock is alreay hold when call this function
+// clusHelper.AcquireLock(share.CLUSLockPolicyKey, clusterLockWait)
 func CreatePredefaultSensor() {
 	kv.CreateDefDlpRules(true)
 	kv.CreatePreDlpSensor(true)
@@ -1699,7 +1699,7 @@ func handlerDlpImport(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 }
 
 // if there are multiple yaml documents(separated by "---" line) in the yaml file, only the first document is parsed for import
-func importDlp(scope string, loginDomainRoles access.DomainRole, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
+func importDlp(scope string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)
 

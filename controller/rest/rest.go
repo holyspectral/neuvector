@@ -978,11 +978,11 @@ func restEventLog(r *http.Request, body []byte, login *loginSession, fields rest
 	if login != nil {
 		if login.mainSessionID == _interactiveSessionID || strings.HasPrefix(login.mainSessionID, _rancherSessionPrefix) {
 			clog.User = login.fullname
-			clog.UserRoles = login.domainRoles
+			clog.UserDomainRoles = login.domainRoles
 			clog.UserPermits = login.extraDomainPermits
 		} else {
 			userRole := api.UserRoleFedAdmin
-			if r, ok := login.domainRoles[access.AccessDomainGlobal]; ok && r == api.UserRoleReader {
+			if login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleReader) {
 				userRole = api.UserRoleFedReader
 			}
 			clog.User = fmt.Sprintf("%s (primary cluster)", login.mainSessionUser)

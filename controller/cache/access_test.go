@@ -26,7 +26,7 @@ func TestAccessResource(t *testing.T) {
 	wlCacheMap[wl2.ID] = &workloadCache{workload: &wl2, displayName: "container2"}
 
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/workload", nil)
-	acc := access.NewAccessControl(r, access.AccessOPRead, map[string]string{D1: api.UserRoleAdmin}, nil)
+	acc := access.NewAccessControl(r, access.AccessOPRead, map[string][]string{D1: []string{api.UserRoleAdmin}}, nil)
 	accReadAll := access.NewReaderAccessControl()
 
 	idlist := utils.NewSet()
@@ -65,7 +65,7 @@ func TestAccessGroup(t *testing.T) {
 	}
 
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/group", nil)
-	acc := access.NewAccessControl(r, access.AccessOPRead, map[string]string{D1: api.UserRoleAdmin}, nil)
+	acc := access.NewAccessControl(r, access.AccessOPRead, map[string][]string{D1: []string{api.UserRoleAdmin}}, nil)
 	accReadAll := access.NewReaderAccessControl()
 
 	gpsSlice := cacher.GetAllGroups(share.ScopeLocal, "", false, accReadAll)
@@ -155,25 +155,25 @@ func TestAccessPolicy(t *testing.T) {
 
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/policy/rule", nil)
 	// test
-	acc := access.NewAccessControl(r, access.AccessOPRead, map[string]string{"d1": api.UserRoleAdmin}, nil)
+	acc := access.NewAccessControl(r, access.AccessOPRead, map[string][]string{"d1": []string{api.UserRoleAdmin}}, nil)
 	n := cacher.GetPolicyRuleCount(acc)
 	if n != 3 {
 		t.Errorf("Expected group count 3, but got %d\n", n)
 	}
 
-	acc = access.NewAccessControl(r, access.AccessOPRead, map[string]string{"d2": api.UserRoleAdmin}, nil)
+	acc = access.NewAccessControl(r, access.AccessOPRead, map[string][]string{"d2": []string{api.UserRoleAdmin}}, nil)
 	n = cacher.GetPolicyRuleCount(acc)
 	if n != 2 {
 		t.Errorf("Expected group count 2, but got %d\n", n)
 	}
 
-	acc = access.NewAccessControl(r, access.AccessOPRead, map[string]string{"d3": api.UserRoleAdmin}, nil)
+	acc = access.NewAccessControl(r, access.AccessOPRead, map[string][]string{"d3": []string{api.UserRoleAdmin}}, nil)
 	n = cacher.GetPolicyRuleCount(acc)
 	if n != 1 {
 		t.Errorf("Expected group count 1, but got %d\n", n)
 	}
 
-	acc = access.NewAccessControl(r, access.AccessOPRead, map[string]string{"d4": api.UserRoleAdmin}, nil)
+	acc = access.NewAccessControl(r, access.AccessOPRead, map[string][]string{"d4": []string{api.UserRoleAdmin}}, nil)
 	n = cacher.GetPolicyRuleCount(acc)
 	if n != 0 {
 		t.Errorf("Expected group count 0, but got %d\n", n)

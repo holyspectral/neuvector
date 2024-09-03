@@ -2277,17 +2277,17 @@ func handlerSystemGetAlerts(w http.ResponseWriter, r *http.Request, ps httproute
 
 func configLog(ev share.TLogEvent, login *loginSession, msg string) {
 	clog := share.CLUSEventLog{
-		Event:          ev,
-		HostID:         localDev.Host.ID,
-		HostName:       localDev.Host.Name,
-		ControllerID:   localDev.Ctrler.ID,
-		ControllerName: localDev.Ctrler.Name,
-		ReportedAt:     time.Now().UTC(),
-		User:           login.fullname,
-		UserRoles:      login.domainRoles,
-		UserAddr:       login.remote,
-		UserSession:    login.id,
-		Msg:            msg,
+		Event:           ev,
+		HostID:          localDev.Host.ID,
+		HostName:        localDev.Host.Name,
+		ControllerID:    localDev.Ctrler.ID,
+		ControllerName:  localDev.Ctrler.Name,
+		ReportedAt:      time.Now().UTC(),
+		User:            login.fullname,
+		UserDomainRoles: login.domainRoles,
+		UserAddr:        login.remote,
+		UserSession:     login.id,
+		Msg:             msg,
 	}
 	evqueue.Append(&clog)
 }
@@ -2540,7 +2540,7 @@ func _importHandler(w http.ResponseWriter, r *http.Request, tid, importType, tem
 				restRespSuccess(w, r, &resp, acc, login, nil, "")
 				if importType == share.IMPORT_TYPE_CONFIG {
 					if importTask.Status == share.IMPORT_DONE {
-						if r, ok := login.domainRoles[access.AccessDomainGlobal]; ok && r == api.UserRoleImportStatus && len(login.domainRoles) == 1 {
+						if login.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus) && len(login.domainRoles) == 1 {
 							_kickLoginSessionByToken(utils.HashPassword(login.token))
 						}
 					}
@@ -2602,7 +2602,7 @@ func _importHandler(w http.ResponseWriter, r *http.Request, tid, importType, tem
 					Username: login.fullname,
 					Server:   login.server,
 				}
-				domainRoles := access.DomainRole{access.AccessDomainGlobal: api.UserRoleImportStatus}
+				domainRoles := access.DomainRoles{access.AccessDomainGlobal: []string{api.UserRoleImportStatus}}
 				_, tempToken, _ = jwtGenerateToken(user, domainRoles, nil, login.remote, login.mainSessionID, "", nil)
 			}
 
@@ -2705,7 +2705,7 @@ func handlerConfigImport(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	_importHandler(w, r, tid, share.IMPORT_TYPE_CONFIG, share.PREFIX_IMPORT_CONFIG, acc, login)
 }
 
-func postImportOp(err error, importTask share.CLUSImportTask, loginDomainRoles access.DomainRole, tempToken, importType string) {
+func postImportOp(err error, importTask share.CLUSImportTask, loginDomainRoles access.DomainRoles, tempToken, importType string) {
 	defer kv.SetImporting(0)
 
 	var msgToken string
