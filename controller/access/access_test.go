@@ -63,7 +63,7 @@ func TestGlobalAccess(t *testing.T) {
 	var obj globalObject
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/controller/12345", nil)
 
-	acc := NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc := NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleAdmin},
 	}, nil)
 	authz := acc.Authorize(&obj, nil)
@@ -71,7 +71,7 @@ func TestGlobalAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -79,13 +79,13 @@ func TestGlobalAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{}, nil)
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{}, nil)
 	authz = acc.Authorize(&obj, nil)
 	if authz != false {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -93,7 +93,7 @@ func TestGlobalAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{}, nil)
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{}, nil)
 	authz = acc.Authorize(&obj, nil)
 	if authz != false {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
@@ -108,7 +108,7 @@ func TestDomainAccess(t *testing.T) {
 	var obj domainObject
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/workload/12345", nil)
 
-	acc := NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc := NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleAdmin},
 	}, nil)
 	authz := acc.Authorize(&obj, nil)
@@ -116,7 +116,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -124,13 +124,13 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{}, nil)
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{}, nil)
 	authz = acc.Authorize(&obj, nil)
 	if authz != false {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -138,7 +138,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"":    []string{api.UserRoleReader},
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
@@ -147,7 +147,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -155,7 +155,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"":    []string{api.UserRoleReader},
 		"ns2": []string{api.UserRoleAdmin},
 	}, nil)
@@ -164,7 +164,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -172,7 +172,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -180,7 +180,7 @@ func TestDomainAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns2": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -207,7 +207,7 @@ func TestWildcardDomainAccess(t *testing.T) {
 	for _, op := range []AccessOP{AccessOPWrite, AccessOPRead} {
 		domains := []string{"", "ns-dev-*", "ns-dev-**", "ns1"}
 		for _, domain := range domains {
-			acc := NewAccessControl(req, op, DomainRoles{
+			acc := NewAccessControl(req, op, DomainRolesV2{
 				domain: []string{userRole1.Name},
 			}, nil)
 			authz := acc.Authorize(&obj1, nil)
@@ -222,7 +222,7 @@ func TestWildcardDomainAccess(t *testing.T) {
 			}
 		}
 		for _, domain := range domains {
-			acc := NewAccessControl(req, op, DomainRoles{
+			acc := NewAccessControl(req, op, DomainRolesV2{
 				domain:      []string{userRole1.Name},
 				"default-2": []string{userRole1.Name},
 			}, nil)
@@ -240,7 +240,7 @@ func TestWildcardDomainAccess(t *testing.T) {
 
 		domains = []string{"ns-dev", "ns-dev-A", "ns-dev-", "ns-dev-*-*", "ns-dev-b1-*", "ns", "ns2", "ns11"}
 		for _, domain := range domains {
-			acc := NewAccessControl(req, op, DomainRoles{
+			acc := NewAccessControl(req, op, DomainRolesV2{
 				domain: []string{userRole1.Name},
 			}, nil)
 			authz := acc.Authorize(&obj1, nil)
@@ -249,7 +249,7 @@ func TestWildcardDomainAccess(t *testing.T) {
 			}
 		}
 		for _, domain := range domains {
-			acc := NewAccessControl(req, op, DomainRoles{
+			acc := NewAccessControl(req, op, DomainRolesV2{
 				domain:      []string{userRole1.Name},
 				"default-2": []string{userRole1.Name},
 			}, nil)
@@ -259,7 +259,7 @@ func TestWildcardDomainAccess(t *testing.T) {
 			}
 		}
 		for _, domain := range domains {
-			acc := NewAccessControl(req, op, DomainRoles{
+			acc := NewAccessControl(req, op, DomainRolesV2{
 				domain: []string{userRole1.Name},
 				"":     []string{userRole1.Name},
 			}, nil)
@@ -538,7 +538,7 @@ func TestDualAccess(t *testing.T) {
 	var obj dualObject
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/scan/workload/12345", nil)
 
-	acc := NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc := NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleAdmin},
 	}, nil)
 	authz := acc.Authorize(&obj, nil)
@@ -546,7 +546,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -554,7 +554,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -562,7 +562,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -570,7 +570,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 		"ns2": []string{api.UserRoleAdmin},
 	}, nil)
@@ -579,7 +579,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 		"ns2": []string{api.UserRoleReader},
 	}, nil)
@@ -588,7 +588,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 		"ns2": []string{api.UserRoleReader},
 	}, nil)
@@ -597,7 +597,7 @@ func TestDualAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleReader},
 		"ns2": []string{api.UserRoleReader},
 	}, nil)
@@ -607,7 +607,7 @@ func TestDualAccess(t *testing.T) {
 	}
 
 	// For read access, readable to one side of domain list is enough
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns2": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -652,7 +652,7 @@ func TestOwnAccess(t *testing.T) {
 	obj := newOwnObject(nil)
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/user/12345", nil)
 
-	acc := NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc := NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleAdmin},
 	}, nil)
 	authz := acc.AuthorizeOwn(obj, nil)
@@ -660,7 +660,7 @@ func TestOwnAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.AuthorizeOwn(obj, nil)
@@ -670,7 +670,7 @@ func TestOwnAccess(t *testing.T) {
 
 	obj = newOwnObject([]string{"ns1", "ns2"})
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.AuthorizeOwn(obj, nil)
@@ -678,7 +678,7 @@ func TestOwnAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.AuthorizeOwn(obj, nil)
@@ -686,7 +686,7 @@ func TestOwnAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
 	authz = acc.AuthorizeOwn(obj, nil)
@@ -694,7 +694,7 @@ func TestOwnAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 		"ns2": []string{api.UserRoleReader},
 	}, nil)
@@ -703,7 +703,7 @@ func TestOwnAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 		"ns2": []string{api.UserRoleAdmin},
 	}, nil)
@@ -731,7 +731,7 @@ func TestWildcardOwnAccess(t *testing.T) {
 	for _, op := range []AccessOP{AccessOPWrite, AccessOPRead} {
 		domainss := [][]string{[]string{""}, []string{"ns*"}, []string{"ns-*", "ns1"}, []string{"ns1", "ns-qa-*", "ns-dev-*"}}
 		for _, domains := range domainss {
-			domainRole := DomainRoles{}
+			domainRole := DomainRolesV2{}
 			for _, domain := range domains {
 				domainRole[domain] = []string{userRole1.Name}
 			}
@@ -746,7 +746,7 @@ func TestWildcardOwnAccess(t *testing.T) {
 	for _, op := range []AccessOP{AccessOPWrite, AccessOPRead} {
 		domainss := [][]string{[]string{"ns-dev-*"}, []string{"ns1*"}, []string{"ns-dev-*", "ns2"}, []string{"ns-dev1-*", "ns1"}}
 		for _, domains := range domainss {
-			domainRole := DomainRoles{}
+			domainRole := DomainRolesV2{}
 			for _, domain := range domains {
 				domainRole[domain] = []string{userRole1.Name}
 			}
@@ -966,7 +966,7 @@ func TestAllReaderAccess(t *testing.T) {
 	var obj allReaderObject
 	r, _ := http.NewRequest(http.MethodGet, "https://10.1.1.1/v1/scan/registry/12345", nil)
 
-	acc := NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc := NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleAdmin},
 	}, nil)
 	authz := acc.Authorize(&obj, nil)
@@ -974,7 +974,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -982,7 +982,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -990,7 +990,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"": []string{api.UserRoleCIOps},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -998,7 +998,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -1006,7 +1006,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPWrite, DomainRoles{
+	acc = NewAccessControl(r, AccessOPWrite, DomainRolesV2{
 		"ns1": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -1014,7 +1014,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleAdmin},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -1022,7 +1022,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleReader},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -1030,7 +1030,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{
 		"ns1": []string{api.UserRoleCIOps},
 	}, nil)
 	authz = acc.Authorize(&obj, nil)
@@ -1038,7 +1038,7 @@ func TestAllReaderAccess(t *testing.T) {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)
 	}
 
-	acc = NewAccessControl(r, AccessOPRead, DomainRoles{}, nil)
+	acc = NewAccessControl(r, AccessOPRead, DomainRolesV2{}, nil)
 	authz = acc.Authorize(&obj, nil)
 	if authz != false {
 		t.Errorf("Authz fail: op=%v, roles=%+v", acc.op, acc.roles)

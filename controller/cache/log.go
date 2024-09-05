@@ -1476,6 +1476,7 @@ func eventLog2API(ev *share.CLUSEventLog) *api.Event {
 	rlog.WorkloadService = wln.service
 	rlog.User = ev.User
 	rlog.UserRoles = ev.UserRoles
+	rlog.UserDomainRoles = ev.UserDomainRoles
 	rlog.UserAddr = ev.UserAddr
 	rlog.UserSession = ev.UserSession
 	rlog.RESTMethod = ev.RESTMethod

@@ -42,6 +42,7 @@ func createDefaultAdminUser() {
 		PasswordHash: utils.HashPassword(common.DefaultAdminPass),
 		Domain:       "",
 		Role:         api.UserRoleAdmin,
+		Roles:        []string{api.UserRoleAdmin},
 		Timeout:      common.DefaultIdleTimeout,
 		RoleDomains:  make(map[string][]string),
 		Locale:       common.OEMDefaultUserLocale,

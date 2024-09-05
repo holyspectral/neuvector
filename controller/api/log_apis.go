@@ -233,24 +233,25 @@ const (
 
 type Event struct {
 	LogCommon
-	ControllerID    string            `json:"controller_id"`
-	ControllerName  string            `json:"controller_name"`
-	WorkloadID      string            `json:"workload_id"`
-	WorkloadName    string            `json:"workload_name"`
-	WorkloadDomain  string            `json:"workload_domain"`
-	WorkloadImage   string            `json:"workload_image"`
-	WorkloadService string            `json:"workload_service"`
-	Category        string            `json:"category"`
-	User            string            `json:"user"`
-	UserRoles       map[string]string `json:"user_roles"` // domain -> role
-	UserAddr        string            `json:"user_addr"`
-	UserSession     string            `json:"user_session"`
-	RESTMethod      string            `json:"rest_method,omitempty"`
-	RESTRequest     string            `json:"rest_request,omitempty"`
-	RESTBody        string            `json:"rest_body,omitempty"`
-	EnforcerLimit   int               `json:"enforcer_limit,omitempty"`
-	LicenseExpire   string            `json:"license_expire,omitempty"`
-	Msg             string            `json:"message"`
+	ControllerID    string              `json:"controller_id"`
+	ControllerName  string              `json:"controller_name"`
+	WorkloadID      string              `json:"workload_id"`
+	WorkloadName    string              `json:"workload_name"`
+	WorkloadDomain  string              `json:"workload_domain"`
+	WorkloadImage   string              `json:"workload_image"`
+	WorkloadService string              `json:"workload_service"`
+	Category        string              `json:"category"`
+	User            string              `json:"user"`
+	UserRoles       map[string]string   `json:"user_roles"`        // domain -> role
+	UserDomainRoles map[string][]string `json:"user_domain_roles"` // domain -> roles
+	UserAddr        string              `json:"user_addr"`
+	UserSession     string              `json:"user_session"`
+	RESTMethod      string              `json:"rest_method,omitempty"`
+	RESTRequest     string              `json:"rest_request,omitempty"`
+	RESTBody        string              `json:"rest_body,omitempty"`
+	EnforcerLimit   int                 `json:"enforcer_limit,omitempty"`
+	LicenseExpire   string              `json:"license_expire,omitempty"`
+	Msg             string              `json:"message"`
 }
 
 const (

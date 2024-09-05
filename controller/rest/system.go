@@ -2602,7 +2602,7 @@ func _importHandler(w http.ResponseWriter, r *http.Request, tid, importType, tem
 					Username: login.fullname,
 					Server:   login.server,
 				}
-				domainRoles := access.DomainRoles{access.AccessDomainGlobal: []string{api.UserRoleImportStatus}}
+				domainRoles := access.DomainRolesV2{access.AccessDomainGlobal: []string{api.UserRoleImportStatus}}
 				_, tempToken, _ = jwtGenerateToken(user, domainRoles, nil, login.remote, login.mainSessionID, "", nil)
 			}
 
@@ -2705,7 +2705,7 @@ func handlerConfigImport(w http.ResponseWriter, r *http.Request, ps httprouter.P
 	_importHandler(w, r, tid, share.IMPORT_TYPE_CONFIG, share.PREFIX_IMPORT_CONFIG, acc, login)
 }
 
-func postImportOp(err error, importTask share.CLUSImportTask, loginDomainRoles access.DomainRoles, tempToken, importType string) {
+func postImportOp(err error, importTask share.CLUSImportTask, loginDomainRoles access.DomainRolesV2, tempToken, importType string) {
 	defer kv.SetImporting(0)
 
 	var msgToken string

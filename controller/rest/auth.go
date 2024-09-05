@@ -47,7 +47,7 @@ type loginSession struct {
 	lastSyncTimerAt    time.Time // last time calling other controllers for syncing the timer for the token with this login session
 	eolAt              time.Time // end of life
 	timer              *time.Timer
-	domainRoles        access.DomainRoles       // map: domain -> role
+	domainRoles        access.DomainRolesV2     // map: domain -> roles
 	extraDomainPermits access.DomainPermissions // map: domain -> extra permissions(other than in 'domainRoles'), only for Rancher SSO
 	loginType          int                      // 0=user (default), 1=apikey
 
@@ -64,7 +64,8 @@ type tokenClaim struct {
 	MainSessionID   string                   `json:"main_session_id"`   // from id in master login token's claim. empty when the token is generated for local cluster login
 	MainSessionUser string                   `json:"main_session_user"` // from fullname in master login token's claim. empty when the token is generated for local cluster login
 	Timeout         uint32                   `json:"timeout"`
-	Roles           access.DomainRoles       `json:"roles"`                  // domain -> role
+	Role            access.DomainRoles       `json:"role"`                   // domain -> role
+	Roles           access.DomainRolesV2     `json:"roles"`                  // domain -> roles
 	ExtraPermits    access.DomainPermissions `json:"extra_permissions"`      // extra domain -> permissions(other than in 'Roles'). only for Rancher SSO
 	NameID          string                   `json:"nameId,omitempty"`       // Used by SAML Single Logout
 	SessionIndex    string                   `json:"sessionIndex,omitempty"` // Used by SAML Single Logout
@@ -200,7 +201,7 @@ func newLoginSessionFromToken(token string, claims *tokenClaim, now time.Time) (
 	}
 }
 
-func newLoginSessionFromUser(user *share.CLUSUser, domainRoles access.DomainRoles, extraDomainPermits access.DomainPermissions,
+func newLoginSessionFromUser(user *share.CLUSUser, domainRoles access.DomainRolesV2, extraDomainPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser string, sso *SsoSession) (*loginSession, int) {
 
 	// Note: JWT keys should be loaded in initJWTSignKey() before calling this function.
@@ -283,7 +284,7 @@ func _registerLoginSession(login *loginSession) int {
 		}
 		if importStatus {
 			msg = fmt.Sprintf("User %s login (for retrieving import result)", login.fullname)
-			domainRoles = access.DomainRoles{}
+			domainRoles = access.DomainRolesV2{}
 		}
 		authLog(share.CLUSEvAuthLogin, userName, login.remote, login.id, domainRoles, msg)
 	}
@@ -389,7 +390,7 @@ func (s *loginSession) _logout() {
 	}
 	if s.domainRoles.ContainsDomainRole(access.AccessDomainGlobal, api.UserRoleImportStatus) && len(s.domainRoles) == 1 {
 		msg = fmt.Sprintf("User %s logout (for retrieving import result)", userName)
-		domainRoles = access.DomainRoles{}
+		domainRoles = access.DomainRolesV2{}
 	}
 	authLog(share.CLUSEvAuthLogout, userName, s.remote, s.id, domainRoles, msg)
 	s._delete()
@@ -967,7 +968,7 @@ func lookupShadowUser(server, provider, username, userid, email, role string, ro
 	return newUser, true
 }
 
-func loginUser(user *share.CLUSUser, masterRoles access.DomainRoles, masterDomainsPermits access.DomainPermissions,
+func loginUser(user *share.CLUSUser, masterRoles access.DomainRolesV2, masterDomainsPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser, fedRole string, sso *SsoSession) (*loginSession, int) {
 
 	// 1. When a cluster is promoted to master cluster, the default admin user is automatically assigned fedAdmin role
@@ -1002,7 +1003,13 @@ func loginUser(user *share.CLUSUser, masterRoles access.DomainRoles, masterDomai
 				roles[d] = append(roles[d], role)
 			}
 		}
-		roles[access.AccessDomainGlobal] = user.Roles
+
+		// TODO: Provide another layer for this?
+		if len(user.Roles) > 0 {
+			roles[access.AccessDomainGlobal] = user.Roles
+		} else {
+			roles[access.AccessDomainGlobal] = []string{user.Role}
+		}
 
 		// Convert permissions->domains to domain->permissions. for Rancher SSO only
 		for _, permitsDomains := range user.ExtraPermitsDomains {
@@ -1412,7 +1419,7 @@ func jwtValidateFedJoinTicket(encryptedTicket, secret string) error {
 }
 
 // permits is for Rancher SSO only
-func jwtGenerateToken(user *share.CLUSUser, domainRoles access.DomainRoles, extraDomainPermits access.DomainPermissions,
+func jwtGenerateToken(user *share.CLUSUser, domainRoles access.DomainRolesV2, extraDomainPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser string, sso *SsoSession) (string, string, *tokenClaim) {
 
 	id := utils.GetRandomID(idLength, "")

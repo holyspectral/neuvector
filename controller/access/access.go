@@ -1376,12 +1376,13 @@ const (
 
 const AccessDomainGlobal = ""
 
-type DomainRoles map[string][]string // domain -> roles
+type DomainRoles map[string]string     // domain -> role
+type DomainRolesV2 map[string][]string // domain -> roles
 
 type DomainPermissions map[string]share.NvPermissions // domain -> permissions (for Rancher SSO)
 
 // TODO: would it be too time-consuming?
-func (drs DomainRoles) ContainsDomainRole(domain string, role string) bool {
+func (drs DomainRolesV2) ContainsDomainRole(domain string, role string) bool {
 	if drs != nil {
 		if roles, ok := drs[domain]; ok {
 			for _, r := range roles {
@@ -1394,7 +1395,7 @@ func (drs DomainRoles) ContainsDomainRole(domain string, role string) bool {
 	return false
 }
 
-func (drs DomainRoles) ConvertToLegacyDomainRole() map[string]string {
+func (drs DomainRolesV2) ConvertToLegacyDomainRole() map[string]string {
 	ret := map[string]string{}
 	for domain, roles := range drs {
 		ret[domain] = roles[0]
@@ -1404,7 +1405,7 @@ func (drs DomainRoles) ConvertToLegacyDomainRole() map[string]string {
 
 // TODO: Get permissions from multiple roles.
 // check if for global domain it has the specified permissions. required permission value being 0 means we don't care about that permission
-func (drs DomainRoles) hasGlobalPermissions(readPermsRequired, writePermsRequired uint32) bool {
+func (drs DomainRolesV2) hasGlobalPermissions(readPermsRequired, writePermsRequired uint32) bool {
 	if len(drs) > 0 {
 		readPermsRequired &= share.PERMS_FED_READ
 		writePermsRequired &= share.PERMS_FED_WRITE
@@ -1419,7 +1420,7 @@ func (drs DomainRoles) hasGlobalPermissions(readPermsRequired, writePermsRequire
 }
 
 // check if it has the specified permissions in any domain. required permission value being 0 means we don't care about that permission
-func (drs DomainRoles) hasPermissions(_readPermitsRequired, _writePermsRequired uint32) bool {
+func (drs DomainRolesV2) hasPermissions(_readPermitsRequired, _writePermsRequired uint32) bool {
 	if len(drs) > 0 {
 		var readPermitsRequired, writePermsRequired uint32
 		for domain, roles := range drs {
@@ -1473,8 +1474,8 @@ func (dps DomainPermissions) hasPermissions(_readPermitsRequired, _writePermsReq
 
 type AccessControl struct {
 	op     AccessOP
-	roles  DomainRoles // domain -> role
-	wRoles DomainRoles // special domain(containing wildcard char) -> role
+	roles  DomainRolesV2 // domain -> role
+	wRoles DomainRolesV2 // special domain(containing wildcard char) -> role
 
 	extraPermits DomainPermissions // domain -> permissions. only for Rancher SSO
 
@@ -1515,7 +1516,7 @@ func NewReaderAccessControl() *AccessControl {
 	}
 }
 
-func NewAccessControl(r *http.Request, op AccessOP, roles DomainRoles, extraPermits DomainPermissions) *AccessControl {
+func NewAccessControl(r *http.Request, op AccessOP, roles DomainRolesV2, extraPermits DomainPermissions) *AccessControl {
 	wRoles := map[string][]string{}
 	for domain, role := range roles {
 		if strings.Contains(domain, "*") {

@@ -24,7 +24,7 @@ import (
 )
 
 type RevertFedRolesFunc func(acc *access.AccessControl)
-type PostImportFunc func(err error, importTask share.CLUSImportTask, loginDomainRoles access.DomainRoles, tempToken, importType string)
+type PostImportFunc func(err error, importTask share.CLUSImportTask, loginDomainRoles access.DomainRolesV2, tempToken, importType string)
 type PauseResumeStoreWatcherFunc func(ip string, port uint16, req share.CLUSStoreWatcherInfo) error
 
 type ConfigHelper interface {
@@ -32,7 +32,7 @@ type ConfigHelper interface {
 	BackupAll()
 	Restore() (string, bool, bool, string, error)
 	Export(w *bufio.Writer, sections utils.Set) error
-	Import(eps []*common.RPCEndpoint, localCtrlerID, localCtrlerIP string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask,
+	Import(eps []*common.RPCEndpoint, localCtrlerID, localCtrlerIP string, loginDomainRoles access.DomainRolesV2, importTask share.CLUSImportTask,
 		tempToken string, revertFedRoles RevertFedRolesFunc, postImportOp PostImportFunc, pauseResumeStoreWatcher PauseResumeStoreWatcherFunc,
 		ignoreFed bool) error
 }
@@ -547,7 +547,7 @@ func (c *configHelper) sections2Endpoints(sections []string) []*cfgEndpoint {
 //  3. For clusters in fed, Import() doesn't change the existing clusters membership.
 //  4. For stand-alone cluster, we allow it to promote to master cluster by importing a master cluster's backup file.
 //     However, joined clusters list is not imported. Customer needs to manually trigger join-fed operation.
-func (c *configHelper) Import(rpcEps []*common.RPCEndpoint, localCtrlerID, localCtrlerIP string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask,
+func (c *configHelper) Import(rpcEps []*common.RPCEndpoint, localCtrlerID, localCtrlerIP string, loginDomainRoles access.DomainRolesV2, importTask share.CLUSImportTask,
 	tempToken string, revertFedRoles RevertFedRolesFunc, postImportOp PostImportFunc, pauseResumeStoreWatcher PauseResumeStoreWatcherFunc, ignoreFed bool) error {
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)

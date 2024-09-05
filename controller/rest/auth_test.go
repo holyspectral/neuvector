@@ -1011,7 +1011,7 @@ func TestJWTSignValidate(t *testing.T) {
 		EMail:    "gary@example.com",
 		Timeout:  300,
 	}
-	roles := access.DomainRoles{
+	roles := access.DomainRolesV2{
 		"":    []string{api.UserRoleReader},
 		"ns1": []string{api.UserRoleAdmin},
 	}

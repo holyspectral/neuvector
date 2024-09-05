@@ -368,10 +368,10 @@ func TestRoleAllPermissionsEnabledCustomRole(t *testing.T) {
 			t.Fatalf("Failed to create user: status=%v.", w.status)
 		}
 
-		accRead := access.NewAccessControl(r, access.AccessOPRead, access.DomainRoles{
+		accRead := access.NewAccessControl(r, access.AccessOPRead, access.DomainRolesV2{
 			"": []string{data.Config.Name},
 		}, nil)
-		accWrite := access.NewAccessControl(r, access.AccessOPWrite, access.DomainRoles{
+		accWrite := access.NewAccessControl(r, access.AccessOPWrite, access.DomainRolesV2{
 			"": []string{data.Config.Name},
 		}, nil)
 		// CLUSAgent requires PERM_NV_RESOURCE permission and the custom role should not be able to access it
@@ -428,10 +428,10 @@ func TestRoleAllPermissionsEnabledCustomRole(t *testing.T) {
 		t.Fatalf("Failed to create user: status=%v.", w.status)
 	}
 
-	accRead := access.NewAccessControl(r, access.AccessOPRead, access.DomainRoles{
+	accRead := access.NewAccessControl(r, access.AccessOPRead, access.DomainRolesV2{
 		"": []string{dataAllConfigurableWriteRole.Config.Name},
 	}, nil)
-	accWrite := access.NewAccessControl(r, access.AccessOPWrite, access.DomainRoles{
+	accWrite := access.NewAccessControl(r, access.AccessOPWrite, access.DomainRolesV2{
 		"": []string{dataAllConfigurableWriteRole.Config.Name},
 	}, nil)
 	// CLUSAgent requires PERM_NV_RESOURCE permission and no custom role can access it

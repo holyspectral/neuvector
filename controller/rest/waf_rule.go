@@ -1130,7 +1130,7 @@ func handlerWafImport(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 }
 
 // if there are multiple yaml documents(separated by "---" line) in the yaml file, only the first document is parsed for import
-func importWaf(scope string, loginDomainRoles access.DomainRoles, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
+func importWaf(scope string, loginDomainRoles access.DomainRolesV2, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)
 
