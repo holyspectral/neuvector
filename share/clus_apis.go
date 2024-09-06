@@ -916,6 +916,10 @@ type CLUSRemoteRolePermits struct {
 	ExtraPermits map[string]NvPermissions `json:"extra_permissions"` // domain -> extra permissions(other than in 'DomainRole')
 }
 
+type CLUSKVSchema struct {
+	Version int
+}
+
 type CLUSUser struct {
 	Fullname            string                 `json:"fullname"`
 	Username            string                 `json:"username"`
@@ -925,7 +929,7 @@ type CLUSUser struct {
 	Domain              string                 `json:"domain"`           // This is not used. Other 'domain' maps to namespace, this is not.
 	Server              string                 `json:"server"`
 	EMail               string                 `json:"email"`
-	Role                string                 `json:"role"`
+	Role                string                 `json:"role"`       // Deprecated: Use Roles instead
 	RoleOverride        bool                   `json:"role_oride"` // Used for shadow user
 	Timeout             uint32                 `json:"timeout"`
 	Locale              string                 `json:"locale"`
@@ -940,6 +944,9 @@ type CLUSUser struct {
 	AcceptedAlerts      []string               `json:"accepted_alerts,omitempty"`
 	ResetPwdInNextLogin bool                   `json:"reset_password_in_next_login"`
 	UseBootstrapPwd     bool                   `json:"use_bootstrap_password"`
+	// v2
+	Schema CLUSKVSchema `json:"schema"`
+	Roles  []string     `json:"roles"`
 }
 
 type GroupRoleMapping struct {

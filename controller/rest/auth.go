@@ -861,7 +861,7 @@ func authLog(ev share.TLogEvent, fullname, remote, session string, roles map[str
 // extraPermits:        extra permissions(other than 'Role') for global domain on local cluster. only for Rancher SSO
 // extraPermitsDomains: extra permissions(other than 'RoleDomains') for namespaces on local cluster. only for Rancher SSO
 // remoteRolePermits:   domain: role/extra permissions on managed cluster
-func lookupShadowUser(server, provider, username, userid, email, role string, roleDomains map[string][]string,
+func lookupShadowUser(server, provider, username, userid, email string, roles []string, roleDomains map[string][]string,
 	extraPermits share.NvPermissions, extraPermitsDomains []share.CLUSPermitsAssigned,
 	remoteRolePermits *share.CLUSRemoteRolePermits) (*share.CLUSUser, bool) {
 
@@ -872,6 +872,15 @@ func lookupShadowUser(server, provider, username, userid, email, role string, ro
 	if userid != "" {
 		fullname = fmt.Sprintf("%s(%s)", fullname, userid)
 	}
+
+	// For backward compatibility
+	var role string
+	if len(roles) > 0 {
+		role = roles[0]
+	} else {
+		role = api.UserRoleNone
+	}
+
 	retry := 0
 	for retry < retryClusterMax {
 		user, rev, _ := clusHelper.GetUserRev(fullname, access.NewReaderAccessControl())
@@ -882,6 +891,7 @@ func lookupShadowUser(server, provider, username, userid, email, role string, ro
 				Username:            username,
 				EMail:               email,
 				Role:                role,
+				Roles:               roles,
 				RoleDomains:         roleDomains,
 				ExtraPermits:        extraPermits,        // extra permissions(other than 'Role') for global domain on local cluster. only for Rancher SSO
 				ExtraPermitsDomains: extraPermitsDomains, // extra permissions(other than 'RoleDomains') for namespaces on local cluster. only for Rancher SSO
@@ -906,6 +916,7 @@ func lookupShadowUser(server, provider, username, userid, email, role string, ro
 				// We do not allow changing role/permissions of shadow users from Rancher SSO.
 				// So always over-write this shadow user's role/permissions in every SSO login
 				user.Role = role
+				user.Roles = roles
 				user.RoleDomains = roleDomains
 				user.ExtraPermits = extraPermits               // extra permissions(other than 'Role') for global domain on local cluster. only for Rancher SSO
 				user.ExtraPermitsDomains = extraPermitsDomains // extra permissions(other than 'RoleDomains') for namespaces on local cluster. only for Rancher SSO
@@ -1604,13 +1615,18 @@ func getAuthServersInOrder(acc *access.AccessControl) []*share.CLUSServer {
 	return servers
 }
 
+// TODO: Change here.  We should return multiple roles and roleDomains.
 // At this time, the user has already authenticated by the remote server. The server also
 // tells us the user's group membership on the server. We lookup role from the group mapping.
-func getRoleFromGroupMapping(memberof []string, groupRoleMappings []*share.GroupRoleMapping, defaultRole string,
-	caseSensitive bool) (string, map[string][]string) { // returns (global role, roleDomains)
+func getRoleFromGroupMapping(memberof []string, groupRoleMappings []*share.GroupRoleMapping, defaultRole string, caseSensitive bool) ([]string, map[string][]string) { // returns (global role, roleDomains)
+
 	if len(memberof) <= 0 {
-		return defaultRole, make(map[string][]string, 0)
+		return []string{defaultRole}, make(map[string][]string, 0)
 	}
+
+	var roles []string
+	var rolesDomains map[string][]string
+	rolesDomains = make(map[string][]string)
 
 	// groupRoleMappings is already sorted by matching priority so we just use the 1st matched group
 	memberSet := utils.NewSet()
@@ -1629,17 +1645,24 @@ func getRoleFromGroupMapping(memberof []string, groupRoleMappings []*share.Group
 			gName = strings.ToLower(gName)
 		}
 		if memberSet.Contains(gName) {
-			var roleDomains map[string][]string
 			if groupRoleMapping.RoleDomains != nil {
-				roleDomains = groupRoleMapping.RoleDomains
+				rolesDomains = groupRoleMapping.RoleDomains
 			} else {
-				roleDomains = make(map[string][]string)
+				rolesDomains = make(map[string][]string)
 			}
-			return groupRoleMapping.GlobalRole, roleDomains
+			roles = append(roles, groupRoleMapping.GlobalRole)
+			for role, domains := range groupRoleMapping.RoleDomains {
+				// TODO: dedup or sort?
+				rolesDomains[role] = append(rolesDomains[role], domains...)
+			}
 		}
 	}
 
-	return defaultRole, make(map[string][]string)
+	if len(roles) == 0 {
+		roles = append(roles, defaultRole)
+	}
+
+	return roles, rolesDomains
 }
 
 // SAML idp has authenticated the user.
@@ -1726,6 +1749,7 @@ func getOIDCUserFromClaims(claims map[string]interface{}, customGroupClaim strin
 	return username, email, groups
 }
 
+// TODO: Change here for LDAP
 func remotePasswordAuth(cs *share.CLUSServer, pw *api.RESTAuthPassword) (*share.CLUSUser, error) {
 	if cs.LDAP != nil {
 		_, groups, err := remoteAuther.LDAPAuth(cs.LDAP, pw.Username, pw.Password)
@@ -1737,12 +1761,12 @@ func remotePasswordAuth(cs *share.CLUSServer, pw *api.RESTAuthPassword) (*share.
 			"server": cs.Name, "user": pw.Username, "groups": groups,
 		}).Debug("LDAP/AD user authenticated")
 
-		role, roleDomains := getRoleFromGroupMapping(groups, cs.LDAP.GroupMappedRoles, cs.LDAP.DefaultRole, cs.LDAP.Type == api.ServerLDAPTypeOpenLDAP)
-		if role != api.UserRoleNone {
-			log.WithFields(log.Fields{"server": cs.Name, "user": pw.Username, "role": role}).Debug("Authorized by group role mapping")
+		roles, roleDomains := getRoleFromGroupMapping(groups, cs.LDAP.GroupMappedRoles, cs.LDAP.DefaultRole, cs.LDAP.Type == api.ServerLDAPTypeOpenLDAP)
+		if len(roles) != 0 && roles[0] != api.UserRoleNone {
+			log.WithFields(log.Fields{"server": cs.Name, "user": pw.Username, "roles": roles}).Debug("Authorized by group role mapping")
 		}
 
-		user, authz := lookupShadowUser(cs.Name, "", pw.Username, "", "", role, roleDomains, share.NvPermissions{}, nil, nil)
+		user, authz := lookupShadowUser(cs.Name, "", pw.Username, "", "", roles, roleDomains, share.NvPermissions{}, nil, nil)
 		if authz {
 			return user, nil
 		}
@@ -1856,26 +1880,31 @@ func platformTokenRoleMapping(username string) map[string]string {
 	return roles
 }
 
+// TODO: Change this.
+// role: to determine which permissions it has.
+// roleDomains: to determine which domains the rule has access to.
 func tokenServerAuthz(cs *share.CLUSServer, username, email string, groups []string) (*share.CLUSUser, error) {
 	var role string
+	var roles []string
 
 	roleDomains := make(map[string][]string)
 	// If platform authz enabled, try to get user role from there; if failed, fallback to group role mapping
-	if roles := platformTokenRoleMapping(username); roles != nil {
-		role, roleDomains, _, _, _ = rbac2UserRole(roles, nil)
+	if r := platformTokenRoleMapping(username); r != nil {
+		role, roleDomains, _, _, _ = rbac2UserRole(r, nil)
+		roles = []string{role}
 	} else {
 		if cs.SAML != nil {
-			role, roleDomains = getRoleFromGroupMapping(groups, cs.SAML.GroupMappedRoles, cs.SAML.DefaultRole, true)
+			roles, roleDomains = getRoleFromGroupMapping(groups, cs.SAML.GroupMappedRoles, cs.SAML.DefaultRole, true)
 		} else if cs.OIDC != nil {
-			role, roleDomains = getRoleFromGroupMapping(groups, cs.OIDC.GroupMappedRoles, cs.OIDC.DefaultRole, true)
+			roles, roleDomains = getRoleFromGroupMapping(groups, cs.OIDC.GroupMappedRoles, cs.OIDC.DefaultRole, true)
 		}
 
-		if role != api.UserRoleNone {
-			log.WithFields(log.Fields{"server": cs.Name, "user": username, "role": role}).Debug("Authorized by group role mapping")
+		if len(roles) > 0 && roles[0] != api.UserRoleNone {
+			log.WithFields(log.Fields{"server": cs.Name, "user": username, "roles": roles}).Debug("Authorized by group role mapping")
 		}
 	}
 
-	user, authz := lookupShadowUser(cs.Name, "", username, "", email, role, roleDomains, share.NvPermissions{}, nil, nil)
+	user, authz := lookupShadowUser(cs.Name, "", username, "", email, roles, roleDomains, share.NvPermissions{}, nil, nil)
 	if authz {
 		return user, nil
 	}
@@ -1937,7 +1966,7 @@ func platformPasswordAuth(pw *api.RESTAuthPassword) (*share.CLUSUser, error) {
 	role, roleDomains, _, _, _ = rbac2UserRole(allRoles, nil)
 	log.WithFields(log.Fields{"role": role, "roleDomains": roleDomains, "allRoles": allRoles}).Debug("combined roles")
 
-	user, authz := lookupShadowUser(server, "", pw.Username, "", "", role, roleDomains, share.NvPermissions{}, nil, nil)
+	user, authz := lookupShadowUser(server, "", pw.Username, "", "", []string{role}, roleDomains, share.NvPermissions{}, nil, nil)
 	if authz {
 		return user, nil
 	}
@@ -2235,7 +2264,7 @@ func handlerAuthLogin(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 		role, roleDomains, extraPermits, extraPermitsDomains, remoteRolePermits :=
 			rbac2UserRole(rancherUser.domainRoles, rancherUser.domainPermissions)
 		mainSessionID = fmt.Sprintf("%s%s", _rancherSessionPrefix, rancherUser.token)
-		user, authz = lookupShadowUser(share.FlavorRancher, rancherUser.provider, rancherUser.name, rancherUser.id, "", role, roleDomains,
+		user, authz = lookupShadowUser(share.FlavorRancher, rancherUser.provider, rancherUser.name, rancherUser.id, "", []string{role}, roleDomains,
 			extraPermits, extraPermitsDomains, &remoteRolePermits)
 		if !authz {
 			msg := fmt.Sprintf("Failed to map to a valid role: %s(%s)", rancherUser.name, rancherUser.id)

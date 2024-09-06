@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -29,22 +30,58 @@ import (
 const upgradeClusterLockWait = time.Duration(time.Second * 6)
 const retryClusterMax = 5
 
-// Return if structure is upgraded and should it be written back to the kv store.
-func upgradeUser(user *share.CLUSUser) (bool, bool) {
-	var upd bool
-	if user.Fullname == "" {
-		user.Fullname = utils.MakeUserFullname(user.Server, user.Username)
-		if user.Fullname == "" {
-			log.WithFields(log.Fields{"user": user}).Error("Invalid user")
-		} else {
-			upd = true
-		}
+var (
+	upgradeUsers []func(interface{}) (interface{}, error) = []func(interface{}) (interface{}, error){
+		func(raw interface{}) (interface{}, error) {
+			user := raw.(*share.CLUSUser)
+			if user.Fullname == "" {
+				user.Fullname = utils.MakeUserFullname(user.Server, user.Username)
+				if user.Fullname == "" {
+					return nil, fmt.Errorf("invalid user: %s", user)
+				}
+			}
+			if user.RoleDomains == nil {
+				user.RoleDomains = make(map[string][]string)
+			}
+			user.Schema.Version = 1
+			return user, nil
+		},
+		func(raw interface{}) (interface{}, error) {
+			user, ok := raw.(*share.CLUSUser)
+			if !ok {
+				return nil, errors.New("failed to convert to v1 user")
+			}
+			user.Roles = []string{user.Role}
+			//TODO: user.Role = ""
+			user.Schema.Version = 2
+
+			return user, nil
+		},
 	}
-	if user.RoleDomains == nil {
-		user.RoleDomains = make(map[string][]string)
+)
+
+// Return if structure is upgraded and should it be written back to the kv store.
+func upgradeUser(user *share.CLUSUser) (*share.CLUSUser, bool, bool) {
+	var err error
+	var upd bool
+	var ok bool
+	var data interface{}
+	var ret *share.CLUSUser
+	data = user
+
+	for i := user.Schema.Version; i < len(upgradeUsers); i++ {
+		data, err = upgradeUsers[i](data)
+		if err != nil {
+			log.WithError(err).Warn("failed to upgrade user")
+			return nil, false, false
+		}
 		upd = true
 	}
-	return upd, upd
+	if ret, ok = data.(*share.CLUSUser); !ok {
+		log.Warn("failed to convert user")
+		return nil, false, false
+	}
+	return ret, upd, upd
 }
 
 func upgradeSystemConfig(cfg *share.CLUSSystemConfig) (bool, bool) {
@@ -417,8 +454,8 @@ func doUpgrade(key string, value []byte) (interface{}, bool) {
 		case share.CFGEndpointUser:
 			var user share.CLUSUser
 			json.Unmarshal(value, &user)
-			if upd, wrt := upgradeUser(&user); upd {
-				return &user, wrt
+			if user, upd, wrt := upgradeUser(&user); upd {
+				return user, wrt
 			}
 		case share.CFGEndpointSystem:
 			var cfg share.CLUSSystemConfig
