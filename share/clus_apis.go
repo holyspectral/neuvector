@@ -921,15 +921,15 @@ type CLUSKVSchema struct {
 }
 
 type CLUSUser struct {
-	Fullname            string                 `json:"fullname"`
-	Username            string                 `json:"username"`
-	PasswordHash        string                 `json:"password_hash"`
-	PwdResetTime        time.Time              `json:"pwd_reset_time"`
-	PwdHashHistory      []string               `json:"pwd_hash_history"` // not including the current password's hash
-	Domain              string                 `json:"domain"`           // This is not used. Other 'domain' maps to namespace, this is not.
-	Server              string                 `json:"server"`
-	EMail               string                 `json:"email"`
-	Role                string                 `json:"role"`       // Deprecated: Use Roles instead
+	Fullname       string    `json:"fullname"`
+	Username       string    `json:"username"`
+	PasswordHash   string    `json:"password_hash"`
+	PwdResetTime   time.Time `json:"pwd_reset_time"`
+	PwdHashHistory []string  `json:"pwd_hash_history"` // not including the current password's hash
+	Domain         string    `json:"domain"`           // This is not used. Other 'domain' maps to namespace, this is not.
+	Server         string    `json:"server"`
+	EMail          string    `json:"email"`
+	//Role                string                 `json:"role"`       // Deprecated: Use Roles instead
 	RoleOverride        bool                   `json:"role_oride"` // Used for shadow user
 	Timeout             uint32                 `json:"timeout"`
 	Locale              string                 `json:"locale"`

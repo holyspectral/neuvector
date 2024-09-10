@@ -2447,7 +2447,7 @@ func (m clusterHelper) ConfigFedRole(userName, role string, acc *access.AccessCo
 	// Check if user already exists
 	var err error
 	if user, rev, _ := m.GetUserRev(userName, acc); user != nil {
-		user.Role = role
+		user.Roles = []string{role}
 		if err = m.PutUserRev(user, rev); err != nil {
 			log.WithFields(log.Fields{"error": err, "user": userName, "role": role}).Error("Config fed role failed")
 			return err

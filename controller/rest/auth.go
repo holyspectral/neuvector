@@ -873,24 +873,16 @@ func lookupShadowUser(server, provider, username, userid, email string, roles []
 		fullname = fmt.Sprintf("%s(%s)", fullname, userid)
 	}
 
-	// For backward compatibility
-	var role string
-	if len(roles) > 0 {
-		role = roles[0]
-	} else {
-		role = api.UserRoleNone
-	}
-
 	retry := 0
 	for retry < retryClusterMax {
 		user, rev, _ := clusHelper.GetUserRev(fullname, access.NewReaderAccessControl())
 		if user == nil {
 			newUser = &share.CLUSUser{
-				Fullname:            fullname,
-				Server:              server,
-				Username:            username,
-				EMail:               email,
-				Role:                role,
+				Fullname: fullname,
+				Server:   server,
+				Username: username,
+				EMail:    email,
+				//Role:                role,
 				Roles:               roles,
 				RoleDomains:         roleDomains,
 				ExtraPermits:        extraPermits,        // extra permissions(other than 'Role') for global domain on local cluster. only for Rancher SSO
@@ -915,7 +907,7 @@ func lookupShadowUser(server, provider, username, userid, email string, roles []
 			if server == share.FlavorRancher || !user.RoleOverride {
 				// We do not allow changing role/permissions of shadow users from Rancher SSO.
 				// So always over-write this shadow user's role/permissions in every SSO login
-				user.Role = role
+				//user.Role = role
 				user.Roles = roles
 				user.RoleDomains = roleDomains
 				user.ExtraPermits = extraPermits               // extra permissions(other than 'Role') for global domain on local cluster. only for Rancher SSO
