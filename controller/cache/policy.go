@@ -1847,7 +1847,7 @@ func policyIPRulesCleanup(ruleKeys []string) {
 }
 
 func policyIPRulesCleanupNode(rule_key, verstr, newCommonRuleKey string, tmpNid map[string]string) {
-	for tnid, _ := range tmpNid {
+	for tnid := range tmpNid {
 		tmpNewNodeKey := fmt.Sprintf("%s%s/%s/", rule_key, tnid, verstr)
 		tmpNewNodeKeys, _ := cluster.GetStoreKeys(tmpNewNodeKey)
 		policyIPRulesCleanup(tmpNewNodeKeys)

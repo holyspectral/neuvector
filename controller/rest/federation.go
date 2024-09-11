@@ -1281,11 +1281,11 @@ func pingJointClusters() bool {
 		if len(ids) > 0 {
 			if jointNWErrCount == nil {
 				jointNWErrCount = make(map[string]int, len(ids))
-				for id, _ := range ids {
+				for id := range ids {
 					jointNWErrCount[id] = 0
 				}
 			} else if len(jointNWErrCount) != len(ids) {
-				for id, _ := range jointNWErrCount {
+				for id := range jointNWErrCount {
 					if _, ok := ids[id]; !ok {
 						delete(jointNWErrCount, id)
 					}
@@ -2525,7 +2525,7 @@ func handlerDeployFedRules(w http.ResponseWriter, r *http.Request, ps httprouter
 			}
 		}
 	} else {
-		for id, _ := range idMap {
+		for id := range idMap {
 			ids = append(ids, id)
 		}
 	}
@@ -2755,7 +2755,7 @@ func pollFedRules(forcePulling bool, tryTimes int) bool {
 		reqTo.JointTicket = jwtGenFedTicket(jointCluster.Secret, jwtFedJointTicketLife)
 		reqTo.Revisions = cacher.GetAllFedRulesRevisions()
 		if forcePulling {
-			for ruleType, _ := range reqTo.Revisions {
+			for ruleType := range reqTo.Revisions {
 				reqTo.Revisions[ruleType] = 0
 			}
 		}
@@ -2866,7 +2866,7 @@ func getFedRegScanData(forcePulling bool, fedCfg share.CLUSFedSettings, masterSc
 			return
 		}
 		if forcePulling {
-			for regName, _ := range cachedScanDataRevs.ScannedRegRevs {
+			for regName := range cachedScanDataRevs.ScannedRegRevs {
 				cachedScanDataRevs.ScannedRegRevs[regName] = 0
 			}
 			cachedScanDataRevs.ScannedRepoRev = 0

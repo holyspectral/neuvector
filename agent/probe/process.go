@@ -2795,7 +2795,7 @@ func (p *Probe) updateCurrentRiskyAppRule(id string, pg *share.CLUSProcessProfil
 	}
 
 	// fill the non-existing items
-	for riskType, _ = range suspicProcMap {
+	for riskType = range suspicProcMap {
 		if _, ok := riskapp[riskType]; !ok {
 			riskapp[riskType] = share.PolicyActionCheckApp
 		}

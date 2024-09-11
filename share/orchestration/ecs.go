@@ -63,7 +63,7 @@ func (d *ecs) SetIPAddrScope(ports map[string][]share.CLUSIPAddr,
 	}
 
 	for _, addrs := range ports {
-		for j, _ := range addrs {
+		for j := range addrs {
 			addrs[j].Scope = share.CLUSIPAddrScopeLocalhost
 		}
 	}

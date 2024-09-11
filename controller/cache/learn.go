@@ -737,7 +737,7 @@ func unlearnAll(groupName string) {
 	}
 }
 
-//reduce maxLearnRuleID when delete rules
+// reduce maxLearnRuleID when delete rules
 func adjustMaxLearnRuleID(id uint32) {
 	lprActiveRuleIDs.Remove(id)
 	if id == maxLearnRuleID {
@@ -994,7 +994,7 @@ func procLearnedPolicy(updateCluster bool) int {
 			}
 
 			if lenDel > 0 {
-				for id, _ := range deleteMap {
+				for id := range deleteMap {
 					clusHelper.DeletePolicyRuleTxn(txn, id)
 				}
 			}

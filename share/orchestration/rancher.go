@@ -115,7 +115,7 @@ func (d *rancher) SetIPAddrScope(ports map[string][]share.CLUSIPAddr,
 	key = container.RancherCNINetwork
 	if _, ok := meta.Labels[key]; ok {
 		for _, addrs := range ports {
-			for j, _ := range addrs {
+			for j := range addrs {
 				addrs[j].Scope = share.CLUSIPAddrScopeGlobal
 				addrs[j].NetworkID = container.RancherOverlayNetworkName
 				addrs[j].NetworkName = container.RancherOverlayNetworkName

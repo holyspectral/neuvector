@@ -45,8 +45,10 @@ var ContainerTaskChan chan *ContainerTask
 
 // inline: If a workload is configured to be inline (not including quarantin case)
 // capIntcp: Indicate if a workload can be put inline.
-//           Platform and host mode containers cannot be intercepted.
-//           If not interceptable, the container cannot be quarantined
+//
+//	Platform and host mode containers cannot be intercepted.
+//	If not interceptable, the container cannot be quarantined
+//
 // hasDatapath: parent and non-platform-containers, could be host mode
 // in the case that parent's pid==0, child's hasDatapath could be true
 type containerData struct {
@@ -126,7 +128,7 @@ type localSystemInfo struct {
 var defaultPolicyMode string = share.PolicyModeLearn
 var defaultTapProxymesh bool = true
 
-//to avoid false positive implicit violation on dp during upgrade, set XFF default to disabled
+// to avoid false positive implicit violation on dp during upgrade, set XFF default to disabled
 var defaultXffEnabled bool = false
 var defaultDisableNetPolicy bool = false
 var defaultDetectUnmanagedWl bool = false
@@ -1076,7 +1078,7 @@ func updateAppPorts(c *containerData, parent *containerData) bool {
 
 	gInfoLock()
 	// remove closed port, only those opened by myself, not those merged from children.
-	for port, _ := range c.appMap {
+	for port := range c.appMap {
 		if _, ok := appMap[port]; !ok && c.ownListenPorts.Contains(port) {
 			delete(c.appMap, port)
 			/* In service mesh's case parent POD use encrypted connection,
@@ -1558,8 +1560,8 @@ func programDP(c *containerData, cfgApp bool, macChangePairs map[string]*pipe.In
 	}
 }
 
-////// Per container, not for a pod
-////// TODO: differentiate policy(s) from pod and its child container(s)
+// //// Per container, not for a pod
+// //// TODO: differentiate policy(s) from pod and its child container(s)
 func applyProcessProfilePolicy(c *containerData, service string) {
 	pg, ok := pe.ObtainProcessPolicy(service, c.id) // needs to be specific to each container
 	if ok {
@@ -1572,7 +1574,7 @@ func applyProcessProfilePolicy(c *containerData, service string) {
 	}
 }
 
-//////
+// ////
 func examNeuVectorInterface(c *containerData, change int) {
 	log.WithFields(log.Fields{"id": c.id, "name": c.name, "pid": c.pid}).Info()
 
@@ -1645,7 +1647,7 @@ func isEmptyProcessPod(info *container.ContainerMetaExtra) bool {
 	return false
 }
 
-//////
+// ////
 func startNeuVectorMonitors(id, role string, info *container.ContainerMetaExtra) {
 	log.WithFields(log.Fields{"id": id, "name": info.Name, "role": role, "pid": info.Pid}).Info()
 
@@ -1762,7 +1764,7 @@ func startNeuVectorMonitors(id, role string, info *container.ContainerMetaExtra)
 	ClusterEventChan <- &ev
 }
 
-//////
+// ////
 func stopNeuVectorMonitor(c *containerData) {
 	if c.pid != 0 && osutil.IsPidValid(c.pid) {
 		// false-positive event from cri-o

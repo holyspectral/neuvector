@@ -144,7 +144,7 @@ func (fn *FaNotify) GetWatches() []*share.CLUSFileMonitorFile {
 	return make([]*share.CLUSFileMonitorFile, 0)
 }
 
-//////
+// ////
 func (fn *FaNotify) RemoveMonitorFile(path string) {
 	log.WithFields(log.Fields{"path": path}).Debug("FMON:")
 	fn.mux.Lock()
@@ -187,8 +187,9 @@ func (fn *FaNotify) RemoveMonitorFile(path string) {
 	}
 }
 
-//////
-//  note: ibm cloud does not support the FAN_MARK_FLUSH flag
+// ////
+//
+//	note: ibm cloud does not support the FAN_MARK_FLUSH flag
 func (fn *FaNotify) removeMarks(r *rootFd) {
 	// guarded by its calling function
 	// log.WithFields(log.Fields{"rootPid": rootPid}).Debug("FMON: cleanup")
@@ -227,7 +228,7 @@ func (fn *FaNotify) ContainerCleanup(rootPid int) {
 	}
 }
 
-/////
+// ///
 func (fn *FaNotify) monitorExit() {
 	if fn.fa != nil {
 		fn.fa.Close()
@@ -238,7 +239,7 @@ func (fn *FaNotify) monitorExit() {
 	}
 }
 
-/////
+// ///
 func (fn *FaNotify) Close() {
 	log.Debug("FMON: ")
 	if !fn.bEnabled {
@@ -287,7 +288,7 @@ func (fn *FaNotify) GetWatchFileList(rootPid int) []*share.CLUSFileMonitorFile {
 				Protect: dir.protect,
 				Files:   make([]string, 0),
 			}
-			for fl, _ := range dir.files {
+			for fl := range dir.files {
 				file.Files = append(file.Files, fl)
 			}
 			watches = append(watches, file)
@@ -308,7 +309,7 @@ func ParseMonitorPath(path string) (int, string, error) {
 	return 0, "", fmt.Errorf("Invalid path")
 }
 
-/////
+// ///
 func (fn *FaNotify) addDirPath(r *rootFd, path string, bDir bool, mask uint64) {
 	// append monitor directory
 	dir := path
@@ -332,7 +333,7 @@ func (fn *FaNotify) addDirPath(r *rootFd, path string, bDir bool, mask uint64) {
 	return
 }
 
-////
+// //
 func (fn *FaNotify) AddMonitorFile(path string, filter interface{}, protect, userAdded bool, cb NotifyCallback, params interface{}) bool {
 	if !fn.bEnabled {
 		return false
@@ -340,7 +341,7 @@ func (fn *FaNotify) AddMonitorFile(path string, filter interface{}, protect, use
 	return fn.addFile(path, filter, protect, false, userAdded, nil, cb, params)
 }
 
-/////
+// ///
 func (fn *FaNotify) AddMonitorDirFile(path string, filter interface{}, protect, userAdded bool, files map[string]interface{}, cb NotifyCallback, params interface{}) bool {
 	if !fn.bEnabled {
 		return false
@@ -348,7 +349,7 @@ func (fn *FaNotify) AddMonitorDirFile(path string, filter interface{}, protect, 
 	return fn.addFile(path, filter, protect, true, userAdded, files, cb, params)
 }
 
-//// TODO
+// // TODO
 func (fn *FaNotify) AddMonitorFileOnTheFly(path string, filter interface{}, protect, userAdded bool, cb NotifyCallback, params interface{}) bool {
 	if !fn.bEnabled {
 		return false
@@ -360,7 +361,7 @@ func (fn *FaNotify) AddMonitorFileOnTheFly(path string, filter interface{}, prot
 	return false
 }
 
-////
+// //
 func (fn *FaNotify) addSingleFile(r *rootFd, path string, mask uint64) bool {
 	if !fn.bEnabled {
 		return false
@@ -375,7 +376,7 @@ func (fn *FaNotify) addSingleFile(r *rootFd, path string, mask uint64) bool {
 	return true
 }
 
-////
+// //
 func (fn *FaNotify) addHostNetworkFilesCopiedFiles(r *rootFd) {
 	// only for /etc/ now: hosts, hostname, and resolv.conf
 	files := []string{"/etc/hosts", "/etc/hostname", "/etc/resolv.conf"}
@@ -391,7 +392,7 @@ func (fn *FaNotify) addHostNetworkFilesCopiedFiles(r *rootFd) {
 	}
 }
 
-/////
+// ///
 func (fn *FaNotify) StartMonitor(rootPid int) bool {
 	if !fn.bEnabled {
 		return false
@@ -430,7 +431,7 @@ func (fn *FaNotify) StartMonitor(rootPid int) bool {
 	return ok
 }
 
-//////
+// ////
 func (fn *FaNotify) addFile(path string, filter interface{}, protect, isDir, userAdded bool, files map[string]interface{}, cb NotifyCallback, params interface{}) bool {
 	if !fn.bEnabled {
 		return false
@@ -472,7 +473,7 @@ func (fn *FaNotify) addFile(path string, filter interface{}, protect, isDir, use
 				file.files[k] = v
 			}
 			// check dir existing
-			for name, _ := range file.files {
+			for name := range file.files {
 				fpath := file.path + "/" + name
 				if _, err := os.Stat(fpath); os.IsNotExist(err) {
 					delete(file.files, name)
@@ -518,7 +519,7 @@ func (fn *FaNotify) addFile(path string, filter interface{}, protect, isDir, use
 	return true
 }
 
-/////
+// ///
 func (fn *FaNotify) MonitorFileEvents() {
 	waitCnt := 0
 	pfd := make([]unix.PollFd, 1)
@@ -555,7 +556,7 @@ func (fn *FaNotify) MonitorFileEvents() {
 	log.Info("FMON: exit")
 }
 
-//////
+// ////
 func (fn *FaNotify) handleEvents() error {
 	if events, err := fn.fa.GetEvents(); err == nil {
 		for _, ev := range events {
@@ -870,7 +871,7 @@ func (fn *FaNotify) UpdateAccessRule(rootPid int, conf *share.CLUSFileAccessRule
 	return nil
 }
 
-////////
+// //////
 func (fn *FaNotify) GetProbeData(m *FaMonProbeData) {
 	fn.mux.Lock()
 	defer fn.mux.Unlock()

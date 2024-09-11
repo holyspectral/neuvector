@@ -18,7 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-////  group profile
+// //  group profile
 type groupProfileData struct {
 	group   *share.CLUSGroup
 	members utils.Set
@@ -32,7 +32,7 @@ var grpProfileCacheMap map[string]*groupProfileData = make(map[string]*groupProf
 var grpNotifyProc utils.Set = utils.NewSet()
 var grpNotifyFile utils.Set = utils.NewSet()
 
-/////
+// ///
 type fileMatchRule struct {
 	cfgtype  int
 	group    string
@@ -40,7 +40,7 @@ type fileMatchRule struct {
 	regex    *regexp.Regexp
 }
 
-//// workload profile map for policy lookups
+// // workload profile map for policy lookups
 type workloadProfile struct {
 	groups         utils.Set
 	proc           *share.CLUSProcessProfile
@@ -56,7 +56,7 @@ var wlProfileMap map[string]*workloadProfile = make(map[string]*workloadProfile)
 
 const federalGrpPrefix string = "fed."
 
-/////// DEBUG functions /////////////
+// ///// DEBUG functions /////////////
 func outputGroupInfo(grpCache *groupProfileData) {
 	log.WithFields(log.Fields{"group": grpCache.group.Name, "member_count": grpCache.members.Cardinality()}).Debug("GRP:")
 	for cid := range grpCache.members.Iter() {
@@ -68,7 +68,7 @@ func outputGroupInfo(grpCache *groupProfileData) {
 	log.WithFields(log.Fields{"Access": grpCache.access}).Debug("GRP:")
 }
 
-/////
+// ///
 func loadGroupProfile(name string, profile interface{}) bool {
 	var ptype string
 	//log.WithFields(log.Fields{"name": name, "type": fmt.Sprintf("%T", profile)}).Debug()
@@ -154,7 +154,7 @@ func getFileAccessProfile(name string) (bool, *share.CLUSFileAccessRule) {
 	return false, nil
 }
 
-///// patch for random sequences of group creation( one-time)
+// /// patch for random sequences of group creation( one-time)
 func fillGroupProfiles(name string) bool {
 	grpCacheLock.Lock()
 	defer grpCacheLock.Unlock()
@@ -165,7 +165,7 @@ func fillGroupProfiles(name string) bool {
 		}
 
 		loadGroupProfile(name, grpCache.file)
-		for i, _ := range grpCache.file.Filters {
+		for i := range grpCache.file.Filters {
 			grpCache.file.Filters[i].DerivedGroup = name // late filled-up to save kv storages
 		}
 		loadGroupProfile(name, grpCache.access)
@@ -179,7 +179,7 @@ func fillGroupProfiles(name string) bool {
 	return false
 }
 
-///////
+// /////
 func addGroupCache(name string, grp share.CLUSGroup) bool {
 	if !utils.HasGroupProfiles(name) {
 		// ignore network services and nodes config type
@@ -206,7 +206,7 @@ func addGroupCache(name string, grp share.CLUSGroup) bool {
 	return true
 }
 
-///////
+// /////
 func updateGroupProfileCache(nType cluster.ClusterNotifyType, name string, obj interface{}) bool {
 	if !agentEnv.systemProfiles {
 		return false
@@ -264,7 +264,7 @@ func updateGroupProfileCache(nType cluster.ClusterNotifyType, name string, obj i
 	case share.CLUSFileMonitorProfile:
 		file := obj.(share.CLUSFileMonitorProfile)
 		if file.Mode != grpCache.file.Mode || len(grpCache.file.Filters) == 0 || reflect.DeepEqual(file.Filters, grpCache.file.Filters) == false {
-			for i, _ := range file.Filters {
+			for i := range file.Filters {
 				file.Filters[i].DerivedGroup = name // late filled-up to save kv storages
 			}
 			grpCache.file = &file
@@ -300,7 +300,7 @@ func updateGroupProfileCache(nType cluster.ClusterNotifyType, name string, obj i
 	return true
 }
 
-///////
+// /////
 func deleteGroupProfileCache(name string) bool {
 	grpCacheLock.Lock()
 	defer grpCacheLock.Unlock()
@@ -317,16 +317,16 @@ func deleteGroupProfileCache(name string) bool {
 	return false
 }
 
-//////////////////////////////////////////////////////
-///////// Group-based selection functions ////////////
-//////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////
+// /////// Group-based selection functions ////////////
+// ////////////////////////////////////////////////////
 func isContainerSelected(c *containerData, group *share.CLUSGroup) bool {
 	// TODO: remove "CriteriaKeyAddress" from entry ??
 	wl := createWorkload(c.info, &c.service, &c.domain)
 	return share.IsGroupMember(group, wl, getDomainData(wl.Domain))
 }
 
-///////
+// /////
 func refreshGroupMembers(grpCache *groupProfileData) {
 	grpCache.members.Clear()
 	if utils.IsGroupNodes(grpCache.group.Name) {
@@ -349,11 +349,11 @@ func refreshGroupMembers(grpCache *groupProfileData) {
 	gInfoRUnlock()
 }
 
-///////////////////////////////////////////////////////
-/////////////// Profile calculations //////////////////
+// /////////////////////////////////////////////////////
+// ///////////// Profile calculations //////////////////
 // Group Profile has higher priority
-///////////////////////////////////////////////////////
-/////// Scheduler: trigger calculation(s) per containers for a certain of time
+// /////////////////////////////////////////////////////
+// ///// Scheduler: trigger calculation(s) per containers for a certain of time
 func group_profile_loop() {
 	calculationTicker := time.Tick(time.Second * 5)
 	for {
@@ -379,7 +379,7 @@ func group_profile_loop() {
 	}
 }
 
-/////// calcualting the runtime profiles
+// ///// calcualting the runtime profiles
 func procMemberChanges(members utils.Set) {
 	log.WithFields(log.Fields{"count": members.Cardinality()}).Debug("GRP:")
 	for cid := range members.Iter() {
@@ -416,7 +416,7 @@ func fileMemberChanges(members utils.Set) {
 	members.Clear()
 }
 
-//////
+// ////
 func mapProcToSortedSlices(m map[string]*share.CLUSProcessProfileEntry) []*share.CLUSProcessProfileEntry {
 	list := make([]*share.CLUSProcessProfileEntry, 0, len(m)) // single allocation
 	for _, item := range m {                                  // map enumeration
@@ -532,7 +532,7 @@ func mergeFileMonitorProfile(filters []share.CLUSFileMonitorFilter) []share.CLUS
 	return list
 }
 
-/// remove duplicates: O(N), sorting: O(NlogN)
+// / remove duplicates: O(N), sorting: O(NlogN)
 func mergeStringSlices(bSort bool, s1, s2 []string) []string {
 	slices := append(s1, s2...)
 
@@ -542,7 +542,7 @@ func mergeStringSlices(bSort bool, s1, s2 []string) []string {
 	}
 
 	var list []string = make([]string, 0, len(m)) // single allocation
-	for v, _ := range m {                         // map enumeration                                                              // map enumeration
+	for v := range m {                            // map enumeration                                                              // map enumeration
 		list = append(list, v)
 	}
 
@@ -580,7 +580,7 @@ func mergeFileAccessProfile(cur, add *share.CLUSFileAccessRule) {
 	}
 }
 
-////
+// //
 func calculateProcGroupProfile(id, svc string) (*share.CLUSProcessProfile, bool) {
 	log.WithFields(log.Fields{"id": id, "svc": svc}).Debug("GRP: ")
 
@@ -660,7 +660,7 @@ func calculateProcGroupProfile(id, svc string) (*share.CLUSProcessProfile, bool)
 	return proc, true
 }
 
-////
+// //
 func calculateFileGroupProfile(id, svc string) (*share.CLUSFileMonitorProfile, *share.CLUSFileAccessRule, bool) {
 	log.WithFields(log.Fields{"id": id, "svc": svc}).Debug("GRP: ")
 
@@ -717,7 +717,7 @@ func calculateFileGroupProfile(id, svc string) (*share.CLUSFileMonitorProfile, *
 	return file, access, true
 }
 
-///////
+// /////
 func GetPathRegexString(path, regex string, bRecursive bool) string {
 	regex_str := path
 	if bRecursive {
@@ -726,7 +726,7 @@ func GetPathRegexString(path, regex string, bRecursive bool) string {
 	return fmt.Sprintf("^%s$", regex_str)
 }
 
-//////
+// ////
 func BuildFileMatchRules(filters []share.CLUSFileMonitorFilter, cfgtype int) []*fileMatchRule {
 	rules := make([]*fileMatchRule, 0, len(filters)) // single allocation
 	for _, ff := range filters {
@@ -743,7 +743,7 @@ func BuildFileMatchRules(filters []share.CLUSFileMonitorFilter, cfgtype int) []*
 	return rules
 }
 
-////
+// //
 func applyHostProcGroupProfile(svc string) bool {
 	if proc, ok := calculateProcGroupProfile("", svc); ok {
 		wlCacheLock.Lock()
@@ -778,7 +778,7 @@ func applyHostProcGroupProfile(svc string) bool {
 	return false
 }
 
-////
+// //
 func applyProcGroupProfile(c *containerData) bool {
 	svc := makeLearnedGroupName(utils.NormalizeForURL(c.service))
 	if proc, ok := calculateProcGroupProfile(c.id, svc); ok {
@@ -794,7 +794,7 @@ func applyProcGroupProfile(c *containerData) bool {
 	return false
 }
 
-////
+// //
 func applyFileGroupProfile(c *containerData) bool {
 	svc := makeLearnedGroupName(utils.NormalizeForURL(c.service))
 	if file, access, ok := calculateFileGroupProfile(c.id, svc); ok {
@@ -832,7 +832,7 @@ func applyFileGroupProfile(c *containerData) bool {
 	return false
 }
 
-//////
+// ////
 func uppdateFileGroupAccess(c *containerData) bool {
 	svc := makeLearnedGroupName(utils.NormalizeForURL(c.service))
 	if _, access, ok := calculateFileGroupProfile(c.id, svc); ok && (access != nil) {
@@ -850,7 +850,7 @@ func uppdateFileGroupAccess(c *containerData) bool {
 	return false
 }
 
-/////// "host" is not an actual workload, will NOT enter this function
+// ///// "host" is not an actual workload, will NOT enter this function
 func workloadJoinGroup(c, parent *containerData) {
 	if !agentEnv.systemProfiles {
 		return
@@ -896,7 +896,7 @@ func workloadJoinGroup(c, parent *containerData) {
 	grpNotifyFile.Add(c.id)
 }
 
-///////
+// /////
 func workloadLeaveGroup(c *containerData) {
 	if !agentEnv.systemProfiles {
 		return
@@ -932,7 +932,7 @@ func workloadLeaveGroup(c *containerData) {
 	wlCacheLock.Unlock()
 }
 
-///////// Use GRPC to return actual policy to CTL
+// /////// Use GRPC to return actual policy to CTL
 func ObtainGroupProcessPolicy(id string) (*share.CLUSProcessProfile, bool) {
 	if id == "nodes" { // from controller, workload id from runtime can not be like "nodes"
 		id = ""
@@ -953,7 +953,7 @@ func ObtainGroupProcessPolicy(id string) (*share.CLUSProcessProfile, bool) {
 	return nil, false
 }
 
-///////// Use GRPC to return actual policy to CTL
+// /////// Use GRPC to return actual policy to CTL
 func ObtainGroupFilePolicies(id string) (*share.CLUSFileMonitorProfile, *share.CLUSFileAccessRule, bool) {
 	if id == "nodes" { // TODO: from controller, workload id from runtime can not be like "nodes"
 		id = ""
@@ -969,13 +969,13 @@ func ObtainGroupFilePolicies(id string) (*share.CLUSFileMonitorProfile, *share.C
 	return nil, nil, false
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////
 // It is very difficult to obtain the exact rule which applied on the incident
 // since the lower (fanotify) layer has been optimized to reduce system resources.
 // Also, it is costly by data memory to label all rules at the lower layer.
 // Thus, better to use the emulatation of input vectors to find the rules
-/////////////////////////////////////////////////////////////////////////////////
-////// Estimate the rule from group name or service
+// ///////////////////////////////////////////////////////////////////////////////
+// //// Estimate the rule from group name or service
 func cbEstimateDeniedProcessdByGroup(id, name, path string) (string, string) {
 	svcGroup, ok, _ := cbGetLearnedGroupName(id)
 	if !ok {
@@ -1003,7 +1003,7 @@ func cbEstimateDeniedProcessdByGroup(id, name, path string) (string, string) {
 		return svcGroup, share.CLUSReservedUuidNotAlllowed
 	}
 
-	if _, ok := isNeuvectorContainerById(id); ok {  // NeuVector
+	if _, ok := isNeuvectorContainerById(id); ok { // NeuVector
 		log.WithFields(log.Fields{"id": id, "name": name, "path": path}).Info("GRP: NV Protect")
 		return share.GroupNVProtect, share.CLUSReservedUuidNotAlllowed
 	}
@@ -1012,7 +1012,7 @@ func cbEstimateDeniedProcessdByGroup(id, name, path string) (string, string) {
 	return "", share.CLUSReservedUuidNotAlllowed
 }
 
-///// Estimate the rule from group name or service
+// /// Estimate the rule from group name or service
 func cbEstimateFileAlertByGroup(id, path string, bBlocked bool) string {
 	var rules []*fileMatchRule
 	//	log.WithFields(log.Fields{"path": path, "bBlock": bBlocked}).Debug("GRP: matched")
@@ -1061,7 +1061,7 @@ func cbEstimateFileAlertByGroup(id, path string, bBlocked bool) string {
 		return dgroup
 	}
 
-	if _, ok := isNeuvectorContainerById(id); ok {  // NeuVector
+	if _, ok := isNeuvectorContainerById(id); ok { // NeuVector
 		log.WithFields(log.Fields{"id": id, "path": path, "bBlocked": bBlocked}).Info("GRP: NV Protect")
 		return share.GroupNVProtect
 	}

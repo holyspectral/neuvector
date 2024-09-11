@@ -1286,7 +1286,7 @@ func addK8sPodEvent(pod resource.Pod, probeCmds [][]string) {
 	cacheMutexLock()
 	defer cacheMutexUnlock()
 	var bFound bool
-	for group, _ := range groupCacheMap {
+	for group := range groupCacheMap {
 		if group == p.group || group == p.groupAlt {
 			log.WithFields(log.Fields{"group": group}).Debug()
 			bFound = true
@@ -2158,7 +2158,7 @@ func refreshInternalIPNet() {
 		cachedSpecialSubnets = newSpecialSubnets
 		putSpecialIPNetToCluseter(true)
 	} else {
-		for key, _ := range newSpecialSubnets {
+		for key := range newSpecialSubnets {
 			if _, ok := cachedSpecialSubnets[key]; !ok {
 				cachedSpecialSubnets = newSpecialSubnets
 				putSpecialIPNetToCluseter(true)
@@ -2173,7 +2173,7 @@ func refreshInternalIPNet() {
 		return
 	}
 
-	for key, _ := range newSubnets {
+	for key := range newSubnets {
 		if _, ok := cachedInternalSubnets[key]; !ok {
 			cachedInternalSubnets = newSubnets
 			putInternalIPNetToCluseter(true)

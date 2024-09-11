@@ -920,7 +920,7 @@ func (w *FileWatch) ContainerCleanup(rootPid int, bLeave bool) {
 
 	w.mux.Lock()
 	defer w.mux.Unlock()
-	for path, _ := range w.fileEvents {
+	for path := range w.fileEvents {
 		if pid, _ := global.SYS.ParseContainerFilePath(path); pid == rootPid {
 			delete(w.fileEvents, path)
 		}

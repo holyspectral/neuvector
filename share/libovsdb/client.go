@@ -219,7 +219,7 @@ func (ovs OvsdbClient) MonitorAll(database string, jsonContext interface{}) (*Ta
 	requests := make(map[string]MonitorRequest)
 	for table, tableSchema := range schema.Tables {
 		var columns []string
-		for column, _ := range tableSchema.Columns {
+		for column := range tableSchema.Columns {
 			columns = append(columns, column)
 		}
 		requests[table] = MonitorRequest{

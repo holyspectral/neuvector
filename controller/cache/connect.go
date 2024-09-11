@@ -298,7 +298,7 @@ func getFqdnAddrGroupName(fqdn string) string {
 	fqdnlen := len(fn)
 	for i := 0; i < fqdnlen-2; i++ {
 		tfqdn := "*"
-		for j := i+1; j < fqdnlen; j++ {
+		for j := i + 1; j < fqdnlen; j++ {
 			tfqdn = fmt.Sprintf("%s.%s", tfqdn, fn[j])
 		}
 		if fgrps, ok := fqdn2GrpMap[tfqdn]; ok {
@@ -514,7 +514,7 @@ func groupMetricViolationEvent(ev share.TLogEvent, group string, vio_met uint8,
 		ReportedAt: time.Now().UTC(),
 	}
 	vioMetStr := ""
-	if (vio_met & sessCurInViolation) > 0  {
+	if (vio_met & sessCurInViolation) > 0 {
 		vioMetStr = fmt.Sprintf("%s(%d current active session)", SESS_CUR_VIOLATION, grpSessCurIn)
 	}
 	if (vio_met & sessionInViolation) > 0 {
@@ -543,13 +543,13 @@ func CheckGroupMetric() {
 		var vioMet uint8 = 0
 		if grpcache, ok := groupCacheMap[lgrpname]; ok {
 			cctx.ConnLog.WithFields(log.Fields{
-				"GroupSessCurIn":    grpmet.GroupSessCurIn,
-				"GroupSessIn12":     grpmet.GroupSessIn12,
-				"GroupByteIn12":     grpmet.GroupByteIn12,
+				"GroupSessCurIn": grpmet.GroupSessCurIn,
+				"GroupSessIn12":  grpmet.GroupSessIn12,
+				"GroupByteIn12":  grpmet.GroupByteIn12,
 			}).Debug()
-			grpSessCurIn := grpmet.GroupSessCurIn//active session count
-			grpSessRateIn12 := uint32(grpmet.GroupSessIn12/(12*MetSlotInterval))//session per second
-			grpBandwidthIn12 := uint32(grpmet.GroupByteIn12*8/uint64(12*MetSlotInterval)/1000000)//mbps
+			grpSessCurIn := grpmet.GroupSessCurIn                                                       //active session count
+			grpSessRateIn12 := uint32(grpmet.GroupSessIn12 / (12 * MetSlotInterval))                    //session per second
+			grpBandwidthIn12 := uint32(grpmet.GroupByteIn12 * 8 / uint64(12*MetSlotInterval) / 1000000) //mbps
 
 			if grpcache.group.GrpSessCur > 0 && grpSessCurIn > grpcache.group.GrpSessCur {
 				vioMet |= sessCurInViolation
@@ -571,7 +571,7 @@ func CheckGroupMetric() {
 				groupMetricViolationEvent(share.CLUSEvGroupMetricViolation, lgrpname, vioMet,
 					grpSessCurIn, grpSessRateIn12, grpBandwidthIn12)
 			}
-			grpmet.GroupSessCurIn = 0//reset
+			grpmet.GroupSessCurIn = 0 //reset
 			grpmet.GroupSessIn12 = 0
 			grpmet.GroupByteIn12 = 0
 			for _, cwlmet := range grpmet.WlMetric {
@@ -597,9 +597,9 @@ func getRealMemCnt(cache *workloadCache, grpcache *groupCache) int {
 		isSvcMesh = cache.workload.ProxyMesh
 	}
 	if isSvcMesh {
-		memcnt = memcnt/3
+		memcnt = memcnt / 3
 	} else {
-		memcnt = memcnt/2
+		memcnt = memcnt / 2
 	}
 	return memcnt
 }
@@ -631,8 +631,8 @@ func calGrpMet(lgrpname, epWL string, cache *workloadCache, grpcache *groupCache
 				}
 			} else {
 				if !exceedMax {
-					wlmet := &share.CLUSWlMetric {
-						WlID: epWL,
+					wlmet := &share.CLUSWlMetric{
+						WlID:        epWL,
 						WlSessCurIn: conn.EpSessCurIn,
 						WlSessIn12:  conn.EpSessIn12,
 						WlByteIn12:  conn.EpByteIn12,
@@ -663,17 +663,17 @@ func calGrpMet(lgrpname, epWL string, cache *workloadCache, grpcache *groupCache
 				grpMet.GroupByteIn12 = uint64(avGrpByteIn12 * float64(memcnt))
 			}
 		} else {
-			grpMetric := &share.CLUSGroupMetric {
-				GroupName: lgrpname,
+			grpMetric := &share.CLUSGroupMetric{
+				GroupName:      lgrpname,
 				GroupSessCurIn: conn.EpSessCurIn,
-				GroupSessIn12: conn.EpSessIn12,
-				GroupByteIn12: conn.EpByteIn12,
+				GroupSessIn12:  conn.EpSessIn12,
+				GroupByteIn12:  conn.EpByteIn12,
 			}
 			if grpMetric.WlMetric == nil {
 				grpMetric.WlMetric = make(map[string]*share.CLUSWlMetric)
 			}
-			wlmet := &share.CLUSWlMetric {
-				WlID: epWL,
+			wlmet := &share.CLUSWlMetric{
+				WlID:        epWL,
 				WlSessCurIn: conn.EpSessCurIn,
 				WlSessIn12:  conn.EpSessIn12,
 				WlByteIn12:  conn.EpByteIn12,
@@ -685,21 +685,21 @@ func calGrpMet(lgrpname, epWL string, cache *workloadCache, grpcache *groupCache
 }
 
 func isCalGrpMet(grpcache *groupCache) bool {
-	if  grpcache.group.MonMetric && (grpcache.group.GrpSessCur > 0 || grpcache.group.GrpSessRate > 0 ||
+	if grpcache.group.MonMetric && (grpcache.group.GrpSessCur > 0 || grpcache.group.GrpSessRate > 0 ||
 		grpcache.group.GrpBandWidth > 0) && (grpcache.group.CfgType == share.Learned ||
-		grpcache.group.CfgType == share.UserCreated || 	grpcache.group.CfgType == share.GroundCfg ||
-		grpcache.group.CfgType == share.FederalCfg) &&	grpcache.group.Kind == share.GroupKindContainer &&
+		grpcache.group.CfgType == share.UserCreated || grpcache.group.CfgType == share.GroundCfg ||
+		grpcache.group.CfgType == share.FederalCfg) && grpcache.group.Kind == share.GroupKindContainer &&
 		!grpcache.group.Reserved {
 		return true
 	}
 	return false
 }
 
-//EP's stats are piggybacked in connection to detect whether
-//there are bandwidth/session-rate violation based on pre-configured threshold
+// EP's stats are piggybacked in connection to detect whether
+// there are bandwidth/session-rate violation based on pre-configured threshold
 func CalculateGroupMetric(conn *share.CLUSConnection) {
 	//when metric threshold is not set, do not calculate group metric
-	if strings.Contains(conn.Network, share.NetworkProxyMesh)|| conn.Xff || conn.MeshToSvr {
+	if strings.Contains(conn.Network, share.NetworkProxyMesh) || conn.Xff || conn.MeshToSvr {
 		return
 	}
 	var epWL string
@@ -726,7 +726,7 @@ func UpdateConnections(conns []*share.CLUSConnection) {
 	graphMutexLock()
 	defer graphMutexUnlock()
 
-	for i, _ := range conns {
+	for i := range conns {
 		conn := conns[i]
 		if !preQualifyConnect(conn) {
 			continue
@@ -938,7 +938,7 @@ func connectFromGlobal(conn *share.CLUSConnection, ca *nodeAttr, stip *serverTip
 			stip.wlPort = uint16(conn.ServerPort)
 			ca.workload = true
 			return true
-		} else if conn.Nbe || conn.NbeSns{
+		} else if conn.Nbe || conn.NbeSns {
 			if alive {
 				conn.ClientWL = wl
 				stip.wlPort = uint16(conn.ServerPort)
@@ -1389,7 +1389,7 @@ func preProcessConnect(conn *share.CLUSConnection) (*nodeAttr, *nodeAttr, *serve
 								conn.ServerWL = fqdngrp
 								sa.addrgrp = true
 								cctx.ConnLog.WithFields(log.Fields{
-									"ServerWL": conn.ServerWL, "policyaction":conn.PolicyAction,
+									"ServerWL": conn.ServerWL, "policyaction": conn.PolicyAction,
 								}).Debug("To FQDN address group")
 							}
 						}
@@ -1680,7 +1680,7 @@ func graphAttr2REST(attr *graphAttr) *api.RESTConversationReport {
 			Bytes:        ge.bytes,
 			Sessions:     ge.sessions,
 			PolicyAction: common.PolicyActionRESTString(ge.policyAction),
-			CIP:          utils.Int2IPv4( key.cip).String(),
+			CIP:          utils.Int2IPv4(key.cip).String(),
 			SIP:          utils.Int2IPv4(key.sip).String(),
 			FQDN:         ge.fqdn,
 		}
@@ -2223,7 +2223,7 @@ func DeleteConver(src, dst string) {
 	defer graphMutexUnlock()
 
 	links := wlGraph.BetweenDirLinks(src, dst)
-	for l, _ := range links {
+	for l := range links {
 		wlGraph.DeleteLink(src, l, dst)
 	}
 }

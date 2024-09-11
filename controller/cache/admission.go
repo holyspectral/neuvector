@@ -2087,7 +2087,7 @@ func (m CacheMethod) MatchK8sAdmissionRules(admResObject *nvsysadmission.AdmResO
 			// As specified in https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/,
 			// the environment variables set using the env or envFrom field will override any environment variables specified in the container image.
 			// So environment variables set in yaml will override any environment variables specified in the scanned result.
-			for k, _ := range c.EnvVars {
+			for k := range c.EnvVars {
 				if _, exist := scannedImage.EnvVars[k]; exist {
 					delete(scannedImage.EnvVars, k)
 				}

@@ -714,7 +714,7 @@ func handlerSystemWebhookCreate(w http.ResponseWriter, r *http.Request, ps httpr
 			return
 		}
 
-		for i, _ := range cconf.Webhooks {
+		for i := range cconf.Webhooks {
 			if cconf.Webhooks[i].Name == rwh.Name {
 				log.WithFields(log.Fields{"name": rwh.Name}).Error("Duplicate webhook name")
 				restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, "Duplicate webhook name")
@@ -835,7 +835,7 @@ func handlerSystemWebhookConfig(w http.ResponseWriter, r *http.Request, ps httpr
 		}
 
 		var found bool
-		for i, _ := range cconf.Webhooks {
+		for i := range cconf.Webhooks {
 			if cconf.Webhooks[i].Name == rwh.Name {
 				cconf.Webhooks[i] = share.CLUSWebhook{
 					Name:     rwh.Name,
@@ -955,7 +955,7 @@ func handlerSystemWebhookDelete(w http.ResponseWriter, r *http.Request, ps httpr
 		}
 
 		var found bool
-		for i, _ := range cconf.Webhooks {
+		for i := range cconf.Webhooks {
 			if cconf.Webhooks[i].Name == name {
 				// No retain order. Show API sort the webhook list.
 				s := len(cconf.Webhooks)

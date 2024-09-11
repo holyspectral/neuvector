@@ -416,7 +416,7 @@ func scanRefresh(ctx context.Context, vpf scanUtils.VPFInterface) {
 
 	scanMutexLock()
 	ids := make([]string, len(scanMap))
-	for id, _ := range scanMap {
+	for id := range scanMap {
 		ids[i] = id
 		i++
 	}

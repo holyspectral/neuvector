@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/neuvector/neuvector/controller/access"
 	"github.com/neuvector/neuvector/controller/api"
 	"github.com/neuvector/neuvector/controller/common"
@@ -16,13 +15,14 @@ import (
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/cluster"
 	"github.com/neuvector/neuvector/share/utils"
+	log "github.com/sirupsen/logrus"
 )
 
 var profileAlertDisable bool = false
 var profileHashEnable bool = false
 var profileGroups map[string]*share.CLUSProcessProfile = make(map[string]*share.CLUSProcessProfile) // key is group name
 
-//update profile from config
+// update profile from config
 func profileConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
 	group := share.CLUSProfileKey2Name(key)
 	procRuleHelper := ruleid.GetProcessRuleIDHelper()
@@ -54,7 +54,7 @@ func profileConfigUpdate(nType cluster.ClusterNotifyType, key string, value []by
 	}
 }
 
-//handle new process report by enforcer
+// handle new process report by enforcer
 func handleProfileReport(gproc map[string][]*share.CLUSProcessProfileEntry) error {
 	//	log.WithFields(log.Fields{"gproc": gproc}).Debug()
 	for group, procs := range gproc {
@@ -316,7 +316,7 @@ func (m *CacheMethod) GetAllProcessProfile(scope string, acc *access.AccessContr
 // caller owns cacheMutexRLock & has readAll right
 func (m *CacheMethod) GetFedProcessProfileCache() []*share.CLUSProcessProfile {
 	count := 0
-	for groupName, _ := range profileGroups {
+	for groupName := range profileGroups {
 		if strings.HasPrefix(groupName, api.FederalGroupPrefix) {
 			count++
 		}
@@ -425,7 +425,7 @@ func addK8sProbeApps(group string, probeCmds []k8sProbeCmd) {
 		if isLeader() {
 			handleProfileReport(gproc)
 		} else {
-			AddProcessReport(gproc)	// put into a queue
+			AddProcessReport(gproc) // put into a queue
 		}
 	}
 }

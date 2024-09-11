@@ -138,7 +138,7 @@ func (d *base) SetIPAddrScope(ports map[string][]share.CLUSIPAddr,
 ) {
 	// Set an interface IP as global if it's IP belongs to 'global' network subnet
 	for _, addrs := range ports {
-		for j, _ := range addrs {
+		for j := range addrs {
 			if network := d.getNetworkFromAddr(addrs[j].IPNet.IP, nets); network != nil {
 				if network.Scope == container.DockerNetworkGlobal || network.Scope == container.DockerNetworkSwarm {
 					addrs[j].Scope = share.CLUSIPAddrScopeGlobal

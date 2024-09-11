@@ -496,7 +496,7 @@ func translateMappedPort(ports map[share.CLUSProtoPort]*share.CLUSMappedPort) ma
 // Translate open port to host port map, only used for host-mode container
 func app2MappedPort(apps map[share.CLUSProtoPort]*share.CLUSApp) map[share.CLUSProtoPort]*share.CLUSMappedPort {
 	ports := make(map[share.CLUSProtoPort]*share.CLUSMappedPort, len(apps))
-	for p, _ := range apps {
+	for p := range apps {
 		cp := share.CLUSProtoPort{
 			Port:    p.Port,
 			IPProto: p.IPProto,
@@ -648,7 +648,7 @@ func clusterRefreshContainers() {
 
 	// Remove non-existing containers from cluster
 	existing := utils.NewSet()
-	for id, _ := range wlCacheMap {
+	for id := range wlCacheMap {
 		existing.Add(id)
 	}
 

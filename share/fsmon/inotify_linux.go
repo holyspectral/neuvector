@@ -1,8 +1,8 @@
 package fsmon
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,17 +25,17 @@ const (
 		syscall.IN_DELETE_SELF |
 		syscall.IN_MOVE |
 		syscall.IN_MOVE_SELF
-	imonitorDirMask = imonitorFileMask | syscall.IN_MOVED_TO | syscall.IN_CREATE
+	imonitorDirMask    = imonitorFileMask | syscall.IN_MOVED_TO | syscall.IN_CREATE
 	imonitorRemoveMask = syscall.IN_DELETE | syscall.IN_DELETE_SELF | syscall.IN_MOVE | syscall.IN_MOVE_SELF
 )
 
 type Inotify struct {
 	fNotify
-	bEnabled bool
-	fd       int
-	wds      map[int]*IFile
-	paths    map[string]*IFile
-	dirs     map[string]*IFile
+	bEnabled    bool
+	fd          int
+	wds         map[int]*IFile
+	paths       map[string]*IFile
+	dirs        map[string]*IFile
 	inotifyFile *os.File
 }
 
@@ -47,11 +47,11 @@ func NewInotify() (*Inotify, error) {
 		return nil, err
 	}
 	in := Inotify{
-		fd:    fd,
+		fd:          fd,
 		inotifyFile: os.NewFile(uintptr(fd), ""),
-		wds:   make(map[int]*IFile),
-		paths: make(map[string]*IFile),
-		dirs:  make(map[string]*IFile),
+		wds:         make(map[int]*IFile),
+		paths:       make(map[string]*IFile),
+		dirs:        make(map[string]*IFile),
 	}
 	return &in, nil
 }
@@ -65,11 +65,11 @@ func (n *Inotify) GetWatches() []string {
 	defer n.mux.Unlock()
 	files := make([]string, len(n.paths)+len(n.dirs))
 	i := 0
-	for path, _ := range n.paths {
+	for path := range n.paths {
 		files[i] = path
 		i++
 	}
-	for dir, _ := range n.dirs {
+	for dir := range n.dirs {
 		files[i] = dir
 		i++
 	}
@@ -113,7 +113,7 @@ func (n *Inotify) GetWatchFileList(rootPid int) []string {
 	watches := make([]string, 0)
 	n.mux.Lock()
 	defer n.mux.Unlock()
-	for path, _ := range n.paths {
+	for path := range n.paths {
 		if strings.Contains(path, fmt.Sprintf("/proc/%d/root/", rootPid)) {
 			if a := strings.Index(path, "/root/"); a > 0 {
 				watches = append(watches, path[a+6:])
@@ -125,7 +125,7 @@ func (n *Inotify) GetWatchFileList(rootPid int) []string {
 			if a := strings.Index(path, "/root/"); a > 0 {
 				watches = append(watches, path[a+6:])
 			}
-			for name, _ := range ifl.files {
+			for name := range ifl.files {
 				if a := strings.Index(path, "/root/"); a > 0 {
 					watches = append(watches, path[a+6:]+"/"+name)
 				}
@@ -222,7 +222,7 @@ func (n *Inotify) MonitorFileEvents() {
 
 		bytesRead, err := n.inotifyFile.Read(buffer[:])
 		// bytesRead, err := syscall.Read(n.fd, buffer)
-		if err != nil  || bytesRead < syscall.SizeofInotifyEvent {
+		if err != nil || bytesRead < syscall.SizeofInotifyEvent {
 			if errors.Unwrap(err) == os.ErrClosed || strings.Contains(err.Error(), "bad file descriptor") {
 				log.WithFields(log.Fields{"err": err}).Error("Read Inotify")
 				break
@@ -243,21 +243,21 @@ func (n *Inotify) MonitorFileEvents() {
 						nameLen := uint32(event.Len)
 						if nameLen > 0 {
 							bytes := (*[unix.PathMax]byte)(unsafe.Pointer(&buffer[offset+unix.SizeofInotifyEvent]))
-						    path = filepath.Join(ifile.path, strings.TrimRight(string(bytes[0:nameLen]), "\000"))
+							path = filepath.Join(ifile.path, strings.TrimRight(string(bytes[0:nameLen]), "\000"))
 						}
 
 						if (event.Mask & syscall.IN_ISDIR) > 0 {
 							mLog.WithFields(log.Fields{"dir": path, "mask": strconv.FormatUint(uint64(event.Mask), 16), "nameLen": nameLen}).Debug("dir: altered")
-							if (event.Mask & (syscall.IN_CREATE|syscall.IN_MOVED_TO)) > 0 {
-								cbFile = &IFile{ path: path, cb:ifile.cb, params: ifile.params}
+							if (event.Mask & (syscall.IN_CREATE | syscall.IN_MOVED_TO)) > 0 {
+								cbFile = &IFile{path: path, cb: ifile.cb, params: ifile.params}
 
 								// new dir
 								if info, err := os.Stat(path); err == nil {
-									finfo := ifile.params.(*osutil.FileInfoExt)	// original FileInfoExt
+									finfo := ifile.params.(*osutil.FileInfoExt) // original FileInfoExt
 									flt := finfo.Filter.(*filterRegex)
 									if flt.recursive {
 										ff := make(map[string]interface{})
-										dirInfo := &osutil.FileInfoExt {
+										dirInfo := &osutil.FileInfoExt{
 											ContainerId: finfo.ContainerId,
 											FileMode:    info.Mode(),
 											Path:        path,
@@ -274,17 +274,17 @@ func (n *Inotify) MonitorFileEvents() {
 									// mLog.WithFields(log.Fields{"dir": path}).Debug("dir: meta")
 									cbFile = &IFile{path: path, cb: ifile.cb, params: ifile.params}
 								}
-							} else if (event.Mask & (syscall.IN_DELETE|syscall.IN_MOVED_FROM)) > 0 {
+							} else if (event.Mask & (syscall.IN_DELETE | syscall.IN_MOVED_FROM)) > 0 {
 								// mLog.WithFields(log.Fields{"dir": path}).Debug("dir: deleted/moved")
-								cbFile = &IFile{path: path,	cb: ifile.cb, params: ifile.params}
+								cbFile = &IFile{path: path, cb: ifile.cb, params: ifile.params}
 							} else {
 								mLog.WithFields(log.Fields{"dir": path}).Debug("dir: not handled")
 							}
-						} else {  // a file under a watched directory
+						} else { // a file under a watched directory
 							mLog.WithFields(log.Fields{"path": path, "mask": strconv.FormatUint(uint64(event.Mask), 16)}).Debug("dir: changed")
-							cbFile = &IFile{ path: path, cb: ifile.cb, params: ifile.params}
+							cbFile = &IFile{path: path, cb: ifile.cb, params: ifile.params}
 						}
-					} else {  // a watched file
+					} else { // a watched file
 						if (event.Mask & imonitorRemoveMask) > 0 {
 							log.WithFields(log.Fields{"path": ifile.path}).Debug("file: remove")
 							syscall.InotifyRmWatch(n.fd, uint32(event.Wd))
@@ -317,14 +317,14 @@ func (n *Inotify) MonitorFileEvents() {
 func (n *Inotify) Close() {
 	n.mux.Lock()
 	defer n.mux.Unlock()
-	for wd, _ := range n.wds {
+	for wd := range n.wds {
 		syscall.InotifyRmWatch(n.fd, uint32(wd))
 	}
 	syscall.Close(n.fd)
 	n.bEnabled = false
 }
 
-////////
+// //////
 func (n *Inotify) GetProbeData(m *IMonProbeData) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
