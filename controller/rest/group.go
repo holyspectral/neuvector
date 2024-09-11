@@ -279,7 +279,7 @@ func handlerGroupShow(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 func validateAddressRange(ipRange string) error {
 	ip, ipr := utils.ParseIPRange(ipRange)
 	if ip == nil || ipr == nil || bytes.Compare(ip, ipr) > 0 {
-		e := "Invalid IP range"
+		e := "invalid IP range"
 		return fmt.Errorf(e)
 	}
 	return nil
@@ -1775,7 +1775,7 @@ func importGroupPolicy(scope string, loginDomainRoles access.DomainRole, importT
 		}
 	}
 	if invalidCrdKind || len(secRules) == 0 {
-		msg := "Invalid security rule(s)"
+		msg := "invalid security rule(s)"
 		log.WithFields(log.Fields{"error": err}).Error(msg)
 		postImportOp(fmt.Errorf(msg), importTask, loginDomainRoles, "", share.IMPORT_TYPE_GROUP_POLICY)
 		return nil
@@ -2023,7 +2023,7 @@ func importGroup(scope, targetGroup string, groups []api.RESTCrdGroupConfig) (ut
 	if err != nil || !ok {
 		log.WithFields(log.Fields{"error": err, "ok": ok}).Error("Atomic write failed")
 		if !ok {
-			err = fmt.Errorf("Atomic write to the cluster failed")
+			err = fmt.Errorf("atomic write to the cluster failed")
 		}
 		updatedGroups.Clear()
 	}

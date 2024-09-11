@@ -279,12 +279,12 @@ func isValidAction(act string) bool {
 
 func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) error {
 	if r.Event == "" {
-		return fmt.Errorf("Missing event for response rule")
+		return fmt.Errorf("missing event for response rule")
 	}
 
 	options := getResponeRuleOptions(acc)
 	if option, ok := options[r.Event]; !ok {
-		return fmt.Errorf("Unsupported event for response rule")
+		return fmt.Errorf("unsupported event for response rule")
 	} else if len(r.Conditions) > 0 {
 		cds := utils.NewSet()
 		for i, cd := range r.Conditions {
@@ -296,13 +296,13 @@ func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) er
 				}
 			}
 			if !found {
-				return fmt.Errorf("Unsupported condition type for event %s", r.Event)
+				return fmt.Errorf("unsupported condition type for event %s", r.Event)
 			} else if r.Event == share.EventCVEReport {
 				// value validation
 				if cd.CondType == share.EventCondTypeCVEHigh || cd.CondType == share.EventCondTypeCVEMedium {
 					id, err := strconv.Atoi(cd.CondValue)
 					if err != nil || id <= 0 {
-						return fmt.Errorf("Invalid cve-high value:n %s", cd.CondValue)
+						return fmt.Errorf("invalid cve-high value:n %s", cd.CondValue)
 					}
 				} else if cd.CondType == share.EventCondTypeCVEHighWithFix {
 					invalid := false
@@ -314,7 +314,7 @@ func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) er
 						}
 					}
 					if len(ss) > 2 || invalid {
-						return fmt.Errorf("Invalid cve-high-with-fix value:n %s", cd.CondValue)
+						return fmt.Errorf("invalid cve-high-with-fix value:n %s", cd.CondValue)
 					}
 				} else if cd.CondType == share.EventCondTypeCVEName {
 					r.Conditions[i].CondValue = strings.ToUpper(cd.CondValue)
@@ -325,19 +325,19 @@ func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) er
 			if !cds.Contains(cd.CondType) {
 				cds.Add(cd.CondType)
 			} else {
-				return fmt.Errorf("Duplicate condition type %s in one rule", cd.CondType)
+				return fmt.Errorf("duplicate condition type %s in one rule", cd.CondType)
 			}
 		}
 	}
 
 	if len(r.Actions) == 0 {
-		return fmt.Errorf("No action specified in the response rule")
+		return fmt.Errorf("no action specified in the response rule")
 	}
 
 	var scWebhooks []share.CLUSWebhook
 	for _, act := range r.Actions {
 		if !isValidAction(act) {
-			return fmt.Errorf("Action %s is not supported", act)
+			return fmt.Errorf("action %s is not supported", act)
 		}
 
 		// We specifically allow action to be webhook without specifying webhook name,
@@ -354,7 +354,7 @@ func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) er
 					}
 				}
 				if len(scWebhooks) == 0 {
-					return fmt.Errorf("Failed to read webhooks info in system configuration")
+					return fmt.Errorf("failed to read webhooks info in system configuration")
 				}
 			}
 		WebhookLoop:
@@ -365,7 +365,7 @@ func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) er
 					}
 				}
 
-				return fmt.Errorf("Webhook %s is not defined", w)
+				return fmt.Errorf("webhook %s is not defined", w)
 			}
 		}
 	}
@@ -373,13 +373,13 @@ func validateResponseRule(r *api.RESTResponseRule, acc *access.AccessControl) er
 	if r.Group != "" {
 		grp, _, _ := clusHelper.GetGroup(r.Group, acc)
 		if grp == nil {
-			return fmt.Errorf("Group %s is not found", r.Group)
+			return fmt.Errorf("group %s is not found", r.Group)
 		} else {
 			if r.Group == api.LearnedExternal || r.Group == api.AllHostGroup {
 				// containers/external/nodes are allowed for fed response rules
 			} else if (r.CfgType == api.CfgTypeFederal && grp.CfgType != share.FederalCfg) ||
 				(r.CfgType != api.CfgTypeFederal && grp.CfgType == share.FederalCfg) {
-				return fmt.Errorf("Rule cannot be applied to group %s", r.Group)
+				return fmt.Errorf("rule cannot be applied to group %s", r.Group)
 			}
 		}
 	} else if (r.CfgType == api.CfgTypeFederal && !acc.IsFedAdmin()) ||
@@ -586,7 +586,7 @@ func insertResponseRule(policyName string, w http.ResponseWriter, r *http.Reques
 
 	toIdx, after := locatePosition(crhs, insert.After, -1)
 	if toIdx == -1 {
-		e := "Insert position cannot be found"
+		e := "insert position cannot be found"
 		log.WithFields(log.Fields{"after": after}).Error(e)
 		restRespError(w, http.StatusNotFound, api.RESTErrObjectNotFound)
 		return fmt.Errorf(e)
@@ -600,7 +600,7 @@ func insertResponseRule(policyName string, w http.ResponseWriter, r *http.Reques
 	newRules := make([]*share.CLUSResponseRule, len(insert.Rules))
 	for i, rr := range insert.Rules {
 		if ids.Contains(rr.ID) {
-			e := "Duplicate rule ID"
+			e := "duplicate rule ID"
 			log.WithFields(log.Fields{"id": rr.ID}).Error(e)
 			restRespError(w, http.StatusBadRequest, api.RESTErrInvalidRequest)
 			return fmt.Errorf(e)
@@ -609,7 +609,7 @@ func insertResponseRule(policyName string, w http.ResponseWriter, r *http.Reques
 		if rr.ID == api.PolicyAutoID {
 			rr.ID = getAvailableRuleID(ruleTypeRespRule, ids, cfgType)
 			if rr.ID == 0 {
-				err := errors.New("Failed to locate available rule ID")
+				err := errors.New("failed to locate available rule ID")
 				log.WithFields(log.Fields{"id": rr.ID}).Error(err)
 				restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
 				return err
@@ -649,7 +649,7 @@ func insertResponseRule(policyName string, w http.ResponseWriter, r *http.Reques
 		restRespError(w, http.StatusInternalServerError, api.RESTErrFailWriteCluster)
 		return err
 	} else if !ok {
-		err = errors.New("Atomic write failed")
+		err = errors.New("atomic write failed")
 		log.Error(err.Error())
 		restRespError(w, http.StatusInternalServerError, api.RESTErrFailWriteCluster)
 		return err
@@ -873,7 +873,7 @@ func handlerResponseRuleDelete(w http.ResponseWriter, r *http.Request, ps httpro
 		restRespError(w, http.StatusInternalServerError, api.RESTErrFailWriteCluster)
 		return
 	} else if !ok {
-		err = errors.New("Atomic write failed")
+		err = errors.New("atomic write failed")
 		log.Error(err.Error())
 		restRespError(w, http.StatusInternalServerError, api.RESTErrFailWriteCluster)
 		return
@@ -952,7 +952,7 @@ func handlerResponseRuleDeleteAll(w http.ResponseWriter, r *http.Request, ps htt
 		restRespError(w, http.StatusInternalServerError, api.RESTErrFailWriteCluster)
 		return
 	} else if !ok {
-		err = errors.New("Atomic write failed")
+		err = errors.New("atomic write failed")
 		log.Error(err.Error())
 		restRespError(w, http.StatusInternalServerError, api.RESTErrFailWriteCluster)
 		return

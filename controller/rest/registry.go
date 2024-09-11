@@ -81,7 +81,7 @@ func handlerRegistryTypeList(w http.ResponseWriter, r *http.Request, ps httprout
 
 func parseWildcardRegex(s string) (string, error) {
 	if s = strings.TrimSpace(s); s == "" {
-		return "", errors.New("Invalid filter format")
+		return "", errors.New("invalid filter format")
 	}
 	// If * appears at the end, but not .* or ]* or )*, expand it to ".*", not to add ^$ yet.
 	var out string
@@ -129,13 +129,13 @@ func parseFilter(filters []string, regType string) ([]*share.CLUSRegistryFilter,
 		// org
 		if (org != "" && !orgRegexp.MatchString(org)) || (org == "" && filter != "*" && regType == share.RegistryTypeOpenShift) {
 			log.WithFields(log.Fields{"org": org, "type": regType}).Error("Failed to parse organization in the filter")
-			return nil, errors.New("Invalid filter format")
+			return nil, errors.New("invalid filter format")
 		}
 
 		// repo
 		if repo, err = parseWildcardRegex(repo); err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Failed to parse repository in the filter")
-			return nil, errors.New("Regular express error in repository")
+			return nil, errors.New("regular express error in repository")
 		}
 
 		// tag
@@ -143,7 +143,7 @@ func parseFilter(filters []string, regType string) ([]*share.CLUSRegistryFilter,
 			tag = ".*"
 		} else if tag, err = parseWildcardRegex(tag); err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Failed to parse tag in the filter")
-			return nil, errors.New("Regular express error in tag")
+			return nil, errors.New("regular express error in tag")
 		}
 
 		repoFilters[n] = &share.CLUSRegistryFilter{Org: org, Repo: repo, Tag: tag}

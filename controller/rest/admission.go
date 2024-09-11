@@ -73,7 +73,7 @@ func getRuleId(w http.ResponseWriter, ps httprouter.Params) (uint32, error) {
 
 func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map[string]*api.RESTAdmissionRuleOption, ruleType string) error {
 	if criteria != nil && options == nil {
-		return fmt.Errorf("Invalid criteria options")
+		return fmt.Errorf("invalid criteria options")
 	}
 
 	numOps := utils.NewSet(share.CriteriaOpLessEqualThan, share.CriteriaOpBiggerEqualThan, share.CriteriaOpBiggerThan)
@@ -92,14 +92,14 @@ func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map
 
 		if crt.Type == "customPath" || crt.Type == "saBindRiskyRole" {
 			if ruleType != api.ValidatingDenyRuleType {
-				return fmt.Errorf("Unsupported criterion name: %s", crt.Name)
+				return fmt.Errorf("unsupported criterion name: %s", crt.Name)
 			}
 
 			if !allowedOp {
-				return fmt.Errorf("Invalid criterion operator: %s", crt.Op)
+				return fmt.Errorf("invalid criterion operator: %s", crt.Op)
 			}
 			if !allowedValue {
-				return fmt.Errorf("Invalid criterion value: %s", crt.Value)
+				return fmt.Errorf("invalid criterion value: %s", crt.Value)
 			}
 			continue
 		}
@@ -108,7 +108,7 @@ func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map
 			for _, value := range strings.Split(crt.Value, ",") {
 				value = strings.TrimSpace(value)
 				if _, err := regexp.Compile(value); err != nil {
-					return fmt.Errorf("Invalid criterion value for regex operator: %s", crt.Value)
+					return fmt.Errorf("invalid criterion value for regex operator: %s", crt.Value)
 				}
 			}
 		}
@@ -148,10 +148,10 @@ func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map
 				}
 			}
 			if !allowedOp {
-				return fmt.Errorf("Invalid criterion operator: %s", crt.Op)
+				return fmt.Errorf("invalid criterion operator: %s", crt.Op)
 			}
 			if !allowedValue {
-				return fmt.Errorf("Invalid criterion value: %s", crt.Value)
+				return fmt.Errorf("invalid criterion value: %s", crt.Value)
 			}
 			if crt.Name == share.CriteriaKeyCVEScoreCount && len(crt.SubCriteria) == 0 {
 				crt.SubCriteria = []*share.CLUSAdmRuleCriterion{
@@ -168,7 +168,7 @@ func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map
 				}
 			}
 		} else {
-			return fmt.Errorf("Unsupported criterion name: %s", crt.Name)
+			return fmt.Errorf("unsupported criterion name: %s", crt.Name)
 		}
 
 		if crt.Name == share.CriteriaKeyStorageClassName {
@@ -179,7 +179,7 @@ func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map
 	if hasStorageClassCriteria {
 		for _, crt := range criteria {
 			if crt.Name != share.CriteriaKeyStorageClassName && crt.Name != share.CriteriaKeyNamespace {
-				return fmt.Errorf("The StorageClass Name criteria can only be used in conjunction with namespace criteria. Criterion name: %s", crt.Name)
+				return fmt.Errorf("the StorageClass Name criteria can only be used in conjunction with namespace criteria. Criterion name: %s", crt.Name)
 			}
 		}
 	}
@@ -314,7 +314,7 @@ func getAdmCtrlRuleContainers(targets []string) (uint8, error) {
 		case share.AdmCtrlRuleEphemeralContainers:
 			ruleContainers = ruleContainers | share.AdmCtrlRuleEphemeralContainersN
 		default:
-			return 0, fmt.Errorf("Invalid containers value")
+			return 0, fmt.Errorf("invalid containers value")
 		}
 	}
 	if ruleContainers == 0 {
@@ -1505,7 +1505,7 @@ func importAdmCtrl(scope string, loginDomainRoles access.DomainRole, importTask 
 	json_data, _ := os.ReadFile(importTask.TempFilename)
 	var secRule resource.NvAdmCtrlSecurityRule
 	if err := json.Unmarshal(json_data, &secRule); err != nil || secRule.APIVersion != "neuvector.com/v1" || secRule.Kind != resource.NvAdmCtrlSecurityRuleKind {
-		msg := "Invalid security rule(s)"
+		msg := "invalid security rule(s)"
 		log.WithFields(log.Fields{"error": err}).Error(msg)
 		postImportOp(fmt.Errorf(msg), importTask, loginDomainRoles, "", share.IMPORT_TYPE_ADMCTRL)
 		return nil

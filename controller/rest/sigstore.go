@@ -552,7 +552,7 @@ func validateCLUSRootOfTrust(rootOfTrust *share.CLUSSigstoreRootOfTrust) error {
 		// for private root of trust, RekorPublicKey/SCTPublicKey are optional
 		if rootOfTrust.RootCert == "" || !strings.HasPrefix(rootOfTrust.RootCert, "-----BEGIN CERTIFICATE-----") ||
 			!strings.HasSuffix(rootOfTrust.RootCert, "-----END CERTIFICATE-----") {
-			return errors.New("Invalid format for Root Certificate")
+			return errors.New("invalid format for Root Certificate")
 		}
 		rotKeys := map[string]string{
 			"Rekor public key": rootOfTrust.RekorPublicKey,
@@ -560,7 +560,7 @@ func validateCLUSRootOfTrust(rootOfTrust *share.CLUSSigstoreRootOfTrust) error {
 		}
 		for k, v := range rotKeys {
 			if v != "" && (!strings.HasPrefix(v, "-----BEGIN PUBLIC KEY-----") || !strings.HasSuffix(v, "-----END PUBLIC KEY-----")) {
-				return fmt.Errorf("Invalid format for %s", k)
+				return fmt.Errorf("invalid format for %s", k)
 			}
 		}
 	}
@@ -582,7 +582,7 @@ func validateCLUSVerifier(verifier *share.CLUSSigstoreVerifier) error {
 		verifier.PublicKey = strings.TrimSpace(verifier.PublicKey)
 		if verifier.PublicKey == "" || !strings.HasPrefix(verifier.PublicKey, "-----BEGIN PUBLIC KEY-----") ||
 			!strings.HasSuffix(verifier.PublicKey, "-----END PUBLIC KEY-----") {
-			return errors.New("Invalid format for Public Key")
+			return errors.New("invalid format for Public Key")
 		}
 		verifier.CertIssuer = ""
 		verifier.CertSubject = ""

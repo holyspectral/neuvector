@@ -111,11 +111,11 @@ const restErrMessageDefault string = "Unknown error"
 
 const crdEventProcPeriod = time.Duration(time.Second * 10)
 
-var restErrNeedAgentWorkloadFilter = errors.New("Enforcer or workload filter must be provided")
-var restErrNeedAgentFilter = errors.New("Enforcer filter must be provided")
-var restErrWorkloadNotFound error = errors.New("Container is not found")
-var restErrAgentNotFound error = errors.New("Enforcer is not found")
-var restErrAgentDisconnected error = errors.New("Enforcer is disconnected")
+var restErrNeedAgentWorkloadFilter = errors.New("enforcer or workload filter must be provided")
+var restErrNeedAgentFilter = errors.New("enforcer filter must be provided")
+var restErrWorkloadNotFound error = errors.New("container is not found")
+var restErrAgentNotFound error = errors.New("enforcer is not found")
+var restErrAgentDisconnected error = errors.New("enforcer is disconnected")
 
 var checkCrdSchemaFunc func(lead, init, crossCheck bool, cspType share.TCspType) []string
 

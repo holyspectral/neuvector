@@ -57,7 +57,7 @@ func parseWebUrl(l string) error {
 		return err
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("Unsupport schema")
+		return fmt.Errorf("unsupport schema")
 	}
 	return nil
 }
@@ -541,15 +541,15 @@ func validateWebhook(h *api.RESTWebhook) (int, error) {
 
 	if isObjectNameValid(h.Name) == false {
 		log.WithFields(log.Fields{"name": h.Name}).Error("Invalid webhook name")
-		return api.RESTErrInvalidName, errors.New("Invalid webhook name")
+		return api.RESTErrInvalidName, errors.New("invalid webhook name")
 	}
 	if err := parseWebUrl(h.Url); err != nil {
 		log.WithFields(log.Fields{"name": h.Name, "url": h.Url, "error": err}).Error("Invalid webhook URL")
-		return api.RESTErrInvalidRequest, errors.New("Invalid webhook URL")
+		return api.RESTErrInvalidRequest, errors.New("invalid webhook URL")
 	}
 	if h.Type != "" && h.Type != api.WebhookTypeSlack && h.Type != api.WebhookTypeJSON && h.Type != api.WebhookTypeTeams {
 		log.WithFields(log.Fields{"name": h.Name, "type": h.Type}).Error("Invalid webhook type")
-		return api.RESTErrInvalidRequest, errors.New("Invalid webhook type")
+		return api.RESTErrInvalidRequest, errors.New("invalid webhook type")
 	}
 	return 0, nil
 }
@@ -563,7 +563,7 @@ func configWebhooks(rcWebhookUrl *string, rcWebhooks *[]*api.RESTWebhook, cconfW
 	if rcWebhookUrl != nil && *rcWebhookUrl != "" {
 		if err := parseWebUrl(*rcWebhookUrl); err != nil {
 			log.WithFields(log.Fields{"url": *rcWebhookUrl, "error": err}).Error("Invalid webhook URL")
-			return nil, api.RESTErrInvalidRequest, errors.New("Invalid webhook URL")
+			return nil, api.RESTErrInvalidRequest, errors.New("invalid webhook URL")
 		}
 
 		newWebhookNames.Add(api.WebhookDefaultName)
@@ -587,12 +587,12 @@ func configWebhooks(rcWebhookUrl *string, rcWebhooks *[]*api.RESTWebhook, cconfW
 			*/
 			if h.Name == "" || h.Url == "" {
 				log.WithFields(log.Fields{"name": h.Name}).Error("Empty webhook name or URL")
-				return nil, api.RESTErrInvalidName, errors.New("Empty webhook name or URL")
+				return nil, api.RESTErrInvalidName, errors.New("empty webhook name or URL")
 			}
 
 			if newWebhookNames.Contains(h.Name) {
 				log.WithFields(log.Fields{"name": h.Name}).Error("Duplicate webhook name")
-				return nil, api.RESTErrInvalidName, errors.New("Duplicate webhook name")
+				return nil, api.RESTErrInvalidName, errors.New("duplicate webhook name")
 			}
 			if code, err := validateWebhook(h); err != nil {
 				return nil, code, err
@@ -628,7 +628,7 @@ func configWebhooks(rcWebhookUrl *string, rcWebhooks *[]*api.RESTWebhook, cconfW
 				for _, n := range r.Webhooks {
 					if dels.Contains(n) {
 						log.WithFields(log.Fields{"name": n, "policy": policyName}).Error("Deleted webhook is inuse")
-						return nil, api.RESTErrInvalidRequest, errors.New("Deleted webhook is inuse")
+						return nil, api.RESTErrInvalidRequest, errors.New("deleted webhook is inuse")
 					}
 				}
 			}
@@ -1086,7 +1086,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 				case share.PolicyModeLearn, share.PolicyModeEvaluate, share.PolicyModeEnforce:
 					cconf.NetServicePolicyMode = *nc.NetServicePolicyMode
 				default:
-					e := "Invalid network service policy mode"
+					e := "invalid network service policy mode"
 					log.WithFields(log.Fields{"net_service_policy_mode": *nc.NetServicePolicyMode}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1165,7 +1165,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 				case share.PolicyModeLearn, share.PolicyModeEvaluate, share.PolicyModeEnforce:
 					cconf.NewServicePolicyMode = *rc.NewServicePolicyMode
 				default:
-					e := "Invalid new service policy mode"
+					e := "invalid new service policy mode"
 					log.WithFields(log.Fields{"new_service_policy_mode": *rc.NewServicePolicyMode}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1180,7 +1180,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 				case share.ProfileDefault_UNUSED, share.ProfileShield_UNUSED, share.ProfileZeroDrift:
 					cconf.NewServiceProfileBaseline = share.ProfileZeroDrift
 				default:
-					e := "Invalid new service profile baseline"
+					e := "invalid new service profile baseline"
 					log.WithFields(log.Fields{"new_service_profile_baseline": *rc.NewServiceProfileBaseline}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1191,7 +1191,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			if rc.UnusedGroupAging != nil {
 				cconf.UnusedGroupAging = *rc.UnusedGroupAging
 				if cconf.UnusedGroupAging > share.UnusedGroupAgingMax {
-					e := "Invalid unused group aging time."
+					e := "invalid unused group aging time."
 					log.WithFields(log.Fields{"unused_group_aging": *rc.UnusedGroupAging}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1211,7 +1211,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 				for _, categories := range *rc.SyslogCategories {
 					if categories != api.CategoryEvent && categories != api.CategoryRuntime &&
 						categories != api.CategoryAudit {
-						e := "Invalid syslog Category"
+						e := "invalid syslog Category"
 						log.WithFields(log.Fields{"category": categories}).Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return kick, errors.New(e)
@@ -1227,7 +1227,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 					cconf.SyslogIP = nil
 				} else if regIPLoose.MatchString(*rc.SyslogServer) {
 					if ip := net.ParseIP(*rc.SyslogServer); ip == nil {
-						e := "Invalid syslog IP"
+						e := "invalid syslog IP"
 						log.WithFields(log.Fields{"ip": *rc.SyslogServer}).Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return kick, errors.New(e)
@@ -1246,7 +1246,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 				if ipproto == 0 {
 					cconf.SyslogIPProto = syscall.IPPROTO_UDP
 				} else if ipproto != syscall.IPPROTO_UDP && ipproto != syscall.IPPROTO_TCP && ipproto != api.SyslogProtocolTCPTLS {
-					e := "Invalid syslog protocol"
+					e := "invalid syslog protocol"
 					log.WithFields(log.Fields{"protocol": ipproto}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1260,7 +1260,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			}
 			if cconf.SyslogIPProto == api.SyslogProtocolTCPTLS && (rc.SyslogIPProto != nil || rc.SyslogServerCert != nil) {
 				if certErr := validateCertificate(cconf.SyslogServerCert); certErr != nil {
-					e := "Invalid syslog server certificate"
+					e := "invalid syslog server certificate"
 					log.WithFields(log.Fields{"error": certErr}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1280,7 +1280,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 					cconf.SyslogLevel = api.LogLevelINFO
 				} else {
 					if _, ok := common.LevelToPrio(*rc.SyslogLevel); !ok {
-						e := "Invalid syslog level"
+						e := "invalid syslog level"
 						log.WithFields(log.Fields{"level": *rc.SyslogLevel}).Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return kick, errors.New(e)
@@ -1290,7 +1290,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			}
 
 			if cconf.SyslogEnable && cconf.SyslogIP == nil && cconf.SyslogServer == "" {
-				e := "Syslog address is not configured"
+				e := "syslog address is not configured"
 				log.Error(e)
 				restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 				return kick, errors.New(e)
@@ -1324,12 +1324,12 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 				for _, name := range *rc.AuthOrder {
 					if name != api.AuthServerLocal {
 						if cs, _, _ := clusHelper.GetServerRev(name, acc); cs == nil {
-							e := "Authentication server not found"
+							e := "authentication server not found"
 							log.WithFields(log.Fields{"name": name}).Error(e)
 							restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrObjectNotFound, e)
 							return kick, errors.New(e)
 						} else if !isPasswordAuthServer(cs) {
-							e := "Not a password authentication server"
+							e := "not a password authentication server"
 							log.WithFields(log.Fields{"name": name}).Error(e)
 							restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 							return kick, errors.New(e)
@@ -1350,7 +1350,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			}
 			if rc.RancherEP != nil {
 				if u, err := url.ParseRequestURI(*rc.RancherEP); err != nil {
-					e := "Invalid endpoint URL"
+					e := "invalid endpoint URL"
 					log.WithFields(log.Fields{"url": *rc.RancherEP}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
@@ -1410,7 +1410,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 						}
 					}
 					if len(*rc.RemoteRepositories) > 1 || !cr.IsValid() {
-						err := errors.New("Unsupported remote repository nickname or provider")
+						err := errors.New("unsupported remote repository nickname or provider")
 						log.WithFields(log.Fields{"err": err}).Error()
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
 						return kick, err
@@ -1510,7 +1510,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			}
 			if (cconf.RegistryHttpProxy.Enable && cconf.RegistryHttpProxy.URL == "") ||
 				(cconf.RegistryHttpsProxy.Enable && cconf.RegistryHttpsProxy.URL == "") {
-				e := "Empty proxy URL"
+				e := "empty proxy URL"
 				log.Error(e)
 				restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 				return kick, errors.New(e)
@@ -1589,7 +1589,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 						}
 					}
 					if invalidValue {
-						e := "Invalid autoscale value"
+						e := "invalid autoscale value"
 						log.Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return kick, errors.New(e)
@@ -2400,7 +2400,7 @@ func rawImportRead(r *http.Request, tmpfile *os.File) (int, error) {
 	lines := 0
 	gzr, err := gzip.NewReader(r.Body)
 	if err != nil {
-		e := "Invalid file format"
+		e := "invalid file format"
 		log.WithFields(log.Fields{"error": err}).Error(e)
 		return lines, errors.New(e)
 	}
@@ -2437,7 +2437,7 @@ func multipartImportRead(r *http.Request, params map[string]string, tmpfile *os.
 			break
 		}
 		if err != nil {
-			e := "Invalid multi-part file format"
+			e := "invalid multi-part file format"
 			log.WithFields(log.Fields{"error": err}).Error(e)
 			return lines, errors.New(e)
 		}
@@ -2445,7 +2445,7 @@ func multipartImportRead(r *http.Request, params map[string]string, tmpfile *os.
 		if part.FormName() == multipartConfigName {
 			gzr, err := gzip.NewReader(part)
 			if err != nil {
-				e := "Invalid file format"
+				e := "invalid file format"
 				log.WithFields(log.Fields{"error": err}).Error(e)
 				return lines, errors.New(e)
 			}
@@ -2850,11 +2850,11 @@ func replaceFedSystemConfig(newCfg *share.CLUSSystemConfig) bool {
 func validateCertificate(certificate string) error {
 	block, _ := pem.Decode([]byte(certificate))
 	if block == nil {
-		return errors.New("Invalid certificate")
+		return errors.New("invalid certificate")
 	}
 	_, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return errors.New("Invalid certificate")
+		return errors.New("invalid certificate")
 	}
 
 	// No need to check the specific type of public key; relying on x509.ParseCertificate() should be sufficient.

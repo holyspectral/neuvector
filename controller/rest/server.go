@@ -48,7 +48,7 @@ func isAuthServerInuse(name string) (bool, error) {
 	sysconf, _ := clusHelper.GetSystemConfigRev(access.NewReaderAccessControl())
 	for _, server := range sysconf.AuthOrder {
 		if server == name {
-			return true, errors.New("Server used by authentication order settings")
+			return true, errors.New("server used by authentication order settings")
 		}
 	}
 
@@ -199,10 +199,10 @@ func authCallerForFedRoleMapping(oldSettings, newSettings []*share.GroupRoleMapp
 	for _, groupSet := range []utils.Set{grpMappingToCreate, grpMappingToDelete} {
 		for grp := range groupSet.Iter() {
 			if m, ok := oldRoleMappings[grp.(string)]; ok && fedRoles.Contains(m.GlobalRole) {
-				return fmt.Errorf("Access denied for changing the mapped role(%s) of global domain in group(%s)'s role mapping", m.GlobalRole, grp.(string))
+				return fmt.Errorf("access denied for changing the mapped role(%s) of global domain in group(%s)'s role mapping", m.GlobalRole, grp.(string))
 			}
 			if m, ok := newRoleMappings[grp.(string)]; ok && fedRoles.Contains(m.GlobalRole) {
-				return fmt.Errorf("Access denied for mapping role(%s) to global domain in group(%s)'s role mapping", m.GlobalRole, grp.(string))
+				return fmt.Errorf("access denied for mapping role(%s) to global domain in group(%s)'s role mapping", m.GlobalRole, grp.(string))
 			}
 		}
 	}
@@ -213,7 +213,7 @@ func authCallerForFedRoleMapping(oldSettings, newSettings []*share.GroupRoleMapp
 		newMappedRoles, _ := newRoleMappings[grp.(string)]
 		if fedRoles.Contains(oldMappedRoles.GlobalRole) || fedRoles.Contains(newMappedRoles.GlobalRole) {
 			if oldMappedRoles.GlobalRole != newMappedRoles.GlobalRole { // group's mapped role for global domain is fedAdmin/fedReader-changed
-				return fmt.Errorf("Access denied for roles(old: %s, new: %s) in the role mapping of group '%s'", oldMappedRoles.GlobalRole, newMappedRoles.GlobalRole, grp)
+				return fmt.Errorf("access denied for roles(old: %s, new: %s) in the role mapping of group '%s'", oldMappedRoles.GlobalRole, newMappedRoles.GlobalRole, grp)
 			}
 			// A group's mapped domain roles cannot have fedAdmin/fedReader.
 			// As long as the mapped global role is the same, changes on the mapped domain roles are allowed
@@ -249,14 +249,14 @@ func checkGroupRolesMapping(oldSettings, newSettings []*share.GroupRoleMapping, 
 	for idx, mappedRoles := range newSettings {
 		if mappedRoles != nil {
 			if !access.IsValidRole(mappedRoles.GlobalRole, access.CONST_VISIBLE_USER_ROLE) {
-				return nil, fmt.Errorf("Invalid mapped global role(%v) for group %s", mappedRoles.GlobalRole, mappedRoles.Group)
+				return nil, fmt.Errorf("invalid mapped global role(%v) for group %s", mappedRoles.GlobalRole, mappedRoles.Group)
 			} else if mappedRoles.GlobalRole == api.UserRoleFedAdmin || mappedRoles.GlobalRole == api.UserRoleAdmin {
 				// if the mapped role for global domain is fedAdmin or admin, it is the admin of all local namespaces
 				mappedRoles.RoleDomains = nil
 			}
 
 			if groups.Contains(mappedRoles.Group) {
-				return nil, fmt.Errorf("Multiple mappings for group %s", mappedRoles.Group)
+				return nil, fmt.Errorf("multiple mappings for group %s", mappedRoles.Group)
 			} else {
 				groups.Add(mappedRoles.Group)
 			}
@@ -271,7 +271,7 @@ func checkGroupRolesMapping(oldSettings, newSettings []*share.GroupRoleMapping, 
 			mappedDomainRole := make(map[string]string, 0) // for each group, each domain can only be mapped to one role
 			for role, domains := range mappedRoles.RoleDomains {
 				if !access.IsValidRole(role, access.CONST_VISIBLE_DOMAIN_ROLE) {
-					return nil, fmt.Errorf("Invalid mapped domain role(%v) for group %s", role, mappedRoles.Group)
+					return nil, fmt.Errorf("invalid mapped domain role(%v) for group %s", role, mappedRoles.Group)
 				}
 				// remove duplicate domains in the domains list
 				mappedDomains := utils.NewSet()
@@ -280,7 +280,7 @@ func checkGroupRolesMapping(oldSettings, newSettings []*share.GroupRoleMapping, 
 						mappedDomains.Add(domain)
 						if mappedRole, ok := mappedDomainRole[domain]; ok && (role != mappedRole) {
 							// found this group already has a mapped role for a domain(namespace). Do not allow multiple roles being mapped to a domain!
-							return nil, fmt.Errorf("Multiple roles(%s, %s) mapped to a namespace(%s) for group(%s) is not allowed", role, mappedRole, domain, mappedRoles.Group)
+							return nil, fmt.Errorf("multiple roles(%s, %s) mapped to a namespace(%s) for group(%s) is not allowed", role, mappedRole, domain, mappedRoles.Group)
 						} else {
 							mappedDomainRole[domain] = role
 						}
@@ -334,7 +334,7 @@ func checkGroupRolesMapping(oldSettings, newSettings []*share.GroupRoleMapping, 
 		for _, domains := range newSetting.RoleDomains {
 			for _, domain := range domains {
 				if !isDomainNameValid(domain) {
-					return nil, fmt.Errorf("Invalid characters in namespace %s ", domain)
+					return nil, fmt.Errorf("invalid characters in namespace %s ", domain)
 				}
 			}
 		}
@@ -348,7 +348,7 @@ func checkRoleGroupsMapping(roleGroups map[string][]string) ([]*share.GroupRoleM
 	groupRole := make(map[string]string, 0) // key is group, value is group's mapped role
 	for role, groups := range roleGroups {
 		if !access.IsValidRole(role, access.CONST_VISIBLE_DOMAIN_ROLE) {
-			return nil, fmt.Errorf("Invalid group role(%v)", role)
+			return nil, fmt.Errorf("invalid group role(%v)", role)
 		}
 		groupsFound := utils.NewSet()
 		for _, g := range groups {
@@ -356,7 +356,7 @@ func checkRoleGroupsMapping(roleGroups map[string][]string) ([]*share.GroupRoleM
 				if r == role { // same group shows up multiple times for a role. avoid duplicate group entry
 					continue
 				}
-				return nil, fmt.Errorf("Multiple roles(%s, %s) for a group(%s) is not allowed", role, r, g)
+				return nil, fmt.Errorf("multiple roles(%s, %s) for a group(%s) is not allowed", role, r, g)
 			} else {
 				groupRole[g] = role
 				groupsFound.Add(g)
@@ -594,16 +594,16 @@ func handlerServerShow(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 func validateAuthServer(cas *share.CLUSServerAuth) error {
 	// default role could be UserRoleNone, UserRoleReader or UserRoleAdmin or custom mappable global role
 	if !access.IsValidRole(cas.DefaultRole, access.CONST_MAPPABLE_SERVER_DEFAULT_ROLE) {
-		return errors.New("Invalid default role")
+		return errors.New("invalid default role")
 	}
 	// roleGroups could be for UserRoleReader or UserRoleAdmin or custom mappable global roles
 	for _, mappedRoles := range cas.GroupMappedRoles {
 		if !access.IsValidRole(mappedRoles.GlobalRole, access.CONST_VISIBLE_USER_ROLE) {
-			return fmt.Errorf("Invalid global role(%s) in group(%s) mapping", mappedRoles.GlobalRole, mappedRoles.Group)
+			return fmt.Errorf("invalid global role(%s) in group(%s) mapping", mappedRoles.GlobalRole, mappedRoles.Group)
 		}
 		for role := range mappedRoles.RoleDomains {
 			if !access.IsValidRole(role, access.CONST_VISIBLE_DOMAIN_ROLE) {
-				return fmt.Errorf("Invalid domain role(%s) in group(%s) mapping", role, mappedRoles.Group)
+				return fmt.Errorf("invalid domain role(%s) in group(%s) mapping", role, mappedRoles.Group)
 			}
 		}
 	}
@@ -614,7 +614,7 @@ func validateLDAPServer(cs *share.CLUSServer) error {
 	cldap := cs.LDAP
 
 	if cldap.Type != api.ServerLDAPTypeOpenLDAP && cldap.Type != api.ServerLDAPTypeMSAD {
-		return errors.New("Unknown LDAP server type")
+		return errors.New("unknown LDAP server type")
 	}
 	if len(cldap.Hostname) == 0 {
 		return errors.New("LDAP settings must define hostname")
@@ -743,14 +743,14 @@ func validateSAMLServer(cs *share.CLUSServer) error {
 	csaml := cs.SAML
 
 	if len(csaml.SSOURL) == 0 || len(csaml.Issuer) == 0 || len(csaml.X509Cert) == 0 {
-		return errors.New("Parameters are missing in SAML settings")
+		return errors.New("parameters are missing in SAML settings")
 	}
 	if _, err := url.Parse(csaml.SSOURL); err != nil {
-		return errors.New("Invalid SAML Single-sign-on URL format")
+		return errors.New("invalid SAML Single-sign-on URL format")
 	}
 	if csaml.SLOURL != "" {
 		if _, err := url.Parse(csaml.SLOURL); err != nil {
-			return errors.New("Invalid SAML Single-sign-on URL format")
+			return errors.New("invalid SAML Single-sign-on URL format")
 		}
 	}
 
@@ -774,11 +774,11 @@ func validateSAMLServer(cs *share.CLUSServer) error {
 			// certificate
 			block, _ := pem.Decode([]byte(c))
 			if block == nil {
-				return errors.New("Invalid SAML X509 certificate")
+				return errors.New("invalid SAML X509 certificate")
 			}
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
-				return errors.New("Invalid SAML X509 certificate")
+				return errors.New("invalid SAML X509 certificate")
 			}
 			if _, ok := cert.PublicKey.(*rsa.PublicKey); !ok {
 				return errors.New("SAML X509 certificate doesn't contain a public key")
@@ -873,15 +873,15 @@ func validateOIDCServer(cs *share.CLUSServer) error {
 	for _, s := range coidc.Scopes {
 		// Customers want to use "https://mydomain.com/groups" as scope
 		if !isNamePathValid(s) {
-			return errors.New("Invalid OpenID Connect scope name")
+			return errors.New("invalid OpenID Connect scope name")
 		}
 	}
 
 	if len(coidc.Issuer) == 0 || len(coidc.ClientID) == 0 || len(coidc.ClientSecret) == 0 {
-		return errors.New("Parameters are missing in OpenID Connect settings")
+		return errors.New("parameters are missing in OpenID Connect settings")
 	}
 	if _, err := url.Parse(coidc.Issuer); err != nil {
-		return errors.New("Invalid OpenID Connect issuer format")
+		return errors.New("invalid OpenID Connect issuer format")
 	}
 
 	// discover
@@ -897,7 +897,7 @@ func validateOIDCServer(cs *share.CLUSServer) error {
 	accReadAll := access.NewReaderAccessControl()
 	sc := cacher.GetSystemConfig(accReadAll)
 	if sc == nil {
-		return errors.New("Failed to read system config")
+		return errors.New("failed to read system config")
 	}
 
 	var proxy string
@@ -918,7 +918,7 @@ func validateOIDCServer(cs *share.CLUSServer) error {
 		}
 
 		if err != nil {
-			e := errors.New("Failed to discover OpenID Connect endpoints")
+			e := errors.New("failed to discover OpenID Connect endpoints")
 			log.WithFields(log.Fields{"error": err}).Error(e)
 			return e
 		}
@@ -1172,11 +1172,11 @@ func configLDAPServer(name string, ldap *api.RESTServerLDAPConfig, acc *access.A
 	for retry < retryClusterMax {
 		cs, rev, _ := clusHelper.GetServerRev(name, acc)
 		if cs == nil {
-			return http.StatusNotFound, api.RESTErrObjectNotFound, errors.New("Server not found")
+			return http.StatusNotFound, api.RESTErrObjectNotFound, errors.New("server not found")
 		}
 
 		if cs.LDAP == nil {
-			return http.StatusBadRequest, api.RESTErrInvalidRequest, errors.New("Server type cannot be modified")
+			return http.StatusBadRequest, api.RESTErrInvalidRequest, errors.New("server type cannot be modified")
 		}
 
 		for ok := true; ok; ok = false {
@@ -1201,7 +1201,7 @@ func configLDAPServer(name string, ldap *api.RESTServerLDAPConfig, acc *access.A
 	}
 
 	if retry >= retryClusterMax {
-		return http.StatusInternalServerError, api.RESTErrFailWriteCluster, errors.New("Failed to write cluster")
+		return http.StatusInternalServerError, api.RESTErrFailWriteCluster, errors.New("failed to write cluster")
 	}
 
 	return http.StatusOK, 0, nil
@@ -1215,11 +1215,11 @@ func configSAMLServer(name string, saml *api.RESTServerSAMLConfig, acc *access.A
 	for retry < retryClusterMax {
 		cs, rev, _ := clusHelper.GetServerRev(name, acc)
 		if cs == nil {
-			return http.StatusNotFound, api.RESTErrObjectNotFound, errors.New("Server not found")
+			return http.StatusNotFound, api.RESTErrObjectNotFound, errors.New("server not found")
 		}
 
 		if cs.SAML == nil {
-			return http.StatusBadRequest, api.RESTErrInvalidRequest, errors.New("Server type cannot be modified")
+			return http.StatusBadRequest, api.RESTErrInvalidRequest, errors.New("server type cannot be modified")
 		}
 
 		for ok := true; ok; ok = false {
@@ -1244,7 +1244,7 @@ func configSAMLServer(name string, saml *api.RESTServerSAMLConfig, acc *access.A
 	}
 
 	if retry >= retryClusterMax {
-		return http.StatusInternalServerError, api.RESTErrFailWriteCluster, errors.New("Failed to write cluster")
+		return http.StatusInternalServerError, api.RESTErrFailWriteCluster, errors.New("failed to write cluster")
 	}
 
 	return http.StatusOK, 0, nil
@@ -1258,11 +1258,11 @@ func configOIDCServer(name string, oidc *api.RESTServerOIDCConfig, acc *access.A
 	for retry < retryClusterMax {
 		cs, rev, _ := clusHelper.GetServerRev(name, acc)
 		if cs == nil {
-			return http.StatusNotFound, api.RESTErrObjectNotFound, errors.New("Server not found")
+			return http.StatusNotFound, api.RESTErrObjectNotFound, errors.New("server not found")
 		}
 
 		if cs.OIDC == nil {
-			return http.StatusBadRequest, api.RESTErrInvalidRequest, errors.New("Server type cannot be modified")
+			return http.StatusBadRequest, api.RESTErrInvalidRequest, errors.New("server type cannot be modified")
 		}
 
 		for ok := true; ok; ok = false {
@@ -1287,7 +1287,7 @@ func configOIDCServer(name string, oidc *api.RESTServerOIDCConfig, acc *access.A
 	}
 
 	if retry >= retryClusterMax {
-		return http.StatusInternalServerError, api.RESTErrFailWriteCluster, errors.New("Failed to write cluster")
+		return http.StatusInternalServerError, api.RESTErrFailWriteCluster, errors.New("failed to write cluster")
 	}
 
 	return http.StatusOK, 0, nil
@@ -1376,7 +1376,7 @@ func configGroupRoleDomainsFromRoleGroups(role string, groups []string, groupRol
 				if fedRoles.Contains(mappedRoles.GlobalRole) && !acc.IsFedAdmin() {
 					// The existing group role mapping has global domain mapped to fedAdmin/fedReader.
 					// To change that global role mapping, the caller needs to be fedAdmin role
-					return nil, fmt.Errorf("Access denied for global role %s in group %s mapping", mappedRoles.GlobalRole, mappedRoles.Group)
+					return nil, fmt.Errorf("access denied for global role %s in group %s mapping", mappedRoles.GlobalRole, mappedRoles.Group)
 				}
 				groupsFound.Add(mappedRoles.Group)
 				// set this group's mapping
@@ -1499,7 +1499,7 @@ func handlerServerRoleGroupsConfig(w http.ResponseWriter, r *http.Request, ps ht
 				cs.OIDC.GroupMappedRoles = groupRoleMappings
 			}
 		} else {
-			err = fmt.Errorf("Not an authentication server")
+			err = fmt.Errorf("not an authentication server")
 		}
 		if err != nil {
 			log.WithFields(log.Fields{"server": name, "err": err}).Error()
@@ -1625,7 +1625,7 @@ func handlerServerGroupRoleDomainsConfig(w http.ResponseWriter, r *http.Request,
 				cs.OIDC.GroupMappedRoles = mappedRoles
 			}
 		} else {
-			err = fmt.Errorf("Not an authentication server")
+			err = fmt.Errorf("not an authentication server")
 		}
 		if err != nil {
 			log.WithFields(log.Fields{"server": name, "err": err}).Error()
@@ -1748,7 +1748,7 @@ func sortGroupRoleMappings(groups []string, groupRoleMappings []*share.GroupRole
 					groups = append(groups, newMapping.Group)
 				}
 				if len(groups) > 0 {
-					return nil, fmt.Errorf("Access denied for moving group(s) %s", strings.Join(groups, ","))
+					return nil, fmt.Errorf("access denied for moving group(s) %s", strings.Join(groups, ","))
 				}
 			}
 		}
@@ -1823,7 +1823,7 @@ func handlerServerGroupsOrderConfig(w http.ResponseWriter, r *http.Request, ps h
 				cs.OIDC.GroupMappedRoles = mappedRoles
 			}
 		} else {
-			err = fmt.Errorf("Not an authentication server")
+			err = fmt.Errorf("not an authentication server")
 		}
 		if err != nil {
 			log.WithFields(log.Fields{"server": name, "err": err}).Error()

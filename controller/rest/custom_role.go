@@ -32,7 +32,7 @@ func restPermissionsToCLUS(roleName string, restPermissions []*api.RESTRolePermi
 			continue // ignore hidden permissions
 		}
 		if pIDs.Contains(p.ID) {
-			return nil, fmt.Errorf("Duplicate permission %s", p.ID)
+			return nil, fmt.Errorf("duplicate permission %s", p.ID)
 		}
 		pIDs.Add(p.ID)
 		permission := &share.CLUSRolePermission{
@@ -65,7 +65,7 @@ func restPermissionsToCLUS(roleName string, restPermissions []*api.RESTRolePermi
 		}
 	}
 	if len(permissions) == 0 {
-		return nil, fmt.Errorf("No Permission configured")
+		return nil, fmt.Errorf("no Permission configured")
 	}
 
 	return permissions, nil
@@ -391,7 +391,7 @@ func handlerRoleDelete(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	now := time.Now()
 	apikeys := clusHelper.GetAllApikeysNoAuth()
 	for _, apikey := range apikeys {
-		if now.UTC().Unix() >= apikey.ExpirationTimestamp  {
+		if now.UTC().Unix() >= apikey.ExpirationTimestamp {
 			continue
 		}
 

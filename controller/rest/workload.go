@@ -509,7 +509,7 @@ func handlerWorkloadConfig(w http.ResponseWriter, r *http.Request, ps httprouter
 
 	if rconf.Config.Quarantine != nil && *rconf.Config.Quarantine {
 		if wl.ShareNSWith != "" {
-			err := errors.New("Only the pod container can be quarantined")
+			err := errors.New("only the pod container can be quarantined")
 			log.WithFields(log.Fields{"id": id}).Error(err.Error())
 			restRespNotFoundLogAccessDenied(w, login, err)
 			return

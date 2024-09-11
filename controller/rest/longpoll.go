@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-var errTooManyJobs = errors.New("Too many concurrent jobs")
-var errDuplicateJob = errors.New("Duplicate job")
+var errTooManyJobs = errors.New("too many concurrent jobs")
+var errDuplicateJob = errors.New("duplicate job")
 
 type longpollOnceTask interface {
 	Run(arg interface{}) interface{}

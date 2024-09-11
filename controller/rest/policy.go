@@ -260,7 +260,7 @@ func normalizePorts(s string) (string, error) {
 		}
 
 		if low < 0 || low > 65535 || high < 0 || high > 65535 || low > high {
-			return "", errors.New("Invalid ports format")
+			return "", errors.New("invalid ports format")
 		}
 
 		ports = append(ports, portRange{proto: proto, low: low, high: high})
@@ -347,7 +347,7 @@ func normalizeApps(apps []string) ([]string, error) {
 			}
 			appSet.Add(id)
 		} else {
-			return nil, fmt.Errorf("Unknonwn application name: %s", app)
+			return nil, fmt.Errorf("unknonwn application name: %s", app)
 		}
 	}
 
@@ -371,7 +371,7 @@ func validateGroupForPolicy(ruleCfgType share.TCfgType, group string, groupMap m
 	}
 	if grp, ok := groupMap[group]; ok {
 		if (ruleCfgType == share.FederalCfg && grp.CfgType != share.FederalCfg) || (ruleCfgType != share.FederalCfg && grp.CfgType == share.FederalCfg) {
-			err := fmt.Errorf("Rule cannot be applied to group %s", group)
+			err := fmt.Errorf("rule cannot be applied to group %s", group)
 			return false, "", err
 		}
 	} else if strings.HasPrefix(group, api.LearnedHostPrefix) {
@@ -383,7 +383,7 @@ func validateGroupForPolicy(ruleCfgType share.TCfgType, group string, groupMap m
 					return true, host.ID, nil
 				}
 			}
-			err := fmt.Errorf("Cannot find host %s", group[len(api.LearnedHostPrefix):])
+			err := fmt.Errorf("cannot find host %s", group[len(api.LearnedHostPrefix):])
 			return true, "", err
 		}
 	} else if strings.HasPrefix(group, api.LearnedWorkloadPrefix) {
@@ -392,11 +392,11 @@ func validateGroupForPolicy(ruleCfgType share.TCfgType, group string, groupMap m
 		} else if net.ParseIP(group[len(api.LearnedWorkloadPrefix):]) != nil {
 			return true, "", nil
 		} else {
-			err := fmt.Errorf("Invalid workload format %s", group)
+			err := fmt.Errorf("invalid workload format %s", group)
 			return true, "", err
 		}
 	} else if _, ok := groupMap[group]; !ok {
-		err := fmt.Errorf("Cannot find group %s", group)
+		err := fmt.Errorf("cannot find group %s", group)
 		return false, "", err
 	}
 
@@ -440,7 +440,7 @@ func validateRestPolicyRuleConfig(r *api.RESTPolicyRuleConfig) error {
 	if r.Action != nil {
 		if *r.Action != share.PolicyActionAllow && *r.Action != share.PolicyActionDeny {
 			log.WithFields(log.Fields{"id": r.ID, "action": *r.Action}).Error("Invalid action")
-			return errors.New("Invalid action")
+			return errors.New("invalid action")
 		}
 	}
 
@@ -451,7 +451,7 @@ func validateRestPolicyRuleConfig(r *api.RESTPolicyRuleConfig) error {
 			log.WithFields(log.Fields{
 				"id": r.ID, "ports": *r.Ports,
 			}).Error("Invalid ports format")
-			return errors.New("Invalid ports format")
+			return errors.New("invalid ports format")
 		}
 	}
 
@@ -469,7 +469,7 @@ func validateRestPolicyRuleConfig(r *api.RESTPolicyRuleConfig) error {
 	if r.Priority != 0 {
 		if r.Priority < 0 || r.Priority > 100 {
 			log.WithFields(log.Fields{"id": r.ID, "Priority": r.Priority}).Error("Prioty out of range [0-100]")
-			return errors.New("Priority out of range")
+			return errors.New("priority out of range")
 		}
 	}
 
@@ -582,7 +582,7 @@ func moveRuleID(crhs []*share.CLUSRuleHead, id uint32, ruleCfgType share.TCfgTyp
 	for i, crh := range crhs {
 		if crh.ID == id {
 			if crh.CfgType == share.GroundCfg {
-				e := "Can't move Base Rule"
+				e := "can't move Base Rule"
 				log.WithFields(log.Fields{"move": id}).Error(e)
 				return fmt.Errorf(e) // break from here if the moving item is ground rule. i.e. ground rule cannot be moved
 			}
@@ -601,14 +601,14 @@ func moveRuleID(crhs []*share.CLUSRuleHead, id uint32, ruleCfgType share.TCfgTyp
 		}
 	}
 	if moveIdx == -1 {
-		e := "Rule to move doesn't exist"
+		e := "rule to move doesn't exist"
 		log.WithFields(log.Fields{"move": id}).Error(e)
 		return fmt.Errorf(e)
 	}
 
 	toIdx, af := locatePosition(crhs, after, moveIdx)
 	if toIdx == -1 {
-		e := "Move-to position cannot be found"
+		e := "move-to position cannot be found"
 		log.WithFields(log.Fields{"after": af}).Error(e)
 		return fmt.Errorf(e)
 	}
@@ -664,7 +664,7 @@ func movePolicyRule(w http.ResponseWriter, r *http.Request, move *api.RESTPolicy
 	// Read ID list from cluster
 	crhs := clusHelper.GetPolicyRuleList()
 	if len(crhs) == 0 {
-		e := "Policy rule doesn't exist"
+		e := "policy rule doesn't exist"
 		log.WithFields(log.Fields{"move": move.ID}).Error(e)
 		restRespError(w, http.StatusNotFound, api.RESTErrObjectNotFound)
 		return fmt.Errorf(e), 0
@@ -742,7 +742,7 @@ func insertPolicyRule(scope string, w http.ResponseWriter, r *http.Request, inse
 
 	toIdx, after := locatePosition(crhs, insert.After, -1)
 	if toIdx == -1 {
-		e := "Insert position cannot be found"
+		e := "insert position cannot be found"
 		log.WithFields(log.Fields{"scope": scope, "after": after}).Error(e)
 		restRespError(w, http.StatusNotFound, api.RESTErrObjectNotFound)
 		return fmt.Errorf(e)
@@ -770,19 +770,19 @@ func insertPolicyRule(scope string, w http.ResponseWriter, r *http.Request, inse
 		}
 		cfgType, _ := cfgTypeMapping[rr.CfgType]
 		if (cfgType == share.FederalCfg && scope == share.ScopeLocal) || (cfgType != share.FederalCfg && scope == share.ScopeFed) {
-			e := "Mismatched rule CfgType with request"
+			e := "mismatched rule CfgType with request"
 			log.WithFields(log.Fields{"id": rr.ID}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
 		}
 		if ids.Contains(rr.ID) {
-			e := "Duplicate rule ID"
+			e := "duplicate rule ID"
 			log.WithFields(log.Fields{"id": rr.ID}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
 		}
 		if cfgType == share.Learned || cfgType == share.GroundCfg {
-			e := "Cannot create learned/Base policy rule"
+			e := "cannot create learned/Base policy rule"
 			log.WithFields(log.Fields{"id": rr.ID}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
@@ -938,14 +938,14 @@ func checkReadOnlyRules(scope string, crhs []*share.CLUSRuleHead, rules []*api.R
 	return writableLearnedRules, writableUserCreatedRules, readOnlyRuleIDs, writableRuleIDs, errorIDs
 }
 
-//-------------------------------------------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------------------------------------------------
 // caller                   rules param                 ignored entries in rules param      note
-//-------------------------------------------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------------------------------------------------
 // admin(scope=local)       all rules                   fed/ground rules                    fed/ground rules are not affected during replacement
 // nsUser(scope=local)      rules this user can see     fed/ground rules                    namespace-user-non-accessible rules are not affected during replacement
 // fedAdmin(scope=local)    all rules                   fed/ground rules                    fed/ground rules are not affected during replacement
 // fedAdmin(scope=fed)      all rules                   ground/learned/user-created rules   ground/learned/user-created rules are not affected during replacement
-//-------------------------------------------------------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------------------------------------------------
 // 1. rules param contains the whole (updated) rules list that this user can see/config. it's from GET("/v1/policy/rule") plus some update/delete/add operations
 // 2. ground(crd) rules cannot be updated/deleted/added by this function
 // 3. accessible learned rules can be deleted, but not updated, by this function
@@ -986,7 +986,7 @@ func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rul
 		// So it's possible those readable-but-not-writable policies are included in the rules param that we need to filter out those rules first before replacement with rules
 		nsLearnedRules, nsUserCreatedRules, readOnlyRuleIDs, accessibleRuleIDs, errorIDs = checkReadOnlyRules(scope, crhs, rules, acc)
 		if len(errorIDs) > 0 {
-			err := fmt.Errorf("Some rules are read-only to current login user and cannot be updated")
+			err := fmt.Errorf("some rules are read-only to current login user and cannot be updated")
 			log.WithFields(log.Fields{"error": err, "ids": errorIDs}).Error("Request error")
 			restRespErrorReadOnlyRules(w, http.StatusBadRequest, api.RESTErrReadOnlyRules, err.Error(), errorIDs)
 			return err
@@ -1045,7 +1045,7 @@ func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rul
 		if rr.ID != api.PolicyAutoID {
 			if (rr.CfgType == api.CfgTypeUserCreated && scope == share.ScopeLocal) || (rr.CfgType == api.CfgTypeFederal && scope == share.ScopeFed) {
 				if idInUse.Contains(rr.ID) {
-					e := "Duplicate rule ID"
+					e := "duplicate rule ID"
 					log.WithFields(log.Fields{"id": rr.ID}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return fmt.Errorf(e)
@@ -1152,7 +1152,7 @@ func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rul
 						}
 					}
 				} else if nsUser && idInUse.Contains(rr.ID) {
-					e := "User has no permission for rule"
+					e := "user has no permission for rule"
 					log.WithFields(log.Fields{"id": rr.ID}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return errors.New(e)
@@ -1169,7 +1169,7 @@ func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rul
 				cfgType, _ := cfgTypeMapping[rr.CfgType]
 				rr.ID = common.GetAvailablePolicyID(idInUse, cfgType)
 				if rr.ID == 0 {
-					err = fmt.Errorf("Failed to locate available rule ID")
+					err = fmt.Errorf("failed to locate available rule ID")
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
 					return err
 				}
@@ -1177,7 +1177,7 @@ func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rul
 				newRule = true
 			} else {
 				if (rr.CfgType == api.CfgTypeUserCreated && rr.ID > api.PolicyLearnedIDBase) || (rr.CfgType == api.CfgTypeFederal && !isFedPolicyID(rr.ID)) {
-					err = fmt.Errorf("The given id is invalid")
+					err = fmt.Errorf("the given id is invalid")
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
 					return err
 				}
@@ -1363,7 +1363,7 @@ func deletePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rule
 	delIDs := utils.NewSet()
 	for _, id := range ruleIDs {
 		if (scope == share.ScopeFed && !isFedPolicyID(id)) || (scope == share.ScopeLocal && (isSecurityPolicyID(id) || isFedPolicyID(id))) {
-			e := fmt.Errorf("Rule %v can't be deleted with scope %s", id, scope)
+			e := fmt.Errorf("rule %v can't be deleted with scope %s", id, scope)
 			log.Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrOpNotAllowed, e.Error())
 			return 0, e
@@ -1400,7 +1400,7 @@ func deletePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rule
 	}
 
 	if len(crhs) == len(crhsNew) && dels.Cardinality() == 0 {
-		e := fmt.Errorf("Policy rule %v doesn't exist", ruleIDs)
+		e := fmt.Errorf("policy rule %v doesn't exist", ruleIDs)
 		log.Error(e)
 		restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e.Error())
 		return 0, e
@@ -1676,7 +1676,7 @@ func handlerPolicyRuleConfig(w http.ResponseWriter, r *http.Request, ps httprout
 			}
 		}
 		if ruleIdx == -1 {
-			err := errors.New("Policy rule doesn't exist")
+			err := errors.New("policy rule doesn't exist")
 			log.WithFields(log.Fields{"id": rc.ID}).Error(err)
 			restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, err.Error())
 			return
@@ -1691,7 +1691,7 @@ func handlerPolicyRuleConfig(w http.ResponseWriter, r *http.Request, ps httprout
 		}
 		newID := common.GetAvailablePolicyID(ids, cfgType)
 		if newID == 0 {
-			err := errors.New("Failed to locate available rule ID")
+			err := errors.New("failed to locate available rule ID")
 			log.WithFields(log.Fields{"id": rc.ID}).Error(err)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, err.Error())
 			return

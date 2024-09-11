@@ -894,7 +894,7 @@ func getJointClusterToken(rc *share.CLUSFedJointClusterInfo, clusterID string, u
 			"", jsonContentType, _tagAuthJointCluster, body, false, _notForward, false, true, acc); err == nil {
 			if statusCode != http.StatusOK {
 				log.WithFields(log.Fields{"cluster": rc.RestInfo.Server, "status": statusCode, "proxyUsed": proxyUsed}).Error("Unable to authenticate with the cluster")
-				err = errors.New("Unable to authenticate with the cluster")
+				err = errors.New("unable to authenticate with the cluster")
 			} else {
 				tokenData := api.RESTTokenData{}
 				if err = json.Unmarshal(data, &tokenData); err == nil {

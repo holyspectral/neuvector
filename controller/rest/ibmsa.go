@@ -619,7 +619,7 @@ func ibmsaGetToken(cfg *share.CLUSIBMSAConfig) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		log.WithFields(log.Fields{"url": cfg.TokenURL, "status": resp.StatusCode}).Error("Failed to retrieve IAM token")
-		return "", errors.New("Failed to retrieve IAM token")
+		return "", errors.New("failed to retrieve IAM token")
 	}
 
 	if err := unmarshalResp(resp, body, &token); err != nil {
@@ -677,7 +677,7 @@ func ibmsaCreateOccurence(url string, value []byte, cfg *share.CLUSIBMSAConfig) 
 
 	if resp.StatusCode != http.StatusOK {
 		log.WithFields(log.Fields{"url": url, "status": resp.StatusCode}).Error("Failed to create occurence")
-		return errors.New("Failed to create occurence")
+		return errors.New("failed to create occurence")
 	} /* else {
 		var occur ibmsaOccurrences
 		if err := unmarshalResp(resp, body, &occur); err != nil {
@@ -789,7 +789,7 @@ func ibmsaGetNvNote(accessToken, noteID string, cfg *share.CLUSIBMSAConfig) erro
 
 	if resp.StatusCode != http.StatusOK {
 		log.WithFields(log.Fields{"url": url, "status": resp.StatusCode}).Error("Failed to retrieve NV note")
-		return errors.New("Failed to retrieve NV note")
+		return errors.New("failed to retrieve NV note")
 	}
 
 	var note ibmsaNote

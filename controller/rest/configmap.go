@@ -241,7 +241,7 @@ func handleoidccfg(yaml_data []byte, load bool, skip *bool, context *configMapHa
 		}
 
 		if retry >= retryClusterMax {
-			return errors.New("Failed to process oidc. Skip.")
+			return errors.New("failed to process oidc. Skip.")
 		}
 
 	} else {
@@ -1133,7 +1133,7 @@ func handlefedcfg(yaml_data []byte) (string, error) {
 	log.WithFields(log.Fields{"msg": msg, "err": err}).Info()
 
 	if fedOp != "" && err != nil {
-		err = fmt.Errorf("Failed to %s for federation setup(%s)", fedOp, err.Error())
+		err = fmt.Errorf("failed to %s for federation setup(%s)", fedOp, err.Error())
 	}
 
 	return msg, err

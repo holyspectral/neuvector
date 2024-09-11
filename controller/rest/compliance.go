@@ -197,7 +197,7 @@ func handlerComplianceProfileShow(w http.ResponseWriter, r *http.Request, ps htt
 func configComplianceProfileEntry(ccp *share.CLUSComplianceProfile, re *api.RESTComplianceProfileEntry) error {
 	_, metaMap := scanUtils.GetComplianceMeta(scanUtils.V1)
 	if _, ok := metaMap[re.TestNum]; !ok {
-		return errors.New("Unknonwn compliance ID")
+		return errors.New("unknonwn compliance ID")
 	}
 
 	// Make sure empty tags is allowed
@@ -207,7 +207,7 @@ func configComplianceProfileEntry(ccp *share.CLUSComplianceProfile, re *api.REST
 		case api.ComplianceTemplatePCI, api.ComplianceTemplateGDPR, api.ComplianceTemplateHIPAA, api.ComplianceTemplateNIST, api.ComplianceTemplatePCIv4, api.ComplianceTemplateDISA:
 			tagSet.Add(t)
 		default:
-			return errors.New("Invalid compliance profile template values")
+			return errors.New("invalid compliance profile template values")
 		}
 	}
 	tags := tagSet.ToStringSlice()
@@ -470,7 +470,7 @@ func handlerCompProfileExport(w http.ResponseWriter, r *http.Request, ps httprou
 	if err == nil {
 		for _, name := range rconf.Names {
 			if name != share.DefaultComplianceProfileName {
-				err = errors.New("Non-default profile name is not supported yet")
+				err = errors.New("non-default profile name is not supported yet")
 				break
 			}
 		}
@@ -590,7 +590,7 @@ func importCompProfile(scope string, loginDomainRoles access.DomainRole, importT
 		}
 	}
 	if invalidCrdKind || len(secRules) == 0 {
-		msg := "Invalid security rule(s)"
+		msg := "invalid security rule(s)"
 		log.WithFields(log.Fields{"error": err}).Error(msg)
 		postImportOp(fmt.Errorf(msg), importTask, loginDomainRoles, "", share.IMPORT_TYPE_COMP_PROFILE)
 		return nil

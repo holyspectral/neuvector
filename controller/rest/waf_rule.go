@@ -378,7 +378,7 @@ func createWafSensor(w http.ResponseWriter, conf *api.RESTWafSensorConfig, cfgTy
 		}
 		cdr.ID = common.GetWafRuleID(defsensor)
 		if cdr.ID == 0 {
-			e := "Waf rule id overflow!"
+			e := "waf rule id overflow!"
 			log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
@@ -599,7 +599,7 @@ func updateWafSensor(w http.ResponseWriter, conf *api.RESTWafSensorConfig, revie
 			} else {
 				cdr.ID = common.GetWafRuleID(defsensor)
 				if cdr.ID == 0 {
-					e := "Waf rule id overflow!"
+					e := "waf rule id overflow!"
 					log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return fmt.Errorf(e)
@@ -635,13 +635,13 @@ func updateWafSensor(w http.ResponseWriter, conf *api.RESTWafSensorConfig, revie
 						delete(defsensor.RuleList, origname)
 					}
 					if !foundInLocal {
-						e := "Cannot find waf rule in this sensor!"
+						e := "cannot find waf rule in this sensor!"
 						log.WithFields(log.Fields{"sensor": conf.Name, "rulename": rdr.Name}).Error(e)
 						restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 						return fmt.Errorf(e)
 					}
 					if !foundInAll {
-						e := "Cannot find full waf rule to delete!"
+						e := "cannot find full waf rule to delete!"
 						log.WithFields(log.Fields{"sensor": defsensor.Name, "rulename": rdr.Name}).Error(e)
 						restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 						return fmt.Errorf(e)
@@ -685,7 +685,7 @@ func updateWafSensor(w http.ResponseWriter, conf *api.RESTWafSensorConfig, revie
 					}
 					cdr.ID = common.GetWafRuleID(defsensor)
 					if cdr.ID == 0 {
-						e := "Waf rule id overflow!"
+						e := "waf rule id overflow!"
 						log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return fmt.Errorf(e)
@@ -794,19 +794,19 @@ func handlerWafSensorConfig(w http.ResponseWriter, r *http.Request, ps httproute
 func processGroupSensors(w http.ResponseWriter, cg *share.CLUSWafGroup, sensors []api.RESTWafConfig) error {
 	for _, rs := range sensors {
 		if rs.Name == share.CLUSWafDefaultSensor {
-			e := "Cannot use default sensor in waf group!"
+			e := "cannot use default sensor in waf group!"
 			log.WithFields(log.Fields{"name": rs.Name}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
 		}
 		if rs.Action != share.DlpRuleActionAllow && rs.Action != share.DlpRuleActionDrop {
-			e := "Action is not supported!"
+			e := "action is not supported!"
 			log.WithFields(log.Fields{"sensor": rs}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
 		}
 		if cs := clusHelper.GetWafSensor(rs.Name); cs == nil {
-			e := "Waf sensor does not exist"
+			e := "waf sensor does not exist"
 			log.WithFields(log.Fields{"sensor": rs}).Warn(e)
 		}
 		cs := share.CLUSWafSetting{Name: rs.Name, Action: rs.Action}
@@ -842,7 +842,7 @@ func handlerWafGroupConfig(w http.ResponseWriter, r *http.Request, ps httprouter
 	conf := rconf.Config
 
 	if conf.Name != name {
-		e := "Name mismatch"
+		e := "name mismatch"
 		log.WithFields(log.Fields{"name": conf.Name}).Error(e)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 		return
@@ -866,7 +866,7 @@ func handlerWafGroupConfig(w http.ResponseWriter, r *http.Request, ps httprouter
 	// Read from cluster
 	cg := clusHelper.GetWafGroup(name)
 	if cg == nil {
-		e := "Waf group doesn't exist"
+		e := "waf group doesn't exist"
 		log.WithFields(log.Fields{"name": name}).Error(e)
 		restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 		return
@@ -951,7 +951,7 @@ func deleteWafSensor(w http.ResponseWriter, name string, reviewType share.TRevie
 	}
 
 	if name == share.CLUSWafDefaultSensor {
-		e := "Cannot delete default sensor!"
+		e := "cannot delete default sensor!"
 		log.WithFields(log.Fields{"name": name}).Error(e)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 		return fmt.Errorf(e)
@@ -1154,7 +1154,7 @@ func importWaf(scope string, loginDomainRoles access.DomainRole, importTask shar
 		}
 	}
 	if invalidCrdKind || len(secRules) == 0 {
-		msg := "Invalid security rule(s)"
+		msg := "invalid security rule(s)"
 		log.WithFields(log.Fields{"error": err}).Error(msg)
 		postImportOp(fmt.Errorf(msg), importTask, loginDomainRoles, "", share.IMPORT_TYPE_WAF)
 		return nil

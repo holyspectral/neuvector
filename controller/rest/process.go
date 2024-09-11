@@ -22,7 +22,6 @@ import (
 	"github.com/neuvector/neuvector/share/utils"
 )
 
-//
 func isValidKindProcessProfile(kind string) bool {
 	switch kind {
 	case share.GroupKindContainer: // service or user-defined groups
@@ -199,7 +198,7 @@ func validateProcessProfileConfig(list []api.RESTProcessProfileEntryConfig) erro
 		// avoid deny all entries
 		if proc.Name == "*" && (proc.Path == "*" || proc.Path == "/*") && proc.Action == share.PolicyActionDeny {
 			log.WithFields(log.Fields{"Path": proc.Path, "Name": proc.Name}).Error("PROC: deny all")
-			return fmt.Errorf("Invalid entry: deny all processes[ %s: %s]", proc.Name, proc.Path)
+			return fmt.Errorf("invalid entry: deny all processes[ %s: %s]", proc.Name, proc.Path)
 		}
 
 		// update

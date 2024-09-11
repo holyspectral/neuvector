@@ -1343,7 +1343,7 @@ func jwtValidateToken(encryptedToken, secret string, rsaPublicKey *rsa.PublicKey
 	}
 	token, err := jwt.ParseWithClaims(tokenString, &tokenClaim{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		if jwtCert.jwtPublicKeyNotAfter != nil && time.Now().After(*jwtCert.jwtPublicKeyNotAfter) {
 			return nil, fmt.Errorf("jwt certificate expired: %v", jwtCert.jwtPublicKeyNotAfter)
@@ -1357,7 +1357,7 @@ func jwtValidateToken(encryptedToken, secret string, rsaPublicKey *rsa.PublicKey
 	if err != nil && alternativeKey != nil {
 		token, err = jwt.ParseWithClaims(tokenString, &tokenClaim{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			if jwtCert.jwtOldPublicKeyNotAfter != nil && time.Now().After(*jwtCert.jwtOldPublicKeyNotAfter) {
 				return nil, fmt.Errorf("jwt certificate expired: %v", jwtCert.jwtOldPublicKeyNotAfter)
@@ -1378,7 +1378,7 @@ func jwtValidateToken(encryptedToken, secret string, rsaPublicKey *rsa.PublicKey
 	if claims, ok := token.Claims.(*tokenClaim); ok && token.Valid {
 		return claims, nil
 	} else {
-		return nil, fmt.Errorf("Invalid token structure")
+		return nil, fmt.Errorf("invalid token structure")
 	}
 }
 
@@ -1400,7 +1400,7 @@ func validateEncryptedData(encryptedData, secret string, checkTime bool) error {
 			return err
 		}
 	}
-	return errors.New("Invalid data")
+	return errors.New("invalid data")
 }
 
 func jwtValidateFedJoinTicket(encryptedTicket, secret string) error {
@@ -1750,7 +1750,7 @@ func remotePasswordAuth(cs *share.CLUSServer, pw *api.RESTAuthPassword) (*share.
 		return nil, errors.New("LDAP/AD user failed to map to a valid role")
 	}
 
-	return nil, errors.New("Unknown server type")
+	return nil, errors.New("unknown server type")
 }
 
 // it returns:
@@ -1880,7 +1880,7 @@ func tokenServerAuthz(cs *share.CLUSServer, username, email string, groups []str
 		return user, nil
 	}
 
-	return nil, errors.New("Failed to map to a valid role")
+	return nil, errors.New("failed to map to a valid role")
 }
 
 func platformPasswordAuth(pw *api.RESTAuthPassword) (*share.CLUSUser, error) {
@@ -1960,7 +1960,7 @@ func localPasswordAuth(pw *api.RESTAuthPassword, acc *access.AccessControl) (*sh
 	var result tLocalPwdAuthResult
 
 	if pw.Username == "" || pw.Username[0] == '~' {
-		return nil, result, errors.New("User not found")
+		return nil, result, errors.New("user not found")
 	}
 	now := time.Now()
 
@@ -1971,11 +1971,11 @@ func localPasswordAuth(pw *api.RESTAuthPassword, acc *access.AccessControl) (*sh
 
 		user, rev, _ = clusHelper.GetUserRev(pw.Username, acc)
 		if user == nil {
-			return nil, result, errors.New("User not found")
+			return nil, result, errors.New("user not found")
 		}
 
 		if user.Server != "" {
-			return nil, result, errors.New("User not found")
+			return nil, result, errors.New("user not found")
 		}
 
 		result.userFound = true
@@ -1994,7 +1994,7 @@ func localPasswordAuth(pw *api.RESTAuthPassword, acc *access.AccessControl) (*sh
 				user.BlockLoginSince = time.Now().UTC()
 				clusHelper.PutUserRev(user, rev)
 				result.blockedForFailedLogin = true
-				return nil, result, fmt.Errorf("User %s is temporarily blocked from login because of too many failed login attempts", pw.Username)
+				return nil, result, fmt.Errorf("user %s is temporarily blocked from login because of too many failed login attempts", pw.Username)
 			} else {
 				// user.BlockLoginSince is not zero time but current time is past user.BlockLoginSince
 				// it means this is the 1st time the user tries to login beyond the blocked time window. Giva user a new start for failed login count.
@@ -2020,7 +2020,7 @@ func localPasswordAuth(pw *api.RESTAuthPassword, acc *access.AccessControl) (*sh
 			if user.FailedLoginCount != origFailedLoginCount || user.BlockLoginSince != origBlockLoginSince {
 				clusHelper.PutUserRev(user, rev)
 			}
-			return nil, result, errors.New("Wrong password")
+			return nil, result, errors.New("wrong password")
 		} else {
 			if pwdProfile.EnablePwdExpiration && pwdProfile.PwdExpireAfterDays > 0 && !user.PwdResetTime.IsZero() {
 				pwdValidUnit := _pwdValidUnit
@@ -2030,7 +2030,7 @@ func localPasswordAuth(pw *api.RESTAuthPassword, acc *access.AccessControl) (*sh
 				pwdExpireTime := user.PwdResetTime.Add(time.Duration(time.Minute * pwdValidUnit * time.Duration(pwdProfile.PwdExpireAfterDays)))
 				if now.After(pwdExpireTime) {
 					result.blockedForExpiredPwd = true
-					return nil, result, fmt.Errorf("User %s is blocked from login because of expired password", pw.Username)
+					return nil, result, fmt.Errorf("user %s is blocked from login because of expired password", pw.Username)
 				}
 			}
 
@@ -2043,7 +2043,7 @@ func localPasswordAuth(pw *api.RESTAuthPassword, acc *access.AccessControl) (*sh
 					result.newPwdWeak = true
 					result.newPwdError = e
 					result.pwdProfileBasic = pwdProfileBasic
-					return nil, result, fmt.Errorf("New password is too weak")
+					return nil, result, fmt.Errorf("new password is too weak")
 				} else {
 					if pwdHistoryToKeep <= 1 { // because user.PasswordHash remembers one password hash
 						user.PwdHashHistory = nil
@@ -2120,7 +2120,7 @@ func fedMasterTokenAuth(userName, masterToken, secret string) (*share.CLUSUser, 
 		user, _, _ = clusHelper.GetUserRev(userName, acc)
 	}
 	if user == nil || user.Server != "" {
-		return nil, nil, errors.New("User not found")
+		return nil, nil, errors.New("user not found")
 	}
 	user.Username = claims.Username
 	user.Server = claims.Server
@@ -2156,7 +2156,7 @@ func fedMasterTokenAuth(userName, masterToken, secret string) (*share.CLUSUser, 
 	}
 
 	if user.Role == api.UserRoleNone && user.ExtraPermits.IsEmpty() {
-		return nil, nil, errors.New("Access denied")
+		return nil, nil, errors.New("access denied")
 	}
 	// do not increase user's LoginCount because this master login requests a real user login in the caller later
 
@@ -2680,7 +2680,7 @@ func handlerAuthLoginServer(w http.ResponseWriter, r *http.Request, ps httproute
 
 			username, email, groups := getSAMLUserFromAttrs(attrs, cs.SAML.GroupClaim)
 			if username == "" {
-				err = errors.New("Unable to locate username")
+				err = errors.New("unable to locate username")
 			} else {
 				user, err = tokenServerAuthz(cs, username, email, groups)
 			}
@@ -2706,7 +2706,7 @@ func handlerAuthLoginServer(w http.ResponseWriter, r *http.Request, ps httproute
 
 			username, email, groups := getOIDCUserFromClaims(claims, cs.OIDC.GroupClaim)
 			if username == "" {
-				err = errors.New("Unable to locate username")
+				err = errors.New("unable to locate username")
 			} else {
 				user, err = tokenServerAuthz(cs, username, email, groups)
 			}
