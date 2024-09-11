@@ -698,7 +698,7 @@ func isLocalReservedId(id uint32) error {
 		ruleype = "ground"
 	}
 	if ruleype != "" {
-		err = fmt.Errorf("ID is reserved for %s rule. Use ID between 1 and %v.", ruleype, api.PolicyLearnedIDBase)
+		err = fmt.Errorf("ID is reserved for %s rule. Use ID between 1 and %v", ruleype, api.PolicyLearnedIDBase)
 	}
 	return err
 }

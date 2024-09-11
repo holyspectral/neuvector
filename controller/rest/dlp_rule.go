@@ -455,7 +455,7 @@ func createDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, cfgTy
 		CreatePredefaultSensor()
 		defsensor = clusHelper.GetDlpSensor(share.CLUSDlpDefaultSensor)
 		if defsensor == nil {
-			e := "sensor cannot be created in cluster!"
+			e := "sensor cannot be created in cluster"
 			log.WithFields(log.Fields{"sensor": sensor.Name}).Error(e)
 			restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 			return fmt.Errorf(e)
@@ -486,7 +486,7 @@ func createDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, cfgTy
 		}
 		cdr.ID = getDlpRuleID(defsensor)
 		if cdr.ID == 0 {
-			e := "dlp rule id overflow!"
+			e := "dlp rule id overflow"
 			log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
@@ -801,7 +801,7 @@ func updateDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, revie
 			} else {
 				cdr.ID = getDlpRuleID(defsensor)
 				if cdr.ID == 0 {
-					e := "dlp rule id overflow!"
+					e := "dlp rule id overflow"
 					log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return fmt.Errorf(e)
@@ -837,13 +837,13 @@ func updateDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, revie
 						delete(defsensor.RuleList, origname)
 					}
 					if !foundInLocal {
-						e := "cannot find dlp rule in this sensor!"
+						e := "cannot find dlp rule in this sensor"
 						log.WithFields(log.Fields{"sensor": conf.Name, "rulename": rdr.Name}).Error(e)
 						restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 						return fmt.Errorf(e)
 					}
 					if !foundInAll {
-						e := "cannot find full dlp rule to delete!"
+						e := "cannot find full dlp rule to delete"
 						log.WithFields(log.Fields{"sensor": defsensor.Name, "rulename": rdr.Name}).Error(e)
 						restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 						return fmt.Errorf(e)
@@ -887,7 +887,7 @@ func updateDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, revie
 					}
 					cdr.ID = getDlpRuleID(defsensor)
 					if cdr.ID == 0 {
-						e := "dlp rule id overflow!"
+						e := "dlp rule id overflow"
 						log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return fmt.Errorf(e)
@@ -1261,14 +1261,14 @@ func deleteDlpSensor(w http.ResponseWriter, name string, reviewType share.TRevie
 	acc *access.AccessControl, login *loginSession) error {
 
 	if name == share.CLUSDlpDefaultSensor {
-		e := "cannot delete default sensor!"
+		e := "cannot delete default sensor"
 		log.WithFields(log.Fields{"name": name}).Error(e)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 		return fmt.Errorf(e)
 	}
 
 	if name == share.CLUSDlpCcSensor || name == share.CLUSDlpSsnSensor {
-		e := "cannot delete predefined sensor!"
+		e := "cannot delete predefined sensor"
 		log.WithFields(log.Fields{"name": name}).Error(e)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 		return fmt.Errorf(e)

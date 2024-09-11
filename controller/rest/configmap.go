@@ -241,7 +241,7 @@ func handleoidccfg(yaml_data []byte, load bool, skip *bool, context *configMapHa
 		}
 
 		if retry >= retryClusterMax {
-			return errors.New("failed to process oidc. Skip.")
+			return errors.New("failed to process oidc. Skip")
 		}
 
 	} else {

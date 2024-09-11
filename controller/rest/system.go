@@ -1191,7 +1191,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 			if rc.UnusedGroupAging != nil {
 				cconf.UnusedGroupAging = *rc.UnusedGroupAging
 				if cconf.UnusedGroupAging > share.UnusedGroupAgingMax {
-					e := "invalid unused group aging time."
+					e := "invalid unused group aging time"
 					log.WithFields(log.Fields{"unused_group_aging": *rc.UnusedGroupAging}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return kick, errors.New(e)
