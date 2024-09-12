@@ -4,10 +4,16 @@ STAGE_DIR = stage
 BASE_IMAGE_TAG = latest
 BUILD_IMAGE_TAG = latest
 
-copy_ctrl:
+tls_cert:
+	wget https://github.com/neuvector/manifests/raw/a7a69b63b7d27f880fbc3b7f0c58049f3928ab59/build/share/etc/neuvector/certs/ssl-cert.key -O ssl-cert.key
+	wget https://github.com/neuvector/manifests/raw/a7a69b63b7d27f880fbc3b7f0c58049f3928ab59/build/share/etc/neuvector/certs/ssl-cert.pem -O ssl-cert.pem
+
+
+copy_ctrl: tls_cert
 	mkdir -p ${STAGE_DIR}/usr/local/bin/
 	mkdir -p ${STAGE_DIR}/etc/
 	mkdir -p ${STAGE_DIR}/etc/neuvector/templates
+	mkdir -p ${STAGE_DIR}/etc/neuvector/certs
 	#
 	cp neuvector/monitor/monitor ${STAGE_DIR}/usr/local/bin/
 	cp neuvector/controller/controller ${STAGE_DIR}/usr/local/bin/
@@ -18,6 +24,8 @@ copy_ctrl:
 	cp neuvector/scripts/runtime-gdb.py ${STAGE_DIR}/usr/local/bin/
 	#
 	cp neuvector/templates/podTemplate.json ${STAGE_DIR}/etc/neuvector/templates/podTemplate.json
+	cp ssl-cert.key ${STAGE_DIR}/etc/neuvector/certs
+	cp ssl-cert.pem ${STAGE_DIR}/etc/neuvector/certs
 
 copy_enf:
 	mkdir -p ${STAGE_DIR}/usr/local/bin/
