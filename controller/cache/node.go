@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -72,6 +73,7 @@ func (p *agentDisconnectEvent) Expire() {
 		ac.state = api.StateLeft
 		deleteAgentFromCluster(p.hostID, p.agentID)
 	}
+	os.Open("test")
 }
 
 func (p *controllerDisconnectEvent) Expire() {
