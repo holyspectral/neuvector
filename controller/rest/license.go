@@ -62,6 +62,7 @@ func handlerLicenseShow(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 }
 
 func updateLicense(license string, init, checkCurrent bool) (*api.RESTLicenseInfo, error) {
+	_ = init
 	if checkCurrent {
 		if cur, err := cluster.Get(share.CLUSConfigLicenseKey); err == nil {
 			if string(cur) == license {
@@ -166,6 +167,7 @@ func licenseAllowEnforce() bool {
 }
 
 func licenseAllowFed(minLic int) bool {
+	_ = minLic
 	return true
 }
 

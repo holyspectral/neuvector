@@ -48,6 +48,7 @@ func criteria2REST(inEntries []share.CLUSCriteriaEntry) []api.RESTCriteriaEntry 
 }
 
 func handlerGroupBrief(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug()
 	defer r.Body.Close()
 

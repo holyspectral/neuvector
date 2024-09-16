@@ -387,6 +387,7 @@ func isFedRulesCleanupOngoing(w http.ResponseWriter) bool {
 
 // Be careful. This function is only for between-clusters joining/leaving/polling/csp_support APIs
 func isNoAuthFedOpAllowed(expectedFedRole string, w http.ResponseWriter, r *http.Request, acc *access.AccessControl) bool {
+	_ = r
 	fedRole, err := cacher.GetFedMembershipRole(acc)
 	if err != nil || (expectedFedRole != FedRoleAny && fedRole != expectedFedRole) {
 		restRespError(w, http.StatusBadRequest, api.RESTErrOpNotAllowed)
@@ -1118,6 +1119,7 @@ func updateSystemClusterName(newName string, acc *access.AccessControl) string {
 }
 
 func updateClusterState(id, masterClusterID string, status int, cspUsage *share.CLUSClusterCspUsage, acc *access.AccessControl) bool {
+	_ = masterClusterID
 	if status == _fedSuccess {
 		return true
 	}
@@ -2855,6 +2857,7 @@ func pollFedRules(forcePulling bool, tryTimes int) bool {
 // called by managed clusters only
 // get fed registry/repo scan data
 func getFedRegScanData(forcePulling bool, fedCfg share.CLUSFedSettings, masterScanDataRevs api.RESTFedScanDataRevs, tryTimes int) {
+	_ = tryTimes
 
 	pollScanData := atomic.CompareAndSwapUint32(&_fedScanDataPollOngoing, 0, 1)
 	if pollScanData {

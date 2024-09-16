@@ -415,6 +415,8 @@ func getWorkloadDisplayName(wl *share.CLUSWorkload, parent string) (string, stri
 
 // With cachMutex held
 func addrHostAdd(id string, param interface{}) {
+	_ = id
+
 	host := param.(*hostCache).host
 
 	// Update Host_ip-to-Host map
@@ -463,6 +465,8 @@ func addrHostAdd(id string, param interface{}) {
 
 // With cachMutex held
 func addrHostDelete(id string, param interface{}) {
+	_ = id
+
 	host := param.(*hostCache).host
 
 	for _, addrs := range host.Ifaces {
@@ -1174,6 +1178,8 @@ func addrOrchWorkloadAdd(ipnet *net.IPNet, nodename string) {
 }
 
 func setServiceAccount(node, wlID, wlName string, wlCache *workloadCache) {
+	_ = wlName
+
 	if localDev.Host.Platform != share.PlatformKubernetes {
 		return
 	}
@@ -1646,6 +1652,8 @@ func ObjectUpdateHandler(nType cluster.ClusterNotifyType, key string, value []by
 }
 
 func configUpdate(nType cluster.ClusterNotifyType, key string, value []byte, modifyIdx uint64) {
+	_ = modifyIdx
+
 	value, _, _ = kv.UpgradeAndConvert(key, value)
 
 	config := share.CLUSConfigKey2Config(key)

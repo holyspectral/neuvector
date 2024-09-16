@@ -778,6 +778,8 @@ func scanAgentDelete(id string, param interface{}) {
 }
 
 func scanConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
+	_ = key
+
 	switch nType {
 	case cluster.ClusterNotifyAdd, cluster.ClusterNotifyModify:
 		var cfg share.CLUSScanConfig
@@ -1140,6 +1142,8 @@ func ScanUpdateHandler(nType cluster.ClusterNotifyType, key string, value []byte
 }
 
 func scanLicenseUpdate(id string, param interface{}) {
+	_ = id
+	_ = param
 
 	// Cache lock must be within scan lock, so get the map first
 	wls := make(map[string]struct{ a, d string }, len(wlCacheMap))

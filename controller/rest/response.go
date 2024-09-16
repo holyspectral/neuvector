@@ -555,6 +555,7 @@ func deleteResponseRules(policyName string, txn *cluster.ClusterTransact, dels u
 }
 
 func insertResponseRule(policyName string, w http.ResponseWriter, r *http.Request, insert *api.RESTResponseRuleInsert, acc *access.AccessControl) error {
+	_ = r
 	log.Debug("")
 
 	// Acquire locks

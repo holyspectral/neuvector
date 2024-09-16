@@ -743,6 +743,7 @@ func getCISStatusFromCluster(bench share.BenchType, id string) (int, string) {
 }
 
 func getCISReportFromCluster(bench share.BenchType, id string, cpf *complianceProfileFilter, acc *access.AccessControl) (*api.RESTBenchReport, int, string) {
+	_ = acc
 	rpt, code, errMsg := _getCISReportFromCluster(bench, id, true, cpf)
 	if code == 0 {
 		rpt.Items = filterComplianceChecks(rpt.Items, cpf)

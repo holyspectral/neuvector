@@ -191,6 +191,8 @@ func validateAdmCtrlCriteria(criteria []*share.CLUSAdmRuleCriterion, options map
 func setAdmCtrlStateInCluster(enable *bool, mode, defaultAction, admClientMode, failurePolicy *string,
 	cfgType share.TCfgType) (int, int, *share.CLUSAdmissionState, *share.CLUSAdmissionState) {
 
+	_ = failurePolicy
+
 	var cconf *share.CLUSAdmissionState
 	var rev uint64
 	var origConf *share.CLUSAdmissionState

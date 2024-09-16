@@ -179,6 +179,7 @@ var restErrMessage = []string{
 }
 
 func restRespForward(w http.ResponseWriter, r *http.Request, statusCode int, headers map[string]string, data []byte, remoteExport, remoteRegScanTest bool) {
+	_ = r
 	hNames := []string{"Content-Encoding", "Cache-Control", "Content-Type"}
 	if remoteExport {
 		hNames = append(hNames, "Content-Disposition")
@@ -227,6 +228,7 @@ func restRespPartial(w http.ResponseWriter, r *http.Request, resp interface{}) {
 
 func restRespSuccess(w http.ResponseWriter, r *http.Request, resp interface{},
 	acc *access.AccessControl, login *loginSession, req interface{}, msg string) {
+	_ = acc
 
 	var ct string = jsonContentType
 	var data []byte

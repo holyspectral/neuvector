@@ -1367,6 +1367,8 @@ func (rs *Registry) cleanupOneImage(id string) {
 }
 
 func (rs *Registry) cleanupImages(sctx *scanContext, imageMap map[string]utils.Set) {
+	_ = sctx
+
 	// remove the out-of-date repository
 	for id := range rs.summary {
 		if _, ok := imageMap[id]; !ok {
@@ -1696,6 +1698,8 @@ func (rs *Registry) scheduleScanImages(
 }
 
 func (rs *Registry) getConfig(acc *access.AccessControl) *api.RESTRegistry {
+	_ = acc
+
 	reg := &api.RESTRegistry{
 		Name:          rs.config.Name,
 		Type:          rs.config.Type,

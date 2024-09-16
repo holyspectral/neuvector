@@ -446,6 +446,7 @@ func PrepareMockFilesMetaData(root string) []MockFile {
 }
 
 func initMockFileSystem(root string, mockFileMetaDatas []MockFile) error {
+	_ = root
 	for _, mockFileMetaData := range mockFileMetaDatas {
 
 		if err := os.MkdirAll(filepath.Dir(mockFileMetaData.SymlinkFile), 0755); err != nil {

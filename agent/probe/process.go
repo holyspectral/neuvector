@@ -919,6 +919,7 @@ func (p *Probe) rootEscalationCheck(proc *procInternal, c *procContainer) {
 
 // pidNetlink: authorization from real user
 func (p *Probe) checkUserGroup_uidChange(escalProc *procInternal, c *procContainer) (string, string, bool) {
+	_ = c
 	// verify the user authority
 	rUser := p.getUserName(escalProc.pid, escalProc.ruid) // real user
 	eUser := p.getUserName(escalProc.pid, escalProc.euid) // effective user
@@ -1417,6 +1418,7 @@ func (p *Probe) getUserName(pid, uid int) (user string) {
 
 // Note: c can be empty, then it's a host process
 func (p *Probe) checkUserGroup(escalProc *procInternal, c *procContainer) (string, string, bool) {
+	_ = c
 	// verify the user authority
 	rUser := p.getUserName(escalProc.pid, escalProc.ruid)
 	eUser := p.getUserName(escalProc.pid, escalProc.euid)
@@ -1437,6 +1439,9 @@ func (p *Probe) checkUserGroup(escalProc *procInternal, c *procContainer) (strin
 
 // Not pidNetlink: escalProc is the grandparent of proc.
 func (p *Probe) evalRootEscal(proc, escalProc *procInternal, id, rUser, eUser string, root int) {
+	_ = rUser
+	_ = eUser
+
 	var cmds, escalCmds []string
 	var err error
 	retry := 0
@@ -2340,6 +2345,9 @@ func (p *Probe) isAllowRuncInitCommand(path string, cmds []string) bool {
 }
 
 func (p *Probe) isProcessException(proc *procInternal, group, id string, bParentHostProc, bZeroDrift bool) bool {
+	_ = id
+	_ = bZeroDrift
+
 	if proc.riskyChild && proc.riskType != "" {
 		return false
 	}
@@ -2859,6 +2867,8 @@ func (p *Probe) evaluateLiveApps(id string) {
 }
 
 func (p *Probe) processProfileReeval(id string, pg *share.CLUSProcessProfile, bAddContainer bool) {
+	_ = bAddContainer
+
 	go p.evaluateLiveApps(id)
 
 	// update riskApp by current policy

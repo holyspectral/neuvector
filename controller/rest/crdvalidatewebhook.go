@@ -187,6 +187,9 @@ func (q *tCrdRequestsMgr) deleteCrInK8s(rscType, recordName string, crdSecRule i
 }
 
 func (q *tCrdRequestsMgr) writeCrOpEvent(kind, recordName, uid string, ev share.TLogEvent, msg string, subMsgs []string) {
+	_ = kind
+	_ = recordName
+	_ = uid
 	detail := make([]string, 0, len(subMsgs))
 	for _, subMsg := range subMsgs {
 		if subMsg != "" {

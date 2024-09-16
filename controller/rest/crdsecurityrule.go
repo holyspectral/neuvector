@@ -150,6 +150,7 @@ func CrdDelAll(k8sKind, kvCrdKind, lockKey string) []string {
 
 // policy/admCtrl lock is acquired by caller
 func (h *nvCrdHandler) crdDelAll(k8sKind, kvCrdKind string, recordList map[string]*share.CLUSCrdSecurityRule) []string {
+	_ = kvCrdKind
 	var removed []string
 	for recordName, record := range recordList {
 		tokens := strings.Split(recordName, "-")
@@ -1194,7 +1195,7 @@ func (h *nvCrdHandler) crdHandleNetworkRules(rules []api.RESTPolicyRuleConfig, c
 
 func (h *nvCrdHandler) crdHandleAdmCtrlRules(scope string, allAdmCtrlRules map[string][]*resource.NvCrdAdmCtrlRule, cacheRecord *share.CLUSCrdSecurityRule,
 	reviewType share.TReviewType) map[string]uint32 {
-
+	_ = scope
 	var rulesCount int
 	for _, rules := range allAdmCtrlRules {
 		rulesCount += len(rules)
@@ -1353,6 +1354,8 @@ func (h *nvCrdHandler) crdHandleAdmCtrlRules(scope string, allAdmCtrlRules map[s
 }
 
 func (h *nvCrdHandler) crdHandleAdmCtrlConfig(scope string, crdConfig *resource.NvCrdAdmCtrlConfig, cacheRecord *share.CLUSCrdSecurityRule, reviewType share.TReviewType) error {
+	_ = scope
+	_ = cacheRecord
 	if crdConfig == nil {
 		if reviewType == share.ReviewTypeCRD { // meaning do not control admission control config thru crd anymore
 			setAdmCtrlStateInCluster(nil, nil, nil, nil, nil, share.UserCreated)
@@ -1479,6 +1482,9 @@ func (h *nvCrdHandler) crdHandleDlpGroup(txn *cluster.ClusterTransact, name stri
 func (h *nvCrdHandler) crdHandleDlpSensor(scope string, dlpSensorConf *api.RESTDlpSensorConfig,
 	cacheRecord *share.CLUSCrdSecurityRule, reviewType share.TReviewType) error {
 
+	_ = scope
+	_ = cacheRecord
+
 	var err error
 	var comment string
 	var ruleList []api.RESTDlpRule
@@ -1569,6 +1575,9 @@ func (h *nvCrdHandler) crdHandleWafGroup(txn *cluster.ClusterTransact, name stri
 // caller must own CLUSLockPolicyKey lock
 func (h *nvCrdHandler) crdHandleWafSensor(scope string, wafSensorConf *api.RESTWafSensorConfig,
 	cacheRecord *share.CLUSCrdSecurityRule, reviewType share.TReviewType) error {
+
+	_ = scope
+	_ = cacheRecord
 
 	var err error
 	var comment string
@@ -1954,7 +1963,7 @@ func (h *nvCrdHandler) parseCrdGroup(crdgroupCfg *api.RESTCrdGroupConfig, curGro
 
 func (h *nvCrdHandler) parseCrdFwRule(from, to, recordName string, ruleDetail resource.NvSecurityRuleDetail, ruleSet utils.Set,
 	reviewType share.TReviewType, owner string) (api.RESTPolicyRuleConfig, string, int) {
-
+	_ = recordName
 	var buffer bytes.Buffer
 
 	ruleCfg := api.RESTPolicyRuleConfig{

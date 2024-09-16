@@ -51,6 +51,9 @@ func logLicenseEvent(ev share.TLogEvent, msg string) {
 }
 
 func licenseConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
+	_ = nType
+	_ = key
+
 	log.Debug("")
 
 	var license string

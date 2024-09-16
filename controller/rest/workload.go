@@ -70,6 +70,7 @@ func stats2REST(stats *share.CLUSStats) *api.RESTStats {
 }
 
 func handlerWorkloadBrief(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug("")
 	defer r.Body.Close()
 

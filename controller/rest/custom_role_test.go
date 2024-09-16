@@ -14,6 +14,8 @@ import (
 )
 
 func verifyCustomRole(testID string, data *api.RESTUserRoleConfigData, acc *access.AccessControl, t *testing.T) {
+	_ = testID
+
 	// Check configured role in cluster
 	crole, _, _ := clusHelper.GetCustomRoleRev(data.Config.Name, acc)
 	if crole == nil {

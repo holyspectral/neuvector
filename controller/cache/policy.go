@@ -399,6 +399,8 @@ func (m CacheMethod) GetFedNetworkRulesCache() ([]*share.CLUSPolicyRule, []*shar
 }
 
 func getHostPolicyMode(cache *hostCache) (string, string) {
+	_ = cache
+
 	if cache, ok := groupCacheMap[api.AllHostGroup]; ok {
 		return cache.group.PolicyMode, cache.group.ProfileMode
 	} else {

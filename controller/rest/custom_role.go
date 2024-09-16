@@ -22,6 +22,7 @@ import (
 
 func restPermissionsToCLUS(roleName string, restPermissions []*api.RESTRolePermission) ([]*share.CLUSRolePermission, error) {
 	permissionOptions := make(map[string]*api.RESTRolePermitOptionInternal, len(access.PermissionOptions))
+	_ = roleName
 	for _, option := range access.PermissionOptions {
 		permissionOptions[option.ID] = option
 	}

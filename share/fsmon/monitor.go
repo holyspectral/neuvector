@@ -274,6 +274,7 @@ func NewFileWatcher(config *FileMonitorConfig, logLevel string) (*FileWatch, err
 }
 
 func (w *FileWatch) sendMsg(cid string, path string, event uint32, pInfo []*ProcInfo, mode string) {
+	_ = mode
 	eventMsg, ok := fileEventMsg[event]
 	if !ok {
 		log.WithFields(log.Fields{"path": path, "event": eventMsg}).Error("FMON: Unkown event")
@@ -872,6 +873,7 @@ func (w *FileWatch) handleDirEvents(fmod fileMod, info os.FileInfo, fullPath, pa
 
 // Decide the file event priority here
 func (w *FileWatch) handleFileEvents(fmod fileMod, info os.FileInfo, fullPath string, pid int) uint32 {
+	_ = pid
 	var event uint32
 	if info != nil {
 		log.WithFields(log.Fields{"fullPath": fullPath, "fmod": fmod, "finfo": fmod.finfo}).Debug()

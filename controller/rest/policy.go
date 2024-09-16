@@ -641,6 +641,7 @@ func moveRuleID(crhs []*share.CLUSRuleHead, id uint32, ruleCfgType share.TCfgTyp
 
 func movePolicyRule(w http.ResponseWriter, r *http.Request, move *api.RESTPolicyRuleMove,
 	acc *access.AccessControl, login *loginSession) (error, share.TCfgType) {
+	_ = r
 
 	log.Debug("")
 
@@ -706,6 +707,7 @@ func isLocalReservedId(id uint32) error {
 // this function assumes crhs is already sorted by (1) federal rules (2) ground rules (3) other rules
 func insertPolicyRule(scope string, w http.ResponseWriter, r *http.Request, insert *api.RESTPolicyRuleInsert,
 	acc *access.AccessControl, login *loginSession) error {
+	_ = r
 	var topIdx int    // the top-most idx that the first new item could be at
 	var bottomIdx int // the bottom-most idx that the first new item could be at
 
@@ -952,7 +954,7 @@ func checkReadOnlyRules(scope string, crhs []*share.CLUSRuleHead, rules []*api.R
 // 4. delRuleIDs param means ids of the learned rules to delete. nil/[] means do not delete any learned rule
 func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rules []*api.RESTPolicyRule, delRuleIDs utils.Set,
 	acc *access.AccessControl) error {
-
+	_ = r
 	log.Debug("")
 
 	// Policy modification requires the permission on both From/To of the policy
@@ -1358,6 +1360,7 @@ func replacePolicyRule(scope string, w http.ResponseWriter, r *http.Request, rul
 }
 
 func deletePolicyRule(scope string, w http.ResponseWriter, r *http.Request, ruleIDs []uint32, acc *access.AccessControl) (int, error) { // deleted rules, err
+	_ = r
 	log.Debug("")
 
 	delIDs := utils.NewSet()

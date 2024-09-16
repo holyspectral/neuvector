@@ -629,6 +629,7 @@ func validateLDAPServer(cs *share.CLUSServer) error {
 }
 
 func updateLDAPServer(cs *share.CLUSServer, ldap *api.RESTServerLDAPConfig, create bool, acc *access.AccessControl, login *loginSession) error {
+	_ = login
 	cldap := cs.LDAP
 
 	// Do not support map to fedAdmin now
@@ -794,6 +795,7 @@ func validateSAMLServer(cs *share.CLUSServer) error {
 }
 
 func updateSAMLServer(cs *share.CLUSServer, saml *api.RESTServerSAMLConfig, acc *access.AccessControl, login *loginSession) error {
+	_ = login
 	csaml := cs.SAML
 
 	// Do not support map to fedAdmin now
@@ -948,6 +950,7 @@ func validateOIDCServer(cs *share.CLUSServer) error {
 }
 
 func updateOIDCServer(cs *share.CLUSServer, oidc *api.RESTServerOIDCConfig, acc *access.AccessControl, login *loginSession) error {
+	_ = login
 	coidc := cs.OIDC
 
 	// Do not support map to fedAdmin now

@@ -112,6 +112,7 @@ func NewScanUtil(sys *system.SystemTools) *ScanUtil {
 }
 
 func (s *ScanUtil) readRunningPackages(id string, pid int, prefix, kernel string, pidHost bool) ([]utils.TarFileInfo, bool) {
+	_ = id
 	var files []utils.TarFileInfo
 	var hasPackage bool
 	for itr := range OSPkgFiles.Iter() {

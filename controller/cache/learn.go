@@ -537,6 +537,8 @@ func node2Group(node string) (string, bool) {
 }
 
 func getLearnedPolicyRuleKey(fromNode, toNode string, app *uint32, port *string) *groupPair {
+	_ = port
+
 	fromGroup, fromContainer := node2Group(fromNode)
 	toGroup, toContainer := node2Group(toNode)
 	if fromGroup == "" || toGroup == "" {

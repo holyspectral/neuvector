@@ -952,6 +952,8 @@ func cacheAdmCtrlAudit(auditId share.TLogAudit, reqResult *nvsysadmission.AdmCtr
 func (whsvr *WebhookServer) validate(ar *admissionv1beta1.AdmissionReview, globalMode string, defaultAction int, stamps *api.AdmCtlTimeStamps,
 	forTesting bool) (*admissionv1beta1.AdmissionResponse, []*nvsysadmission.AdmCtrlMatchedResult, bool) {
 
+	_ = defaultAction
+
 	req := ar.Request
 	var objectMeta *metav1.ObjectMeta
 	var podTemplateSpec *corev1.PodTemplateSpec

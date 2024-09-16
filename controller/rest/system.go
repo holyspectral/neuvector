@@ -216,6 +216,7 @@ func handlerSystemSummary(w http.ResponseWriter, r *http.Request, ps httprouter.
 }
 
 func handlerSystemGetConfigBase(apiVer string, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug()
 	defer r.Body.Close()
 
@@ -1660,6 +1661,7 @@ func configSystemConfig(w http.ResponseWriter, acc *access.AccessControl, login 
 }
 
 func handlerSystemConfigBase(apiVer string, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug()
 	defer r.Body.Close()
 

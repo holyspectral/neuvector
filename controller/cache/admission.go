@@ -2705,6 +2705,8 @@ func matchK8sAdmissionRulesForPVC(admType, ruleType string, matchCfgType int, ns
 }
 
 func isAdmissionPVCRuleMet(criteria []*share.CLUSAdmRuleCriterion, ns, name, scName string) bool {
+	_ = name
+
 	var met, positive bool
 	var mets map[string]bool = make(map[string]bool)
 	var poss map[string]bool = make(map[string]bool)

@@ -966,6 +966,7 @@ func lookupShadowUser(server, provider, username, userid, email, role string, ro
 func loginUser(user *share.CLUSUser, masterRoles access.DomainRole, masterDomainsPermits access.DomainPermissions,
 	remote, mainSessionID, mainSessionUser, fedRole string, sso *SsoSession) (*loginSession, int) {
 
+	_ = fedRole
 	// 1. When a cluster is promoted to master cluster, the default admin user is automatically assigned fedAdmin role
 	// 2. When a master cluster is demoted, users with fed role(fedAdmin) are downgraded to with admin/reader role
 	// 3. On master cluster, only users with fedAdmin role can assign fed roles to other users

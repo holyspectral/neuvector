@@ -567,6 +567,7 @@ func handlerCompProfileImport(w http.ResponseWriter, r *http.Request, ps httprou
 }
 
 func importCompProfile(scope string, loginDomainRoles access.DomainRole, importTask share.CLUSImportTask, postImportOp kv.PostImportFunc) error {
+	_ = scope
 	log.Debug()
 	defer os.Remove(importTask.TempFilename)
 

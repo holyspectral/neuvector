@@ -363,6 +363,7 @@ func (fn *FaNotify) AddMonitorFileOnTheFly(path string, filter interface{}, prot
 
 // //
 func (fn *FaNotify) addSingleFile(r *rootFd, path string, mask uint64) bool {
+	_ = r
 	if !fn.bEnabled {
 		return false
 	}
@@ -757,6 +758,7 @@ func (fn *FaNotify) lookupRule(r *rootFd, ifile *IFile, pInfo *ProcInfo, linkPat
 }
 
 func (fn *FaNotify) lookupFile(r *rootFd, linkPath string, pInfo *ProcInfo) (*IFile, bool, uint32) {
+	_ = pInfo
 	var ifile IFile
 	var isDir bool
 	var mask uint32

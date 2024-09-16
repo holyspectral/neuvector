@@ -886,6 +886,7 @@ func (fa *FileAccessCtrl) GetProbeData() *FileAccessProbeData {
 //
 //	crio uses "docker-runc-current", but docker-native uses "docker"
 func (fa *FileAccessCtrl) isParentProcessException(ppath, path, name string) bool {
+	_ = path
 	// mlog.WithFields(log.Fields{"ppath": ppath, "path": path}).Debug("FA:")
 
 	// parent: matching only from binary

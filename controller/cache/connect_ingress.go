@@ -7,13 +7,15 @@ import (
 	"net"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/neuvector/neuvector/controller/api"
 	"github.com/neuvector/neuvector/controller/common"
 	"github.com/neuvector/neuvector/share"
+	log "github.com/sirupsen/logrus"
 )
 
 func connectPAIFromManagedHost(conn *share.CLUSConnection, ca *nodeAttr, stip *serverTip, hostID string) bool {
+	_ = stip
+
 	/* to be tested
 	if conn.ClientWL != "" {
 		// This is only possible if this is host-mode container to host-mode container on the same host
@@ -456,7 +458,7 @@ func preProcessConnectPAI(conn *share.CLUSConnection) (*nodeAttr, *nodeAttr, *se
 								conn.ServerWL = fqdngrp
 								sa.addrgrp = true
 								cctx.ConnLog.WithFields(log.Fields{
-									"ServerWL": conn.ServerWL, "policyaction":conn.PolicyAction,
+									"ServerWL": conn.ServerWL, "policyaction": conn.PolicyAction,
 								}).Debug("To FQDN address group")
 							}
 						}

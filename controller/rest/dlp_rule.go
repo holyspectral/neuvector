@@ -597,6 +597,7 @@ func handlerDlpSensorCreate(w http.ResponseWriter, r *http.Request, ps httproute
 }
 
 func handlerDlpRuleCreate(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug("")
 	defer r.Body.Close()
 
@@ -1489,6 +1490,7 @@ func handlerDebugDlpWlRuleList(w http.ResponseWriter, r *http.Request, ps httpro
 
 func parseDerivedDlpRuleEntries(dlpRuleEntries []*share.CLUSDerivedDlpRuleEntry,
 	acc *access.AccessControl) []*api.RESTDerivedDlpRule {
+	_ = acc
 
 	rdre := make([]*api.RESTDerivedDlpRule, len(dlpRuleEntries))
 	for i, dre := range dlpRuleEntries {
@@ -1538,6 +1540,7 @@ func handlerDebugDlpRuleList(w http.ResponseWriter, r *http.Request, ps httprout
 
 func parseDerivedDlpRuleMacs(dlpRuleMacs []*share.CLUSDerivedDlpRuleMac,
 	acc *access.AccessControl) []*api.RESTDerivedDlpRuleMac {
+	_ = acc
 	log.Debug("")
 
 	rmacs := make([]*api.RESTDerivedDlpRuleMac, len(dlpRuleMacs))

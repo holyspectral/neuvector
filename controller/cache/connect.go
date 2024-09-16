@@ -471,6 +471,7 @@ func deleteConversationByPolicyId(fromNode, toNode string, id uint32) {
 
 // obsolete. Use grpc instead
 func connectUpdate(nType cluster.ClusterNotifyType, key string, value []byte, modifyIdx uint64) {
+	_ = key
 	if checkModifyIdx(syncCatgGraphIdx, modifyIdx) == false {
 		return
 	}
@@ -874,6 +875,8 @@ func postQualifyConnect(conn *share.CLUSConnection, ca, sa *nodeAttr) bool {
 }
 
 func wouldGenerateUnmanagedEndpoint(conn *share.CLUSConnection, ingress bool) bool {
+	_ = conn
+	_ = ingress
 	// Disable this check to avoid missing conversations
 	// For example, the policy can be from workload to unmanaged
 	// workload/host. If the rule is preloaded, then it is possible that the
@@ -977,6 +980,9 @@ func connectFromGlobal(conn *share.CLUSConnection, ca *nodeAttr, stip *serverTip
 
 // Check from local container. Return if client is local, if connection should be added.
 func connectFromLocal(conn *share.CLUSConnection, ca *nodeAttr, stip *serverTip) (bool, bool) {
+	_ = ca
+	_ = stip
+
 	// This function also checks if container is on the host's local subnets (172.x.x.x).
 	if local, _, _ := getWorkloadFromIPOnHost(net.IP(conn.ClientIP), conn.HostID); !local {
 		return false, false
@@ -990,6 +996,9 @@ func connectFromLocal(conn *share.CLUSConnection, ca *nodeAttr, stip *serverTip)
 }
 
 func connectFromManagedHost(conn *share.CLUSConnection, ca *nodeAttr, stip *serverTip, hostID string) bool {
+	_ = ca
+	_ = stip
+
 	if global.ORCH.IgnoreConnectFromManagedHost() {
 		// If we cannot tell if an ingress connection is from a host process, or from a
 		// local container, source IP in both case are docker0's IP
@@ -1641,6 +1650,8 @@ func connectOrchHostDelete(ipnets []net.IPNet) {
 
 // Only delete graph link, keep the policy link
 func connectWorkloadDeleteLink(id string, param interface{}) {
+	_ = param
+
 	log.WithFields(log.Fields{"node": id}).Debug("Delete node linke")
 
 	graphMutexLock()

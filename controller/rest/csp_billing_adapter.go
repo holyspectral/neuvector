@@ -168,6 +168,7 @@ func handlerCspSupportExport(w http.ResponseWriter, r *http.Request, ps httprout
 }
 
 func handlerHealthCheck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	defer r.Body.Close()
 
 	restRespSuccess(w, r, nil, nil, nil, nil, "")

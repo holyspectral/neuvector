@@ -583,6 +583,8 @@ func countOnlineEnforcers() int {
 }
 
 func isNewAgentAllowed(num int) bool {
+	_ = num
+
 	return true
 }
 
