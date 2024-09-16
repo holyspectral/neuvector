@@ -111,11 +111,11 @@ const restErrMessageDefault string = "Unknown error"
 
 const crdEventProcPeriod = time.Duration(time.Second * 10)
 
-var restErrNeedAgentWorkloadFilter = errors.New("Enforcer or workload filter must be provided")
-var restErrNeedAgentFilter = errors.New("Enforcer filter must be provided")
-var restErrWorkloadNotFound error = errors.New("Container is not found")
-var restErrAgentNotFound error = errors.New("Enforcer is not found")
-var restErrAgentDisconnected error = errors.New("Enforcer is disconnected")
+var restErrNeedAgentWorkloadFilter = errors.New("enforcer or workload filter must be provided")
+var restErrNeedAgentFilter = errors.New("enforcer filter must be provided")
+var restErrWorkloadNotFound error = errors.New("container is not found")
+var restErrAgentNotFound error = errors.New("enforcer is not found")
+var restErrAgentDisconnected error = errors.New("enforcer is disconnected")
 
 var checkCrdSchemaFunc func(lead, init, crossCheck bool, cspType share.TCspType) []string
 
@@ -179,6 +179,7 @@ var restErrMessage = []string{
 }
 
 func restRespForward(w http.ResponseWriter, r *http.Request, statusCode int, headers map[string]string, data []byte, remoteExport, remoteRegScanTest bool) {
+	_ = r
 	hNames := []string{"Content-Encoding", "Cache-Control", "Content-Type"}
 	if remoteExport {
 		hNames = append(hNames, "Content-Disposition")
@@ -227,6 +228,7 @@ func restRespPartial(w http.ResponseWriter, r *http.Request, resp interface{}) {
 
 func restRespSuccess(w http.ResponseWriter, r *http.Request, resp interface{},
 	acc *access.AccessControl, login *loginSession, req interface{}, msg string) {
+	_ = acc
 
 	var ct string = jsonContentType
 	var data []byte
@@ -705,7 +707,7 @@ func restNewFilter(data interface{}, filters []restFieldFilter) *restFilter {
 		}
 	}
 
-	for i, _ := range filters {
+	for i := range filters {
 		rf.FilteredBy(data, &filters[i])
 	}
 
@@ -868,7 +870,7 @@ func restNewSorter(data []interface{}, sorts []restFieldSort) *restSorter {
 		}
 	}
 
-	for i, _ := range sorts {
+	for i := range sorts {
 		rs.SortedBy(&sorts[i])
 	}
 	return &rs

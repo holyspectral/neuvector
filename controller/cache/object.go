@@ -415,6 +415,8 @@ func getWorkloadDisplayName(wl *share.CLUSWorkload, parent string) (string, stri
 
 // With cachMutex held
 func addrHostAdd(id string, param interface{}) {
+	_ = id
+
 	host := param.(*hostCache).host
 
 	// Update Host_ip-to-Host map
@@ -463,6 +465,8 @@ func addrHostAdd(id string, param interface{}) {
 
 // With cachMutex held
 func addrHostDelete(id string, param interface{}) {
+	_ = id
+
 	host := param.(*hostCache).host
 
 	for _, addrs := range host.Ifaces {
@@ -1174,6 +1178,8 @@ func addrOrchWorkloadAdd(ipnet *net.IPNet, nodename string) {
 }
 
 func setServiceAccount(node, wlID, wlName string, wlCache *workloadCache) {
+	_ = wlName
+
 	if localDev.Host.Platform != share.PlatformKubernetes {
 		return
 	}
@@ -1286,7 +1292,7 @@ func addK8sPodEvent(pod resource.Pod, probeCmds [][]string) {
 	cacheMutexLock()
 	defer cacheMutexUnlock()
 	var bFound bool
-	for group, _ := range groupCacheMap {
+	for group := range groupCacheMap {
 		if group == p.group || group == p.groupAlt {
 			log.WithFields(log.Fields{"group": group}).Debug()
 			bFound = true
@@ -1646,6 +1652,8 @@ func ObjectUpdateHandler(nType cluster.ClusterNotifyType, key string, value []by
 }
 
 func configUpdate(nType cluster.ClusterNotifyType, key string, value []byte, modifyIdx uint64) {
+	_ = modifyIdx
+
 	value, _, _ = kv.UpgradeAndConvert(key, value)
 
 	config := share.CLUSConfigKey2Config(key)
@@ -2158,7 +2166,7 @@ func refreshInternalIPNet() {
 		cachedSpecialSubnets = newSpecialSubnets
 		putSpecialIPNetToCluseter(true)
 	} else {
-		for key, _ := range newSpecialSubnets {
+		for key := range newSpecialSubnets {
 			if _, ok := cachedSpecialSubnets[key]; !ok {
 				cachedSpecialSubnets = newSpecialSubnets
 				putSpecialIPNetToCluseter(true)
@@ -2173,7 +2181,7 @@ func refreshInternalIPNet() {
 		return
 	}
 
-	for key, _ := range newSubnets {
+	for key := range newSubnets {
 		if _, ok := cachedInternalSubnets[key]; !ok {
 			cachedInternalSubnets = newSubnets
 			putInternalIPNetToCluseter(true)

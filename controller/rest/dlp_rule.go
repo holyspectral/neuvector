@@ -422,8 +422,8 @@ func getDlpRuleID(dlpsensor *share.CLUSDlpSensor) uint32 {
 	}
 }
 
-//lock is alreay hold when call this function
-//clusHelper.AcquireLock(share.CLUSLockPolicyKey, clusterLockWait)
+// lock is alreay hold when call this function
+// clusHelper.AcquireLock(share.CLUSLockPolicyKey, clusterLockWait)
 func CreatePredefaultSensor() {
 	kv.CreateDefDlpRules(true)
 	kv.CreatePreDlpSensor(true)
@@ -455,7 +455,7 @@ func createDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, cfgTy
 		CreatePredefaultSensor()
 		defsensor = clusHelper.GetDlpSensor(share.CLUSDlpDefaultSensor)
 		if defsensor == nil {
-			e := "sensor cannot be created in cluster!"
+			e := "sensor cannot be created in cluster"
 			log.WithFields(log.Fields{"sensor": sensor.Name}).Error(e)
 			restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 			return fmt.Errorf(e)
@@ -486,7 +486,7 @@ func createDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, cfgTy
 		}
 		cdr.ID = getDlpRuleID(defsensor)
 		if cdr.ID == 0 {
-			e := "Dlp rule id overflow!"
+			e := "dlp rule id overflow"
 			log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 			restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 			return fmt.Errorf(e)
@@ -597,6 +597,7 @@ func handlerDlpSensorCreate(w http.ResponseWriter, r *http.Request, ps httproute
 }
 
 func handlerDlpRuleCreate(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug("")
 	defer r.Body.Close()
 
@@ -801,7 +802,7 @@ func updateDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, revie
 			} else {
 				cdr.ID = getDlpRuleID(defsensor)
 				if cdr.ID == 0 {
-					e := "Dlp rule id overflow!"
+					e := "dlp rule id overflow"
 					log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 					restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 					return fmt.Errorf(e)
@@ -837,13 +838,13 @@ func updateDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, revie
 						delete(defsensor.RuleList, origname)
 					}
 					if !foundInLocal {
-						e := "Cannot find dlp rule in this sensor!"
+						e := "cannot find dlp rule in this sensor"
 						log.WithFields(log.Fields{"sensor": conf.Name, "rulename": rdr.Name}).Error(e)
 						restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 						return fmt.Errorf(e)
 					}
 					if !foundInAll {
-						e := "Cannot find full dlp rule to delete!"
+						e := "cannot find full dlp rule to delete"
 						log.WithFields(log.Fields{"sensor": defsensor.Name, "rulename": rdr.Name}).Error(e)
 						restRespErrorMessage(w, http.StatusNotFound, api.RESTErrObjectNotFound, e)
 						return fmt.Errorf(e)
@@ -887,7 +888,7 @@ func updateDlpSensor(w http.ResponseWriter, conf *api.RESTDlpSensorConfig, revie
 					}
 					cdr.ID = getDlpRuleID(defsensor)
 					if cdr.ID == 0 {
-						e := "Dlp rule id overflow!"
+						e := "dlp rule id overflow"
 						log.WithFields(log.Fields{"ID": cdr.ID}).Error(e)
 						restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 						return fmt.Errorf(e)
@@ -1261,14 +1262,14 @@ func deleteDlpSensor(w http.ResponseWriter, name string, reviewType share.TRevie
 	acc *access.AccessControl, login *loginSession) error {
 
 	if name == share.CLUSDlpDefaultSensor {
-		e := "Cannot delete default sensor!"
+		e := "cannot delete default sensor"
 		log.WithFields(log.Fields{"name": name}).Error(e)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 		return fmt.Errorf(e)
 	}
 
 	if name == share.CLUSDlpCcSensor || name == share.CLUSDlpSsnSensor {
-		e := "Cannot delete predefined sensor!"
+		e := "cannot delete predefined sensor"
 		log.WithFields(log.Fields{"name": name}).Error(e)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrInvalidRequest, e)
 		return fmt.Errorf(e)
@@ -1489,6 +1490,7 @@ func handlerDebugDlpWlRuleList(w http.ResponseWriter, r *http.Request, ps httpro
 
 func parseDerivedDlpRuleEntries(dlpRuleEntries []*share.CLUSDerivedDlpRuleEntry,
 	acc *access.AccessControl) []*api.RESTDerivedDlpRule {
+	_ = acc
 
 	rdre := make([]*api.RESTDerivedDlpRule, len(dlpRuleEntries))
 	for i, dre := range dlpRuleEntries {
@@ -1538,6 +1540,7 @@ func handlerDebugDlpRuleList(w http.ResponseWriter, r *http.Request, ps httprout
 
 func parseDerivedDlpRuleMacs(dlpRuleMacs []*share.CLUSDerivedDlpRuleMac,
 	acc *access.AccessControl) []*api.RESTDerivedDlpRuleMac {
+	_ = acc
 	log.Debug("")
 
 	rmacs := make([]*api.RESTDerivedDlpRuleMac, len(dlpRuleMacs))
@@ -1636,7 +1639,7 @@ func handlerDlpExport(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 		}
 
 		ruleList := make([]*resource.NvSecurityDlpRule, 0, len(sensor.RuleListNames))
-		for rName, _ := range sensor.RuleListNames {
+		for rName := range sensor.RuleListNames {
 			if r, ok := defSensor.RuleList[rName]; ok {
 				patterns := make([]api.RESTDlpCriteriaEntry, len(r.Patterns))
 				for idx, p := range r.Patterns {
@@ -1723,7 +1726,7 @@ func importDlp(scope string, loginDomainRoles access.DomainRole, importTask shar
 		}
 	}
 	if invalidCrdKind || len(secRules) == 0 {
-		msg := "Invalid security rule(s)"
+		msg := "invalid security rule(s)"
 		log.WithFields(log.Fields{"error": err}).Error(msg)
 		postImportOp(fmt.Errorf(msg), importTask, loginDomainRoles, "", share.IMPORT_TYPE_DLP)
 		return nil

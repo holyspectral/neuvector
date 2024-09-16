@@ -20,7 +20,7 @@ import (
 func validateLicenseReq(req *api.RESTLicenseRequest) error {
 	/* Todo: more input validation */
 	if req.Email == "" {
-		return fmt.Errorf("Missing required field")
+		return fmt.Errorf("missing required field")
 	}
 	return nil
 }
@@ -62,10 +62,11 @@ func handlerLicenseShow(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 }
 
 func updateLicense(license string, init, checkCurrent bool) (*api.RESTLicenseInfo, error) {
+	_ = init
 	if checkCurrent {
 		if cur, err := cluster.Get(share.CLUSConfigLicenseKey); err == nil {
 			if string(cur) == license {
-				return nil, fmt.Errorf("License is already applied")
+				return nil, fmt.Errorf("license is already applied")
 			}
 		}
 	}
@@ -76,15 +77,15 @@ func updateLicense(license string, init, checkCurrent bool) (*api.RESTLicenseInf
 
 	var info api.RESTLicenseInfo
 	if json.Unmarshal([]byte(val), &info) != nil {
-		return nil, fmt.Errorf("Invalid license format")
+		return nil, fmt.Errorf("invalid license format")
 	}
 
 	if !common.OEMLicenseValidate(&info) {
-		return nil, fmt.Errorf("Invalid OEM license")
+		return nil, fmt.Errorf("invalid OEM license")
 	}
 
 	if err := cluster.Put(share.CLUSConfigLicenseKey, []byte(license)); err != nil {
-		return nil, fmt.Errorf("License store error")
+		return nil, fmt.Errorf("license store error")
 	}
 	return &info, nil
 }
@@ -166,6 +167,7 @@ func licenseAllowEnforce() bool {
 }
 
 func licenseAllowFed(minLic int) bool {
+	_ = minLic
 	return true
 }
 

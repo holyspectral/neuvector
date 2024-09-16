@@ -115,6 +115,8 @@ func getSvcAddrGroupNameByExtIP(ip net.IP, port uint16) string {
 }
 
 func getSvcAddrGroupName(ip net.IP, port uint16) string {
+	_ = port
+
 	cacheMutexRLock()
 	defer cacheMutexRUnlock()
 
@@ -126,6 +128,8 @@ func getSvcAddrGroupName(ip net.IP, port uint16) string {
 }
 
 func getSvcAddrGroup(ip net.IP, port uint16) *groupCache {
+	_ = port
+
 	cacheMutexRLock()
 	defer cacheMutexRUnlock()
 

@@ -28,7 +28,7 @@ func authDebugCaller(w http.ResponseWriter, acc *access.AccessControl, login *lo
 func getDebugIP2Workload(hostID string, query *restQuery) ([]*api.RESTDebugIP2Workload, error) {
 	cached := cacher.GetIP2WorkloadMap(hostID)
 	if hostID != "" && cached == nil {
-		err := errors.New("Host not found")
+		err := errors.New("host not found")
 		log.WithFields(log.Fields{"host": hostID}).Error(err)
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func handlerDebugWorkloadIntcp(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 
 	if wlID == "" {
-		err := fmt.Errorf("Workload filter must be provided")
+		err := fmt.Errorf("workload filter must be provided")
 		log.Error(err)
 		restRespErrorMessage(w, http.StatusBadRequest, api.RESTErrNotEnoughFilter, err.Error())
 		return

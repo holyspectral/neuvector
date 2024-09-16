@@ -507,7 +507,7 @@ func normalizeUserRoles(user *share.CLUSUser) error {
 					if r == role { // same domain shows up multiple times for a role. avoid duplicate domain entry
 						continue
 					}
-					return fmt.Errorf("Multiple roles(%s, %s) for a domain(%s) is not allowed", role, r, d)
+					return fmt.Errorf("multiple roles(%s, %s) for a domain(%s) is not allowed", role, r, d)
 				} else {
 					domainRole[d] = role
 					domainsFound.Add(d)
@@ -1122,7 +1122,7 @@ func isValidRoleDomains(user, globalRole string, roleDomains map[string][]string
 
 	var err error
 	if !access.IsValidRole(globalRole, access.CONST_VISIBLE_USER_ROLE) {
-		err = fmt.Errorf("User %s  Unknown global role %s ", user, globalRole)
+		err = fmt.Errorf("user %s  Unknown global role %s ", user, globalRole)
 	}
 	domainRole := make(map[string]string)
 out:
@@ -1134,12 +1134,12 @@ out:
 		}
 		for _, domain := range domains {
 			if !isDomainNameValid(domain) {
-				err = fmt.Errorf("User %s  Invalid characters in namespace %s ", user, domain)
+				err = fmt.Errorf("user %s  Invalid characters in namespace %s ", user, domain)
 				break out
 			}
 		}
 		if !access.IsValidRole(role, access.CONST_VISIBLE_DOMAIN_ROLE) {
-			err = fmt.Errorf("User %s  Unknown domain role %s ", user, role)
+			err = fmt.Errorf("user %s  Unknown domain role %s ", user, role)
 			break out
 		}
 
@@ -1154,7 +1154,7 @@ out:
 				domainsNew = append(domainsNew, d)
 			} else {
 				if role != r {
-					err = fmt.Errorf("User %s  Assigned multiple domain roles(%s, %s) for domain %s", user, r, role, d)
+					err = fmt.Errorf("user %s  Assigned multiple domain roles(%s, %s) for domain %s", user, r, role, d)
 					break out
 				}
 			}
@@ -1179,7 +1179,7 @@ out:
 			foundPermits = true
 		}
 		if !foundPermits {
-			err = fmt.Errorf("User %s  Not assigned any role/permission for any domain", user)
+			err = fmt.Errorf("user %s  Not assigned any role/permission for any domain", user)
 		}
 	}
 	if err != nil {
@@ -1205,7 +1205,7 @@ func normalizeApikeyRoles(user *share.CLUSApikey) error {
 					if r == role { // same domain shows up multiple times for a role. avoid duplicate domain entry
 						continue
 					}
-					return fmt.Errorf("Multiple roles(%s, %s) for a domain(%s) is not allowed", role, r, d)
+					return fmt.Errorf("multiple roles(%s, %s) for a domain(%s) is not allowed", role, r, d)
 				} else {
 					domainRole[d] = role
 					domainsFound.Add(d)

@@ -241,7 +241,7 @@ func handleoidccfg(yaml_data []byte, load bool, skip *bool, context *configMapHa
 		}
 
 		if retry >= retryClusterMax {
-			return errors.New("Failed to process oidc. Skip.")
+			return errors.New("failed to process oidc. Skip")
 		}
 
 	} else {
@@ -864,14 +864,14 @@ func LoadInitCfg(load bool, platform string) bool {
 	}
 
 	configMaps := []configMap{
-		configMap{FileName: eulaconfigmap, Type: "eula", HandlerFunc: handleeulacfg},
-		configMap{FileName: roleconfigmap, Type: "role", HandlerFunc: handlecustomrolecfg},                   // must be before user/ldap/saml/oidc
-		configMap{FileName: pwdprofileconfigmap, Type: "password profile", HandlerFunc: handlepwdprofilecfg}, // must be before user
-		configMap{FileName: ldapconfigmap, Type: "ldap", HandlerFunc: handleldapcfg},
-		configMap{FileName: samlconfigmap, Type: "saml", HandlerFunc: handlesamlcfg},
-		configMap{FileName: oidcconfigmap, Type: "oidc", HandlerFunc: handleoidccfg},
-		configMap{FileName: syscfgconfigmap, Type: "system", HandlerFunc: handlesystemcfg},
-		configMap{FileName: authconfigmap, Type: "auth", HandlerFunc: handleusercfg},
+		{FileName: eulaconfigmap, Type: "eula", HandlerFunc: handleeulacfg},
+		{FileName: roleconfigmap, Type: "role", HandlerFunc: handlecustomrolecfg},                   // must be before user/ldap/saml/oidc
+		{FileName: pwdprofileconfigmap, Type: "password profile", HandlerFunc: handlepwdprofilecfg}, // must be before user
+		{FileName: ldapconfigmap, Type: "ldap", HandlerFunc: handleldapcfg},
+		{FileName: samlconfigmap, Type: "saml", HandlerFunc: handlesamlcfg},
+		{FileName: oidcconfigmap, Type: "oidc", HandlerFunc: handleoidccfg},
+		{FileName: syscfgconfigmap, Type: "system", HandlerFunc: handlesystemcfg},
+		{FileName: authconfigmap, Type: "auth", HandlerFunc: handleusercfg},
 	}
 
 	if clusHelper == nil {
@@ -1133,7 +1133,7 @@ func handlefedcfg(yaml_data []byte) (string, error) {
 	log.WithFields(log.Fields{"msg": msg, "err": err}).Info()
 
 	if fedOp != "" && err != nil {
-		err = fmt.Errorf("Failed to %s for federation setup(%s)", fedOp, err.Error())
+		err = fmt.Errorf("failed to %s for federation setup(%s)", fedOp, err.Error())
 	}
 
 	return msg, err

@@ -72,7 +72,7 @@ func (ss *ScanService) prepareDBSlots(data *share.ScannerRegisterData, cvedb map
 		enlarge := false
 		dbs := make([]*share.CLUSScannerDB, slots)
 		zbs := make([][]byte, slots)
-		for i, _ := range dbs {
+		for i := range dbs {
 			dbs[i] = &share.CLUSScannerDB{
 				CVEDBVersion:    data.CVEDBVersion,
 				CVEDBCreateTime: data.CVEDBCreateTime,
@@ -381,7 +381,7 @@ func (sas *ScanAdapterService) ScanImage(ctx context.Context, req *share.Adapter
 		scanUtils.FillVul(v)
 	}
 	vpf := cacher.GetVulnerabilityProfileInterface(share.DefaultVulnerabilityProfileName)
-	result.Vuls = vpf.FilterVuls(result.Vuls, []api.RESTIDName{api.RESTIDName{DisplayName: fmt.Sprintf("%s:%s", result.Repository, result.Tag)}})
+	result.Vuls = vpf.FilterVuls(result.Vuls, []api.RESTIDName{{DisplayName: fmt.Sprintf("%s:%s", result.Repository, result.Tag)}})
 
 	return result, err
 }

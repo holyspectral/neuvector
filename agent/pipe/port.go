@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 	"syscall"
+	"time"
 
 	"github.com/codeskyblue/go-sh"
 	log "github.com/sirupsen/logrus"
@@ -149,7 +149,7 @@ func getIntcpPortNames(pid int, port string) (exPort, inPort string) {
 	return exPortPrefix + suffix, inPortPrefix + suffix
 }
 
-//func disableOffload(port string) {
+// func disableOffload(port string) {
 func DisableOffload(port string) {
 	log.WithFields(log.Fields{"port": port}).Debug("")
 	shell(fmt.Sprintf("ethtool -K %v tx off", port))
@@ -1189,9 +1189,9 @@ func CleanupContainer(pid int, intcpPairs []*InterceptPair) error {
 	return nil
 }
 
-
-const nvInputChain  string = "NV_INPUT_PROXYMESH"
+const nvInputChain string = "NV_INPUT_PROXYMESH"
 const nvOutputChain string = "NV_OUTPUT_PROXYMESH"
+
 /*
  * 1. disassociate OUTPUT/INPUT with NV_OUTPUT/NV_INPUT
  * iptables -D OUTPUT -j NV_OUTPUT
@@ -1224,8 +1224,9 @@ func resetIptablesNvRules() {
 	shellCombined(cmd)
 }
 
-const nvInputQuarChain  string = "NV_INPUT_QUAR_PROXYMESH"
+const nvInputQuarChain string = "NV_INPUT_QUAR_PROXYMESH"
 const nvOutputQuarChain string = "NV_OUTPUT_QUAR_PROXYMESH"
+
 func deleteIptablesNvQuarRules() {
 	var cmd string
 	//disassociate OUTPUT/INPUT with NV_OUTPUT/NV_INPUT
@@ -1276,8 +1277,8 @@ func insertIptablesNvRules(intf string, isloopback bool, qno int, appMap map[sha
 		return
 	}
 
-	for p, _ := range appMap {
-		if p.IPProto == syscall.IPPROTO_TCP {//tcp
+	for p := range appMap {
+		if p.IPProto == syscall.IPPROTO_TCP { //tcp
 			//insert to top of rule list in filter table INPUT and OUTPUT chain
 			if isloopback {
 				cmd = fmt.Sprintf("iptables -I %v -t filter -i %v -p tcp --sport %d -j NFQUEUE --queue-num %d --queue-bypass", nvInputChain, intf, p.Port, qno)
@@ -1291,7 +1292,7 @@ func insertIptablesNvRules(intf string, isloopback bool, qno int, appMap map[sha
 				cmd = fmt.Sprintf("iptables -I %v -t filter -o %v -p tcp --sport %d -j NFQUEUE --queue-num %d --queue-bypass", nvOutputChain, intf, p.Port, qno)
 			}
 			shellCombined(cmd)
-		} else if p.IPProto == syscall.IPPROTO_UDP {//udp
+		} else if p.IPProto == syscall.IPPROTO_UDP { //udp
 			//insert to top of rule list in filter table INPUT and OUTPUT chain
 			if isloopback {
 				cmd = fmt.Sprintf("iptables -I %v -t filter -i %v -p udp --sport %d -j NFQUEUE --queue-num %d --queue-bypass", nvInputChain, intf, p.Port, qno)
@@ -1325,8 +1326,8 @@ func checkInsertIptablesNvRules(intf string, isloopback bool, qno int, appMap ma
 		return
 	}
 
-	for p, _ := range appMap {
-		if p.IPProto == syscall.IPPROTO_TCP {//tcp
+	for p := range appMap {
+		if p.IPProto == syscall.IPPROTO_TCP { //tcp
 			//check existence of rule before insert it
 			if isloopback {
 				cmd = fmt.Sprintf("iptables -C %v -t filter -i %v -p tcp --sport %d -j NFQUEUE --queue-num %d --queue-bypass", nvInputChain, intf, p.Port, qno)
@@ -1357,7 +1358,7 @@ func checkInsertIptablesNvRules(intf string, isloopback bool, qno int, appMap ma
 				}
 				shellCombined(cmd)
 			}
-		} else if p.IPProto == syscall.IPPROTO_UDP {//udp
+		} else if p.IPProto == syscall.IPPROTO_UDP { //udp
 			//check existence of rule before insert it
 			if isloopback {
 				cmd = fmt.Sprintf("iptables -C %v -t filter -i %v -p udp --sport %d -j NFQUEUE --queue-num %d --queue-bypass", nvInputChain, intf, p.Port, qno)
@@ -1428,7 +1429,7 @@ func createIptablesNvRules(intf string, isloopback bool, qno int, appMap map[sha
 	shellCombined(cmd)
 }
 
-//setup iptable rules for quarantine
+// setup iptable rules for quarantine
 func CreateNfqQuarRules(pid int, create bool) error {
 	log.WithFields(log.Fields{"pid": pid}).Debug("")
 
@@ -1468,7 +1469,7 @@ func CreateNfqQuarRules(pid int, create bool) error {
 	return err
 }
 
-//setup iptable rules with NFQUEUE target
+// setup iptable rules with NFQUEUE target
 func CreateNfqRules(pid, qno int, create, isloopback bool, intf string, appMap map[share.CLUSProtoPort]*share.CLUSApp) error {
 	log.WithFields(log.Fields{"pid": pid}).Debug("")
 
@@ -1512,7 +1513,7 @@ func CreateNfqRules(pid, qno int, create, isloopback bool, intf string, appMap m
 	return err
 }
 
-//setup iptable rules with NFQUEUE target
+// setup iptable rules with NFQUEUE target
 func DeleteNfqRules(pid int) error {
 	log.WithFields(log.Fields{"pid": pid}).Debug("")
 

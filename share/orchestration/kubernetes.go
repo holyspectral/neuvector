@@ -18,12 +18,12 @@ import (
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/container"
 	"github.com/neuvector/neuvector/share/system"
 	sk "github.com/neuvector/neuvector/share/system/sidekick"
 	"github.com/neuvector/neuvector/share/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -537,13 +537,13 @@ func (d *kubernetes) SetIPAddrScope(ports map[string][]share.CLUSIPAddr,
 	for name, addrs := range ports {
 		// This is for Diamanti
 		if name == "mgmt0" {
-			for j, _ := range addrs {
+			for j := range addrs {
 				addrs[j].Scope = share.CLUSIPAddrScopeLocalhost
 			}
 			continue
 		}
 
-		for j, _ := range addrs {
+		for j := range addrs {
 			addrs[j].Scope = share.CLUSIPAddrScopeGlobal
 		}
 	}

@@ -64,7 +64,7 @@ func checkDomainTags(input []string) ([]string, error) {
 		case api.ComplianceTemplatePCI, api.ComplianceTemplateGDPR, api.ComplianceTemplateHIPAA, api.ComplianceTemplateNIST:
 			tagSet.Add(t)
 		default:
-			return nil, errors.New("Invalid tags")
+			return nil, errors.New("invalid tags")
 		}
 	}
 	tags := tagSet.ToStringSlice()

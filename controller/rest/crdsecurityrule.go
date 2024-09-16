@@ -150,6 +150,7 @@ func CrdDelAll(k8sKind, kvCrdKind, lockKey string) []string {
 
 // policy/admCtrl lock is acquired by caller
 func (h *nvCrdHandler) crdDelAll(k8sKind, kvCrdKind string, recordList map[string]*share.CLUSCrdSecurityRule) []string {
+	_ = kvCrdKind
 	var removed []string
 	for recordName, record := range recordList {
 		tokens := strings.Split(recordName, "-")
@@ -897,7 +898,7 @@ func (h *nvCrdHandler) crdHandleFileProfile(group, mode string, profile *api.RES
 					log.WithFields(log.Fields{"key": key, "behavior": ffp.Behavior}).Debug("CRD: new entry")
 					if _, exist := far.Filters[key]; exist {
 						if _, ok := cacher.IsPrdefineFileGroup(ffp.Filter, ffp.Recursive); ok {
-							for i, _ := range mon.Filters {
+							for i := range mon.Filters {
 								if mon.Filters[i].Filter == ffp.Filter && mon.Filters[i].CustomerAdd == false {
 									// remove the predefined from the main filters
 									delete(far.Filters, key)
@@ -1194,7 +1195,7 @@ func (h *nvCrdHandler) crdHandleNetworkRules(rules []api.RESTPolicyRuleConfig, c
 
 func (h *nvCrdHandler) crdHandleAdmCtrlRules(scope string, allAdmCtrlRules map[string][]*resource.NvCrdAdmCtrlRule, cacheRecord *share.CLUSCrdSecurityRule,
 	reviewType share.TReviewType) map[string]uint32 {
-
+	_ = scope
 	var rulesCount int
 	for _, rules := range allAdmCtrlRules {
 		rulesCount += len(rules)
@@ -1353,6 +1354,8 @@ func (h *nvCrdHandler) crdHandleAdmCtrlRules(scope string, allAdmCtrlRules map[s
 }
 
 func (h *nvCrdHandler) crdHandleAdmCtrlConfig(scope string, crdConfig *resource.NvCrdAdmCtrlConfig, cacheRecord *share.CLUSCrdSecurityRule, reviewType share.TReviewType) error {
+	_ = scope
+	_ = cacheRecord
 	if crdConfig == nil {
 		if reviewType == share.ReviewTypeCRD { // meaning do not control admission control config thru crd anymore
 			setAdmCtrlStateInCluster(nil, nil, nil, nil, nil, share.UserCreated)
@@ -1378,7 +1381,7 @@ func (h *nvCrdHandler) crdHandleAdmCtrlConfig(scope string, crdConfig *resource.
 		k8sResInfo := admission.ValidatingWebhookConfigInfo{
 			Name: resource.NvAdmValidatingName,
 			WebhooksInfo: []*admission.WebhookInfo{
-				&admission.WebhookInfo{
+				{
 					Name: resource.NvAdmValidatingWebhookName,
 					ClientConfig: admission.ClientConfig{
 						ClientMode:  crdConfig.AdmClientMode,
@@ -1388,7 +1391,7 @@ func (h *nvCrdHandler) crdHandleAdmCtrlConfig(scope string, crdConfig *resource.
 					FailurePolicy:  failurePolicy,
 					TimeoutSeconds: resource.DefTimeoutSeconds,
 				},
-				&admission.WebhookInfo{
+				{
 					Name: resource.NvStatusValidatingWebhookName,
 					ClientConfig: admission.ClientConfig{
 						ClientMode:  crdConfig.AdmClientMode,
@@ -1478,6 +1481,9 @@ func (h *nvCrdHandler) crdHandleDlpGroup(txn *cluster.ClusterTransact, name stri
 // caller must own CLUSLockPolicyKey lock
 func (h *nvCrdHandler) crdHandleDlpSensor(scope string, dlpSensorConf *api.RESTDlpSensorConfig,
 	cacheRecord *share.CLUSCrdSecurityRule, reviewType share.TReviewType) error {
+
+	_ = scope
+	_ = cacheRecord
 
 	var err error
 	var comment string
@@ -1569,6 +1575,9 @@ func (h *nvCrdHandler) crdHandleWafGroup(txn *cluster.ClusterTransact, name stri
 // caller must own CLUSLockPolicyKey lock
 func (h *nvCrdHandler) crdHandleWafSensor(scope string, wafSensorConf *api.RESTWafSensorConfig,
 	cacheRecord *share.CLUSCrdSecurityRule, reviewType share.TReviewType) error {
+
+	_ = scope
+	_ = cacheRecord
 
 	var err error
 	var comment string
@@ -1954,7 +1963,7 @@ func (h *nvCrdHandler) parseCrdGroup(crdgroupCfg *api.RESTCrdGroupConfig, curGro
 
 func (h *nvCrdHandler) parseCrdFwRule(from, to, recordName string, ruleDetail resource.NvSecurityRuleDetail, ruleSet utils.Set,
 	reviewType share.TReviewType, owner string) (api.RESTPolicyRuleConfig, string, int) {
-
+	_ = recordName
 	var buffer bytes.Buffer
 
 	ruleCfg := api.RESTPolicyRuleConfig{

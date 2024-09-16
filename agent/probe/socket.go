@@ -122,7 +122,7 @@ func (p *Probe) updateSessionTable(newMap map[string]*session) []*dp.ConnectionD
 	defer p.sessionMux.Unlock()
 
 	// Delete expired session
-	for key, _ := range p.sessionTable {
+	for key := range p.sessionTable {
 		if _, ok := newMap[key]; !ok {
 			delete(p.sessionTable, key)
 		}

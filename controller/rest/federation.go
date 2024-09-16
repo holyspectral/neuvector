@@ -387,6 +387,7 @@ func isFedRulesCleanupOngoing(w http.ResponseWriter) bool {
 
 // Be careful. This function is only for between-clusters joining/leaving/polling/csp_support APIs
 func isNoAuthFedOpAllowed(expectedFedRole string, w http.ResponseWriter, r *http.Request, acc *access.AccessControl) bool {
+	_ = r
 	fedRole, err := cacher.GetFedMembershipRole(acc)
 	if err != nil || (expectedFedRole != FedRoleAny && fedRole != expectedFedRole) {
 		restRespError(w, http.StatusBadRequest, api.RESTErrOpNotAllowed)
@@ -894,7 +895,7 @@ func getJointClusterToken(rc *share.CLUSFedJointClusterInfo, clusterID string, u
 			"", jsonContentType, _tagAuthJointCluster, body, false, _notForward, false, true, acc); err == nil {
 			if statusCode != http.StatusOK {
 				log.WithFields(log.Fields{"cluster": rc.RestInfo.Server, "status": statusCode, "proxyUsed": proxyUsed}).Error("Unable to authenticate with the cluster")
-				err = errors.New("Unable to authenticate with the cluster")
+				err = errors.New("unable to authenticate with the cluster")
 			} else {
 				tokenData := api.RESTTokenData{}
 				if err = json.Unmarshal(data, &tokenData); err == nil {
@@ -1118,6 +1119,7 @@ func updateSystemClusterName(newName string, acc *access.AccessControl) string {
 }
 
 func updateClusterState(id, masterClusterID string, status int, cspUsage *share.CLUSClusterCspUsage, acc *access.AccessControl) bool {
+	_ = masterClusterID
 	if status == _fedSuccess {
 		return true
 	}
@@ -1281,11 +1283,11 @@ func pingJointClusters() bool {
 		if len(ids) > 0 {
 			if jointNWErrCount == nil {
 				jointNWErrCount = make(map[string]int, len(ids))
-				for id, _ := range ids {
+				for id := range ids {
 					jointNWErrCount[id] = 0
 				}
 			} else if len(jointNWErrCount) != len(ids) {
-				for id, _ := range jointNWErrCount {
+				for id := range jointNWErrCount {
 					if _, ok := ids[id]; !ok {
 						delete(jointNWErrCount, id)
 					}
@@ -2525,7 +2527,7 @@ func handlerDeployFedRules(w http.ResponseWriter, r *http.Request, ps httprouter
 			}
 		}
 	} else {
-		for id, _ := range idMap {
+		for id := range idMap {
 			ids = append(ids, id)
 		}
 	}
@@ -2755,7 +2757,7 @@ func pollFedRules(forcePulling bool, tryTimes int) bool {
 		reqTo.JointTicket = jwtGenFedTicket(jointCluster.Secret, jwtFedJointTicketLife)
 		reqTo.Revisions = cacher.GetAllFedRulesRevisions()
 		if forcePulling {
-			for ruleType, _ := range reqTo.Revisions {
+			for ruleType := range reqTo.Revisions {
 				reqTo.Revisions[ruleType] = 0
 			}
 		}
@@ -2855,6 +2857,7 @@ func pollFedRules(forcePulling bool, tryTimes int) bool {
 // called by managed clusters only
 // get fed registry/repo scan data
 func getFedRegScanData(forcePulling bool, fedCfg share.CLUSFedSettings, masterScanDataRevs api.RESTFedScanDataRevs, tryTimes int) {
+	_ = tryTimes
 
 	pollScanData := atomic.CompareAndSwapUint32(&_fedScanDataPollOngoing, 0, 1)
 	if pollScanData {
@@ -2866,7 +2869,7 @@ func getFedRegScanData(forcePulling bool, fedCfg share.CLUSFedSettings, masterSc
 			return
 		}
 		if forcePulling {
-			for regName, _ := range cachedScanDataRevs.ScannedRegRevs {
+			for regName := range cachedScanDataRevs.ScannedRegRevs {
 				cachedScanDataRevs.ScannedRegRevs[regName] = 0
 			}
 			cachedScanDataRevs.ScannedRepoRev = 0
@@ -3342,10 +3345,10 @@ func handlerFedHealthCheck(w http.ResponseWriter, r *http.Request, ps httprouter
 }
 
 var forbiddenFwUrl = map[string][]string{
-	"/v1/fed_auth": []string{http.MethodPost, http.MethodDelete},
+	"/v1/fed_auth": {http.MethodPost, http.MethodDelete},
 }
 var forbiddenFwUrlPrefix = map[string][]string{
-	"/v1/auth/": []string{http.MethodPost, http.MethodDelete},
+	"/v1/auth/": {http.MethodPost, http.MethodDelete},
 }
 
 type tForbiddenFwUrlInfo struct {
@@ -3356,12 +3359,12 @@ type tForbiddenFwUrlInfo struct {
 }
 
 var forbiddenFwUrlRegex []tForbiddenFwUrlInfo = []tForbiddenFwUrlInfo{
-	tForbiddenFwUrlInfo{
+	{
 		url:       "/v1/auth/.*",
 		urlPrefix: "/v1/auth/",
 		verbs:     []string{http.MethodPost, http.MethodDelete},
 	},
-	tForbiddenFwUrlInfo{
+	{
 		url:       "/v1/user/.*/password",
 		urlPrefix: "/v1/user/",
 		verbs:     []string{http.MethodPost},

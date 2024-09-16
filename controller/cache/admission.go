@@ -1940,7 +1940,7 @@ func (m CacheMethod) SyncAdmCtrlStateToK8s(svcName, nvAdmName string, updateDete
 			case resource.NvAdmValidatingName:
 				k8sResInfo = admission.ValidatingWebhookConfigInfo{
 					WebhooksInfo: []*admission.WebhookInfo{
-						&admission.WebhookInfo{
+						{
 							Name: resource.NvAdmValidatingWebhookName,
 							ClientConfig: admission.ClientConfig{
 								ClientMode:  state.AdmClientMode,
@@ -1950,7 +1950,7 @@ func (m CacheMethod) SyncAdmCtrlStateToK8s(svcName, nvAdmName string, updateDete
 							FailurePolicy:  failurePolicy,
 							TimeoutSeconds: state.TimeoutSeconds,
 						},
-						&admission.WebhookInfo{
+						{
 							Name: resource.NvStatusValidatingWebhookName,
 							ClientConfig: admission.ClientConfig{
 								ClientMode:  state.AdmClientMode,
@@ -1968,7 +1968,7 @@ func (m CacheMethod) SyncAdmCtrlStateToK8s(svcName, nvAdmName string, updateDete
 			case resource.NvCrdValidatingName:
 				k8sResInfo = admission.ValidatingWebhookConfigInfo{
 					WebhooksInfo: []*admission.WebhookInfo{
-						&admission.WebhookInfo{
+						{
 							Name: resource.NvCrdValidatingWebhookName,
 							ClientConfig: admission.ClientConfig{
 								ClientMode:  state.AdmClientMode,
@@ -2087,7 +2087,7 @@ func (m CacheMethod) MatchK8sAdmissionRules(admResObject *nvsysadmission.AdmResO
 			// As specified in https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/,
 			// the environment variables set using the env or envFrom field will override any environment variables specified in the container image.
 			// So environment variables set in yaml will override any environment variables specified in the scanned result.
-			for k, _ := range c.EnvVars {
+			for k := range c.EnvVars {
 				if _, exist := scannedImage.EnvVars[k]; exist {
 					delete(scannedImage.EnvVars, k)
 				}
@@ -2705,6 +2705,8 @@ func matchK8sAdmissionRulesForPVC(admType, ruleType string, matchCfgType int, ns
 }
 
 func isAdmissionPVCRuleMet(criteria []*share.CLUSAdmRuleCriterion, ns, name, scName string) bool {
+	_ = name
+
 	var met, positive bool
 	var mets map[string]bool = make(map[string]bool)
 	var poss map[string]bool = make(map[string]bool)

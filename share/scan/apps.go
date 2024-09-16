@@ -223,6 +223,7 @@ func isExe(info os.FileInfo) bool {
 }
 
 func isGolang(filename, fullpath string) bool {
+	_ = filename
 	info, err := os.Stat(fullpath)
 	if err != nil || !isExe(info) {
 		return false

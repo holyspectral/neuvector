@@ -132,9 +132,9 @@ func (r *ibmcloud) GetRepoList(org, name string, limit int) ([]*share.CLUSImage,
 	smd.scanLog.Debug("")
 	if !strings.Contains(name, "*") {
 		if org == "" {
-			return []*share.CLUSImage{&share.CLUSImage{Repo: name}}, nil
+			return []*share.CLUSImage{{Repo: name}}, nil
 		} else {
-			return []*share.CLUSImage{&share.CLUSImage{Repo: fmt.Sprintf("%s/%s", org, name)}}, nil
+			return []*share.CLUSImage{{Repo: fmt.Sprintf("%s/%s", org, name)}}, nil
 		}
 	}
 	images, err := r.getImages()
@@ -156,7 +156,7 @@ func (r *ibmcloud) GetRepoList(org, name string, limit int) ([]*share.CLUSImage,
 			}
 		}
 	}
-	for rep, _ := range r.images {
+	for rep := range r.images {
 		image := &share.CLUSImage{Repo: rep}
 		repos = append(repos, image)
 	}

@@ -117,7 +117,7 @@ func (t *TimerWheel) RemoveTask(taskId string) error {
 	defer t.lock.Unlock()
 
 	for _, it := range t.wheel {
-		for k, _ := range it.items {
+		for k := range it.items {
 			if taskId == k {
 				delete(it.items, k)
 			}
@@ -136,8 +136,8 @@ func (t *TimerWheel) scheduleTimeOut(timeOut *WheelTimeOut) (string, error) {
 
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	stopIndex := t.wheelCursor + int(relativeIndex)	// real slot index from current slot index
-	if stopIndex >= t.wheelCount {					// wrap around
+	stopIndex := t.wheelCursor + int(relativeIndex) // real slot index from current slot index
+	if stopIndex >= t.wheelCount {                  // wrap around
 		stopIndex = stopIndex - t.wheelCount
 	}
 

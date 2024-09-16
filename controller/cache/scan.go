@@ -416,7 +416,7 @@ func scanRefresh(ctx context.Context, vpf scanUtils.VPFInterface) {
 
 	scanMutexLock()
 	ids := make([]string, len(scanMap))
-	for id, _ := range scanMap {
+	for id := range scanMap {
 		ids[i] = id
 		i++
 	}
@@ -731,7 +731,7 @@ func scanWorkloadAdd(id string, param interface{}) {
 	workload := cache.workload
 	if !common.OEMIgnoreWorkload(workload) {
 		// Use DisplayName for image
-		idns := []api.RESTIDName{api.RESTIDName{Domains: []string{workload.Domain}, DisplayName: workload.Image}}
+		idns := []api.RESTIDName{{Domains: []string{workload.Domain}, DisplayName: workload.Image}}
 		scanMapAdd(id, workload.AgentID, idns, share.ScanObjectType_CONTAINER)
 		// Read bench checks into cache in case its notification came earlier
 		benchStateHandler(cluster.ClusterNotifyAdd, share.CLUSBenchStateWorkloadKey(id), nil)
@@ -778,6 +778,8 @@ func scanAgentDelete(id string, param interface{}) {
 }
 
 func scanConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
+	_ = key
+
 	switch nType {
 	case cluster.ClusterNotifyAdd, cluster.ClusterNotifyModify:
 		var cfg share.CLUSScanConfig
@@ -1140,6 +1142,8 @@ func ScanUpdateHandler(nType cluster.ClusterNotifyType, key string, value []byte
 }
 
 func scanLicenseUpdate(id string, param interface{}) {
+	_ = id
+	_ = param
 
 	// Cache lock must be within scan lock, so get the map first
 	wls := make(map[string]struct{ a, d string }, len(wlCacheMap))
@@ -1154,7 +1158,7 @@ func scanLicenseUpdate(id string, param interface{}) {
 	cacheMutexRUnlock()
 
 	for id, m := range wls {
-		idns := []api.RESTIDName{api.RESTIDName{Domains: []string{m.d}}}
+		idns := []api.RESTIDName{{Domains: []string{m.d}}}
 		scanMapAdd(id, m.a, idns, share.ScanObjectType_CONTAINER)
 	}
 	for id, a := range hosts {

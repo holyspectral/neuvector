@@ -54,7 +54,7 @@ var connectReportInterval uint32 = reportInterval
 var reportTick uint32 = 0
 var nextConnectReportTick uint32 = reportInterval
 
-///
+// /
 const memoryRecyclePeriod uint32 = 10                       // minutes
 const memoryCheckPeriod uint32 = 5                          // minutes
 const memEnforcerMediumPeak uint64 = 3 * 512 * 1024 * 1024  // 1.5 GB
@@ -409,7 +409,7 @@ func updateSidecarConnection(conn *dp.Connection, id string) {
 					} else {
 						conn.ServerWL = podID.(string)
 					}
-					for port, _ := range pod.appMap {
+					for port := range pod.appMap {
 						if conn.ServerPort == port.Port && conn.IPProto == port.IPProto {
 							conn.ToSidecar = true
 						}

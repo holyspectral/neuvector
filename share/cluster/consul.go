@@ -1240,6 +1240,8 @@ func compareStoreKeys(cache map[string]uint64, kvs api.KVPairs) []string {
 }
 
 func storeUpdateCallback(idx uint64, store string, data interface{}) {
+	_ = idx
+
 	storeWatcherMutex.RLock()
 	watchers, ok := storeWatchers[store]
 	storeWatcherMutex.RUnlock()

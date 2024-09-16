@@ -201,8 +201,8 @@ type wlMini struct {
 
 type podVuls struct {
 	CriticalVuls int
-	HighVuls int
-	MedVuls int
+	HighVuls     int
+	MedVuls      int
 }
 
 func (m CacheMethod) GetRiskScoreMetrics(acc, accCaller *access.AccessControl) *api.RESTInternalSystemData {
@@ -536,6 +536,8 @@ func readBenchFromCluster(id string, bench share.BenchType) []byte {
 
 // value could be nil if it's coming from host/workload object notification
 func benchStateHandler(nType cluster.ClusterNotifyType, key string, value []byte) {
+	_ = value
+
 	cctx.ScanLog.WithFields(log.Fields{"type": cluster.ClusterNotifyName[nType], "key": key}).Debug()
 
 	if nType == cluster.ClusterNotifyDelete {

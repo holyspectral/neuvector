@@ -111,7 +111,7 @@ func ResolveAddrList(addr string, skipLoopback bool) ([]string, bool) {
 			continue
 		}
 
-		for i, _ := range ips {
+		for i := range ips {
 			if skipLoopback && ips[i].IsLoopback() {
 				continue
 			}

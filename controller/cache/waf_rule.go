@@ -25,7 +25,7 @@ var wafGroupSensors map[string]utils.Set = make(map[string]utils.Set)           
 var wafGroups map[string]*share.CLUSWafGroup = make(map[string]*share.CLUSWafGroup)    //key is group name, value is group's waf setting that contain sensors' name/action
 var wafIdRule map[uint32]string = make(map[uint32]string)                              //key is rule id, value is rule name
 
-//update waf rule from config
+// update waf rule from config
 func wafRuleConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
 	sensor := share.CLUSWafRuleKey2Name(key)
 	switch nType {
@@ -56,7 +56,7 @@ func wafRuleConfigUpdate(nType cluster.ClusterNotifyType, key string, value []by
 				wafRuleSensors[cdrename].Add(sensor)
 			}
 		} else {
-			for id, _ := range wafIdRule {
+			for id := range wafIdRule {
 				delete(wafIdRule, id)
 			}
 			if wafIdRule == nil {
@@ -77,7 +77,7 @@ func wafRuleConfigUpdate(nType cluster.ClusterNotifyType, key string, value []by
 		//sync with CLUSGroup
 		syncWafClusGroup(sensor)
 
-		for cg, _ := range wafsensor.Groups {
+		for cg := range wafsensor.Groups {
 			//group to sensors map
 			if wafGroupSensors[cg] == nil {
 				wafGroupSensors[cg] = utils.NewSet()
@@ -93,7 +93,7 @@ func wafRuleConfigUpdate(nType cluster.ClusterNotifyType, key string, value []by
 		updategrp := false
 		cacheMutexLock()
 		if wafsensor, ok := wafSensors[sensor]; ok {
-			for cg, _ := range wafsensor.Groups {
+			for cg := range wafsensor.Groups {
 				if wafGroupSensors[cg] != nil && wafGroupSensors[cg].Contains(sensor) {
 					updategrp = true
 				}
@@ -671,8 +671,8 @@ func calculateGroupWafRulesFromCache() share.CLUSWorkloadDlpRules {
 	return cgdrs
 }
 
-//if sensor is used by group, it cannot be deleted
-//so delete a sensor no need to propagate to enforcer
+// if sensor is used by group, it cannot be deleted
+// so delete a sensor no need to propagate to enforcer
 func deleteWafRuleNetwork(sensor string) {
 	if !isLeader() {
 		return
@@ -801,7 +801,7 @@ func (m *CacheMethod) GetWafSensor(sensor string, acc *access.AccessControl) (*a
 			CfgType:   cfgTypeMapping[cdr.CfgType],
 		}
 
-		for name, _ := range cdr.Groups {
+		for name := range cdr.Groups {
 			resp.GroupList = append(resp.GroupList, name)
 		}
 
@@ -901,7 +901,7 @@ func (m *CacheMethod) GetWafSensor(sensor string, acc *access.AccessControl) (*a
 	return nil, common.ErrObjectNotFound
 }
 
-//default sensor contains all waf rule entries, REST API for GUI
+// default sensor contains all waf rule entries, REST API for GUI
 func (m *CacheMethod) GetWafRules(acc *access.AccessControl) ([]*api.RESTWafRule, error) {
 	if sensor, err := m.GetWafSensor(share.CLUSWafDefaultSensor, acc); err != nil {
 		return nil, err
@@ -931,7 +931,7 @@ func (m *CacheMethod) GetAllWafSensors(acc *access.AccessControl) []*api.RESTWaf
 			Predefine: cdr.Predefine,
 			CfgType:   cfgTypeMapping[cdr.CfgType],
 		}
-		for name, _ := range cdr.Groups {
+		for name := range cdr.Groups {
 			resp.GroupList = append(resp.GroupList, name)
 		}
 		if cdr.Name == share.CLUSWafDefaultSensor {
@@ -1061,7 +1061,7 @@ func GetWafGrpSensorAction(cg, sn string) string {
 
 func GetWafOutsideGrpSensorAction(cg, sn string, out2ingrp map[string]map[string]string) string {
 	if tgrps, ok := out2ingrp[cg]; ok {
-		for tg, _ := range tgrps {
+		for tg := range tgrps {
 			otact := GetWafGrpSensorAction(tg, sn)
 			if otact == share.DlpRuleActionDrop {
 				return share.DlpRuleActionDrop
@@ -1183,7 +1183,7 @@ func (m CacheMethod) GetWafRuleSensorGroupById(id uint32) (string, string, *[]st
 				sname = sens.ToStringSlice()[0]
 				if cds, ok2 := wafSensors[sname]; ok2 {
 					if cds != nil {
-						for grp, _ := range cds.Groups {
+						for grp := range cds.Groups {
 							grpname = append(grpname, grp)
 						}
 					}
@@ -1201,11 +1201,11 @@ func (m CacheMethod) GetWafRuleNames() *[]string {
 
 	if cdr, ok := wafSensors[share.CLUSWafDefaultSensor]; ok {
 		//user created rule
-		for rn, _ := range cdr.RuleList {
+		for rn := range cdr.RuleList {
 			wafrulenames = append(wafrulenames, getCombinedWafSensorRuleName(rn))
 		}
 		//predefined rule
-		for prn, _ := range cdr.PreRuleList {
+		for prn := range cdr.PreRuleList {
 			wafrulenames = append(wafrulenames, getCombinedWafSensorRuleName(prn))
 		}
 		sort.Slice(wafrulenames, func(i, j int) bool {

@@ -48,7 +48,7 @@ func fsmonGetCacheKey(idx string, cfgType share.TCfgType) string {
 	return fmt.Sprintf("%s:%d", idx, cfgType) // default:
 }
 
-//update profile from config
+// update profile from config
 func fsmonProfileConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
 	name := share.CLUSFileMonitorKey2Group(key)
 
@@ -132,7 +132,7 @@ func fsmonProfileConfigUpdate(nType cluster.ClusterNotifyType, key string, value
 	}
 }
 
-//update profile from config
+// update profile from config
 func fileAccessRuleConfigUpdate(nType cluster.ClusterNotifyType, key string, value []byte) {
 	name := share.CLUSFileMonitorKey2Group(key)
 
@@ -317,7 +317,7 @@ func (m CacheMethod) GetFileMonitorProfile(name string, acc *access.AccessContro
 // caller owns cacheMutexRLock & has readAll right, no CRD section
 func (m CacheMethod) GetFedFileMonitorProfileCache() ([]*share.CLUSFileMonitorProfile, []*share.CLUSFileAccessRule) {
 	count := 0
-	for groupName, _ := range fsmonProfileGroups {
+	for groupName := range fsmonProfileGroups {
 		if strings.HasPrefix(groupName, api.FederalGroupPrefix) {
 			count++
 		}

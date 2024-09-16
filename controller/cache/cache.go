@@ -1589,7 +1589,7 @@ func (m CacheMethod) GetIP2WorkloadMap(hostID string) []*api.RESTDebugIP2Workloa
 			l = append(l, &api.RESTDebugIP2Workload{IP: key, Workload: fakeWorkloadBrief(svc.group.Name)})
 		}
 
-		for key, _ := range tunnelHostMap {
+		for key := range tunnelHostMap {
 			l = append(l, &api.RESTDebugIP2Workload{IP: key, Workload: &api.RESTWorkloadBrief{
 				ID: api.EndpointIngress, Name: api.EndpointIngress, DisplayName: api.EndpointIngress,
 			}})
@@ -2271,7 +2271,7 @@ func pruneWorkloadKV(suspected utils.Set) {
 	updated := utils.NewSet() // allow one update per round
 
 	cacheMutexRLock()
-	for id, _ := range wlCacheMap {
+	for id := range wlCacheMap {
 		ids.Add(id)
 		suspected.Remove(id) // remove the missing id
 	}

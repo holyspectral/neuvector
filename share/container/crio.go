@@ -140,7 +140,7 @@ func (d *crioDriver) reConnect() error {
 	}
 	// the original socket has been recreated and its mounted path was also lost.
 	endpoint := d.endpoint
-	if d.endpointHost != "" {	// use the host
+	if d.endpointHost != "" { // use the host
 		endpoint = filepath.Join("/proc/1/root", d.endpointHost)
 		endpoint, _ = justifyRuntimeSocketFile(endpoint)
 	}
@@ -206,7 +206,7 @@ type criContainerInfo struct {
 		Image       string `json:"image"`
 		Privileged  bool   `json:"privileged"`
 		RuntimeSpec struct {
-			Annotations map[string]string   `json:"annotations"`
+			Annotations map[string]string `json:"annotations"`
 		} `json:"runtimeSpec"`
 	} `json:"info"`
 }
@@ -251,6 +251,7 @@ func (d *crioDriver) getPodMeta(id string, pod *criRT.PodSandboxStatusResponse, 
 }
 
 func (d *crioDriver) getContainerMeta(id string, cs *criRT.ContainerStatusResponse, pod *criRT.PodSandboxStatusResponse, info *criContainerInfo) *ContainerMeta {
+	_ = pod
 	name := "k8s_" + cs.Status.Labels["io.kubernetes.container.name"] + "_" +
 		cs.Status.Labels["io.kubernetes.pod.name"] + "_" +
 		cs.Status.Labels["io.kubernetes.pod.namespace"] + "_" +
@@ -550,8 +551,8 @@ func (d *crioDriver) ListContainerIDs() (utils.Set, utils.Set) {
 		time.Sleep(time.Second * 5)
 		if err := d.reConnect(); err != nil {
 			log.WithFields(log.Fields{"err": err}).Error()
-			d.failedQueryCnt++	// the query is coming every 20-seconds
-			if d.failedQueryCnt > 5 {	// 100 seconds
+			d.failedQueryCnt++        // the query is coming every 20-seconds
+			if d.failedQueryCnt > 5 { // 100 seconds
 				// notify parent to exit container
 				if d.eventCallback != nil {
 					d.eventCallback(EventSocketError, "", 0)
@@ -572,7 +573,7 @@ func (d *crioDriver) ListContainerIDs() (utils.Set, utils.Set) {
 		}
 	}
 
-	d.failedQueryCnt = 0	// reset
+	d.failedQueryCnt = 0 // reset
 	if resp_sandboxes, err := criListPodSandboxes(d.criClient, ctx, true); err == nil && resp_sandboxes != nil {
 		for _, pod := range resp_sandboxes.Items {
 			ids.Add(pod.Id)

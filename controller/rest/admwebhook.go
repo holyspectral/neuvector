@@ -121,9 +121,9 @@ const (
 )
 
 var sidecarImages = []*ContainerImage{
-	&ContainerImage{registry: "https://gcr.io/", imageRepo: "istio-release/proxyv2"},
-	&ContainerImage{registry: "https://gcr.io/", imageRepo: "linkerd-io/proxy"},
-	&ContainerImage{registry: "https://docker.io/", imageRepo: "istio/proxyv2"},
+	{registry: "https://gcr.io/", imageRepo: "istio-release/proxyv2"},
+	{registry: "https://gcr.io/", imageRepo: "linkerd-io/proxy"},
+	{registry: "https://docker.io/", imageRepo: "istio/proxyv2"},
 }
 
 /*
@@ -951,6 +951,8 @@ func cacheAdmCtrlAudit(auditId share.TLogAudit, reqResult *nvsysadmission.AdmCtr
 
 func (whsvr *WebhookServer) validate(ar *admissionv1beta1.AdmissionReview, globalMode string, defaultAction int, stamps *api.AdmCtlTimeStamps,
 	forTesting bool) (*admissionv1beta1.AdmissionResponse, []*nvsysadmission.AdmCtrlMatchedResult, bool) {
+
+	_ = defaultAction
 
 	req := ar.Request
 	var objectMeta *metav1.ObjectMeta

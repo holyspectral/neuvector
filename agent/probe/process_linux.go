@@ -201,7 +201,7 @@ func (p *Probe) cleanupProc() {
 	pidSetNew := osutil.GetAllProcesses()
 	p.lockProcMux()
 	defer p.unlockProcMux()
-	for pid, _ := range p.pidProcMap {
+	for pid := range p.pidProcMap {
 		if !pidSetNew.Contains(pid) {
 			p.handleProcExit(pid) // w/ netlink
 		}
@@ -231,7 +231,7 @@ func (p *Probe) patchProcessTables() {
 	pidSet := osutil.GetAllProcesses()
 
 	// exit processes
-	for pid, _ := range p.pidProcMap {
+	for pid := range p.pidProcMap {
 		if !pidSet.Contains(pid) {
 			p.handleProcExit(pid) // exit
 		}

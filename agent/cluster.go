@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"time"
 	"strconv"
+	"time"
 
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/cluster"
@@ -215,13 +215,14 @@ func logWorkload(ev share.TLogEvent, wl *share.CLUSWorkload, msg *string) {
 }
 
 var snapshotIndex int
+
 func memorySnapshot(usage uint64) {
 	if agentEnv.autoProfieCapture > 0 {
 		log.WithFields(log.Fields{"usage": usage}).Debug()
 		if usage > agentEnv.peakMemoryUsage {
-			agentEnv.peakMemoryUsage = usage + agentEnv.snapshotMemStep  // level up
-			label := "p"  // peak
-			if snapshotIndex < 4 { // keep atmost 4 copies + an extra peak copy
+			agentEnv.peakMemoryUsage = usage + agentEnv.snapshotMemStep // level up
+			label := "p"                                                // peak
+			if snapshotIndex < 4 {                                      // keep atmost 4 copies + an extra peak copy
 				snapshotIndex++
 				label = strconv.Itoa(snapshotIndex)
 			}
@@ -232,6 +233,7 @@ func memorySnapshot(usage uint64) {
 }
 
 var curMemoryPressure uint64
+
 func memoryPressureNotification(rpt *system.MemoryPressureReport) {
 	if rpt.Level >= 2 { // cap its maximum
 		rpt.Level = 2
@@ -453,7 +455,7 @@ func createWorkload(info *container.ContainerMetaExtra, svc, domain *string) *sh
 	if wl.Running {
 		if info.IPAddress != "" {
 			wl.Ifaces["eth0"] = []share.CLUSIPAddr{
-				share.CLUSIPAddr{
+				{
 					IPNet: net.IPNet{
 						IP:   net.ParseIP(info.IPAddress),
 						Mask: net.CIDRMask(info.IPPrefixLen, 32),
@@ -496,7 +498,7 @@ func translateMappedPort(ports map[share.CLUSProtoPort]*share.CLUSMappedPort) ma
 // Translate open port to host port map, only used for host-mode container
 func app2MappedPort(apps map[share.CLUSProtoPort]*share.CLUSApp) map[share.CLUSProtoPort]*share.CLUSMappedPort {
 	ports := make(map[share.CLUSProtoPort]*share.CLUSMappedPort, len(apps))
-	for p, _ := range apps {
+	for p := range apps {
 		cp := share.CLUSProtoPort{
 			Port:    p.Port,
 			IPProto: p.IPProto,
@@ -648,7 +650,7 @@ func clusterRefreshContainers() {
 
 	// Remove non-existing containers from cluster
 	existing := utils.NewSet()
-	for id, _ := range wlCacheMap {
+	for id := range wlCacheMap {
 		existing.Add(id)
 	}
 

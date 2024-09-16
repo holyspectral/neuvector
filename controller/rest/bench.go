@@ -743,6 +743,7 @@ func getCISStatusFromCluster(bench share.BenchType, id string) (int, string) {
 }
 
 func getCISReportFromCluster(bench share.BenchType, id string, cpf *complianceProfileFilter, acc *access.AccessControl) (*api.RESTBenchReport, int, string) {
+	_ = acc
 	rpt, code, errMsg := _getCISReportFromCluster(bench, id, true, cpf)
 	if code == 0 {
 		rpt.Items = filterComplianceChecks(rpt.Items, cpf)
@@ -1059,17 +1060,17 @@ func handlerAssetCompliance(w http.ResponseWriter, r *http.Request, ps httproute
 
 	// remove id from RESTIDName to reduce data size.
 	for _, wls := range resp.Workloads {
-		for i, _ := range wls {
+		for i := range wls {
 			wls[i].ID = ""
 		}
 	}
 	for _, nodes := range resp.Nodes {
-		for i, _ := range nodes {
+		for i := range nodes {
 			nodes[i].ID = ""
 		}
 	}
 	for _, images := range resp.Images {
-		for i, _ := range images {
+		for i := range images {
 			images[i].ID = ""
 		}
 	}

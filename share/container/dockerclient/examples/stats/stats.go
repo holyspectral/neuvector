@@ -16,7 +16,7 @@ func statCallback(id string, stat *dockerclient.Stats, ec chan error, args ...in
 func waitForInterrupt() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	for _ = range sigChan {
+	for range sigChan {
 		os.Exit(0)
 	}
 }

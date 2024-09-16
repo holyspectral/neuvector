@@ -21,6 +21,7 @@ const _pwdValidPerDayUnit = 1440
 var _pwdValidUnit time.Duration = _pwdValidPerDayUnit // default: per day
 
 func handlerPwdProfileCreate(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	_ = ps
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug()
 	defer r.Body.Close()
 
