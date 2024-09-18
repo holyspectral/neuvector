@@ -877,4 +877,34 @@ int kprobe_proc_exit_connector(struct pt_regs *ctx)
 	return 0;
 }
 
+SEC("kprobe/proc_id_connector")
+int kprobe_proc_id_connector(struct pt_regs *ctx)
+{
+	int zero = 0;
+	char *tmp = (char *)bpf_map_lookup_elem(&tmp_heap, &zero);
+	if (tmp == NULL)
+	{
+		return -1;
+	}
+
+	struct local_cpu_data *data = (struct local_cpu_data *)bpf_map_lookup_elem(&local_cpu_data_map, &zero);
+	if (data == NULL)
+	{
+		return -1;
+	}
+
+	int whichID = (int)PT_REGS_PARM2_CORE(ctx);
+
+	if (whichID != PROC_EVENT_UID)
+	{
+		// We only support uid event for now.
+		return 0;
+	}
+
+	data->type = PROC_UID_EVENT_TYPE;
+
+	bpf_tail_call(ctx, &programs_map, 0);
+	return 0;
+}
+
 #endif

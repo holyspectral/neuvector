@@ -14,6 +14,8 @@
 #define PROC_FORK_EVENT_TYPE 0
 #define PROC_EXEC_EVENT_TYPE 1
 #define PROC_EXIT_EVENT_TYPE 2
+#define PROC_UID_EVENT_TYPE 3
+#define PROC_GID_EVENT_TYPE 4
 
 /*
 // This function checks prefix using BPF_MAP_TYPE_LPM_TRIE

@@ -27,6 +27,8 @@ const (
 	PROC_FORK_EVENT_TYPE = iota
 	PROC_EXEC_EVENT_TYPE
 	PROC_EXIT_EVENT_TYPE
+	PROC_UID_EVENT_TYPE
+	PROC_GID_EVENT_TYPE
 )
 
 type ProcessEvent struct {
@@ -191,17 +193,24 @@ func (bpc *BPFProcessControl) InstallKprobes() (links map[string]link.Link, err 
 
 	kp, err = link.Kprobe("proc_exec_connector", bpc.bpfObjects.KprobeProcExecConnector, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to install hooks on proc_fork_connector: %w", err)
+		return nil, fmt.Errorf("failed to install hooks on proc_exec_connector: %w", err)
 	}
 
 	links["proc_exec_connector"] = kp
 
 	kp, err = link.Kprobe("proc_exit_connector", bpc.bpfObjects.KprobeProcExitConnector, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to install hooks on proc_fork_connector: %w", err)
+		return nil, fmt.Errorf("failed to install hooks on proc_exit_connector: %w", err)
 	}
 
 	links["proc_exit_connector"] = kp
+
+	kp, err = link.Kprobe("proc_id_connector", bpc.bpfObjects.KprobeProcIdConnector, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to install hooks on proc_id_connector: %w", err)
+	}
+
+	links["proc_id_connector"] = kp
 
 	return links, nil
 }
@@ -262,4 +271,21 @@ func ConvertCmdlineToStringArrary(cmdline []byte) []string {
 		cmdlines = append(cmdlines, string(cmd))
 	}
 	return cmdlines
+}
+
+func GetEventIDString(eventID int) string {
+	switch eventID {
+	case PROC_FORK_EVENT_TYPE:
+		return "fork"
+	case PROC_EXEC_EVENT_TYPE:
+		return "exec"
+	case PROC_EXIT_EVENT_TYPE:
+		return "exit"
+	case PROC_UID_EVENT_TYPE:
+		return "uid"
+	case PROC_GID_EVENT_TYPE:
+		return "gid"
+	default:
+		return "unknown"
+	}
 }

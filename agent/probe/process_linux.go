@@ -225,8 +225,8 @@ func (p *Probe) ebpfHandler(eventType int, pi *procInternal, ppi *procInternal, 
 		p.handleProcExec(pi.pid, false, pi, containerID) // pid
 	case bpfprocess.PROC_EXIT_EVENT_TYPE:
 		p.handleProcExit(pi.pid)
-		//case netlink.PROC_EVENT_UID:
-		//	p.handleProcUIDChange(e.Pid, e.UParam1, e.UParam2) // pid, ruid, euid
+	case bpfprocess.PROC_UID_EVENT_TYPE:
+		p.handleProcUIDChange(pi.pid, pi.ruid, pi.euid) // pid, ruid, euid
 	}
 	p.unlockProcMux() // minimum section lock
 }

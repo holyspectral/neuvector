@@ -87,6 +87,7 @@ type bpfProgramSpecs struct {
 	KprobeProcExecConnector *ebpf.ProgramSpec `ebpf:"kprobe_proc_exec_connector"`
 	KprobeProcExitConnector *ebpf.ProgramSpec `ebpf:"kprobe_proc_exit_connector"`
 	KprobeProcForkConnector *ebpf.ProgramSpec `ebpf:"kprobe_proc_fork_connector"`
+	KprobeProcIdConnector   *ebpf.ProgramSpec `ebpf:"kprobe_proc_id_connector"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -153,6 +154,7 @@ type bpfPrograms struct {
 	KprobeProcExecConnector *ebpf.Program `ebpf:"kprobe_proc_exec_connector"`
 	KprobeProcExitConnector *ebpf.Program `ebpf:"kprobe_proc_exit_connector"`
 	KprobeProcForkConnector *ebpf.Program `ebpf:"kprobe_proc_fork_connector"`
+	KprobeProcIdConnector   *ebpf.Program `ebpf:"kprobe_proc_id_connector"`
 }
 
 func (p *bpfPrograms) Close() error {
@@ -161,6 +163,7 @@ func (p *bpfPrograms) Close() error {
 		p.KprobeProcExecConnector,
 		p.KprobeProcExitConnector,
 		p.KprobeProcForkConnector,
+		p.KprobeProcIdConnector,
 	)
 }
 
