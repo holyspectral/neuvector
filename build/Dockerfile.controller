@@ -1,8 +1,52 @@
-ARG BASE_PREFIX
-ARG BASE_IMAGE_TAG
-FROM neuvector/${BASE_PREFIX}controller_base:${BASE_IMAGE_TAG}
+FROM ubuntu:18.04 AS builder
 
-COPY stage /
+ENV GOPATH=/go
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+
+# Setup build dependencies
+RUN apt-get update && apt-get install -y build-essential autoconf libtool libpcap-dev libpcre++-dev bzr curl upx wget zip git debconf-utils software-properties-common libnfnetlink-dev libnetfilter-queue-dev libmnl-dev
+
+# Setup golang build env
+RUN curl -o /tmp/golang.tar.gz -fL https://go.dev/dl/go1.22.7.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf /tmp/golang.tar.gz && rm /tmp/golang.tar.gz && \
+    mkdir -p $GOPATH/src/neuvector.com && mkdir -p $GOPATH/bin
+
+# Build controller
+# TODO: keys.go
+# TODO: debuginfo
+COPY . /src
+WORKDIR /src
+#RUN ls -al /src/ && false
+RUN bash build/build_controller.sh
+
+#
+# Prepare base images
+FROM registry.suse.com/bci/bci-micro:15.6 AS micro
+FROM registry.suse.com/bci/bci-base:15.6 AS base
+
+COPY --from=micro / /chroot/
+RUN zypper --installroot /chroot -n --gpg-auto-import-keys in --no-recommends \
+    ca-certificates iproute2 ethtool lsof procps curl jq iptables grep tar awk && \
+    zypper --installroot /chroot clean -a && \
+    rm -rf /chroot/var/log/
+
+# TODO: do we still need this?
+RUN touch /chroot/usr/local/bin/.nvcontainer
+# TODO: Let container create it automatically.
+RUN mkdir -p /chroot/etc/neuvector/certs/internal/
+
+# TODO: remove prebuild
+COPY prebuild/ /prebuild/
+
+RUN gzip -cd prebuild/consul.1.11.11.gz > /chroot/usr/local/bin/consul && chmod +x /chroot/usr/local/bin/consul
+RUN gzip -cd prebuild/opa.0.48.0.gz > /chroot/usr/local/bin/opa && chmod +x /chroot/usr/local/bin/opa
+COPY prebuild/libpcre.so.3.13.1 /chroot/usr/local/bin/
+
+FROM micro
+WORKDIR /
+COPY --from=base /chroot/ /
+COPY --from=builder /src/stage /
 
 ARG NV_TAG
 LABEL name="controller" \
@@ -12,6 +56,5 @@ LABEL name="controller" \
       neuvector.image="neuvector/controller" \
       neuvector.role="controller" \
       neuvector.rev="git.xxxx"
-
 
 ENTRYPOINT ["/usr/local/bin/monitor", "-c"]

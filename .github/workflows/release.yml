@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # write is needed for:
+      # - OIDC for cosign's use in ecm-distro-tools/publish-image.
+      # - Read vault secrets in rancher-eio/read-vault-secrets.
+      id-token: write
+    
+    strategy:
+      matrix:
+        include:
+          - target: controller
+            make-target: push-controller-image
+            platforms: linux/amd64,linux/arm64
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    #TODO: - name: Load Secrets from Vault
+
+    - name: Publish manifest
+      uses: rancher/ecm-distro-tools/actions/publish-image@master
+      with:
+        image: ${{ matrix.target }}
+        tag: ${{ github.ref_name }}${{ matrix.tag-suffix }}
+        platforms: ${{ matrix.platforms }}
+        make-target: ${{ matrix.make-target }}
+
+        public-registry: docker.io
+        public-repo: holyspectral
+        public-username: holyspectral
+        public-password: ${{ secrets.DOCKER_PASSWORD }}
+
+        #prime-registry: ${{ env.PRIME_REGISTRY }}
+        prime-registry: docker.io
+        prime-repo: holyspectral
+        prime-username: holyspectral
+        prime-password: ${{ secrets.PRIME_REGISTRY_PASSWORD }}
+
+  publish-assets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Upload artefacts to release.
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+  
+    - run: make upload
+      env:
+          GH_TOKEN: ${{ github.token }}
