@@ -1,0 +1,89 @@
+FROM ubuntu:20.04@sha256:fa17826afb526a9fc7250e0fbcbfd18d03fe7a54849472f86879d8bf562c629e AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+
+ENV GOPATH=/go
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+
+# Setup build dependencies
+RUN apt-get update && apt-get install -y build-essential autoconf libtool libpcap-dev libpcre++-dev bzr curl upx wget zip git
+
+RUN apt-get install -y debconf-utils software-properties-common && \
+    apt-get install -y libnfnetlink-dev libnetfilter-queue-dev libmnl-dev && \
+    apt-get install -y liburcu-dev libjansson-dev libjemalloc-dev libpcre2-dev
+
+# Setup golang build env
+# TODO: verifiy checksum
+RUN curl -o /tmp/golang.tar.gz -fL https://go.dev/dl/go1.22.7.linux-${TARGETARCH}.tar.gz
+RUN tar -C /usr/local -xzf /tmp/golang.tar.gz && rm /tmp/golang.tar.gz && \
+    mkdir -p $GOPATH/src/neuvector.com && mkdir -p $GOPATH/bin
+
+
+# Build controller
+# TODO: keys.go
+# TODO: debuginfo
+# TODO: Use Makefile?
+COPY . /src
+WORKDIR /src
+RUN bash package/build_enforcer.sh
+
+#
+# Prepare base images
+FROM registry.suse.com/bci/bci-micro:15.6@sha256:97d363d79a2e8e20491bb7f5b51bb2db066ad410431bc933f832c9b17bff8f23 AS micro
+FROM registry.suse.com/bci/bci-base:15.6@sha256:8e4bd4ffcb3c079924e57cc1264a242746148de118f9cb547cf2149e120a0d87 AS base
+
+ARG TARGETOS
+ARG TARGETARCH
+
+RUN zypper -n --gpg-auto-import-keys in --no-recommends \
+    unzip && \
+    zypper clean -a && \
+    rm -rf /chroot/var/log/
+
+COPY --from=micro / /chroot/
+RUN zypper --installroot /chroot -n --gpg-auto-import-keys in --no-recommends \
+    ca-certificates iproute2 ethtool lsof procps curl jq iptables grep tar awk tcpdump sed kmod \
+    libnetfilter_queue-devel liburcu-devel libpcap-devel pcre2-devel libjansson-devel libmnl-devel && \
+    zypper --installroot /chroot clean -a && \
+    rm -rf /chroot/var/log/
+
+# TODO: do we still need this?
+RUN touch /chroot/usr/local/bin/.nvcontainer
+# TODO: Let container create it automatically.
+RUN mkdir -p /chroot/etc/neuvector/certs/internal/
+
+# TODO: remove prebuild
+#COPY prebuild/ /prebuild/
+COPY package/deps /deps/
+
+RUN curl -fL https://releases.hashicorp.com/consul/1.19.2/consul_1.19.2_${TARGETOS}_${TARGETARCH}.zip -o consul.zip \
+    && cat /deps/${TARGETOS}_${TARGETARCH}/consul.checksum | sha256sum --check --status && unzip consul.zip -d /chroot/usr/local/bin/
+#RUN cp prebuild/liburcu.so.2.0.0 /chroot/usr/local/bin/liburcu.so.2
+#RUN cp prebuild/liburcu-cds.so.2.0.0 /chroot/usr/local/bin/liburcu-cds.so.2
+# TODO: Different between amd64 and arm
+#RUN cp prebuild/libpcre.so.3.13.1 /chroot/usr/local/bin/
+
+
+FROM micro
+WORKDIR /
+COPY --from=base /chroot/ /
+COPY --from=builder /src/stage /
+
+RUN cd /usr/bin/ && rm -rf basename chcon chgrp chmod chown chroot cksum dd df dircolors dirname du install install-info join locale localedef mkdir mkfifo mknod mktemp paste pathchk readlink realpath sync smidiff smidump smilink smiquery smistrip smixlate tee tiemout tload top truncate unlink watch
+
+RUN ln -s /usr/lib64/libpcap.so /usr/lib64/libpcap.so.0.8 && \
+    ln -s /usr/lib64/libpcre.so.3.13.3 /usr/lib64/libpcre.so.3 && \
+    ln -s /usr/lib64/libcrypto.so.3 /usr/lib/libcrypto.so.3
+
+ARG NV_TAG
+LABEL name="enforcer" \
+      vendor="NeuVector Inc." \
+      version=${NV_TAG} \
+      release=${NV_TAG} \
+      neuvector.image="neuvector/enforcer" \
+      neuvector.role="enforcer" \
+      neuvector.rev="git.xxxx"
+
+ENTRYPOINT ["/usr/local/bin/monitor", "-r"]

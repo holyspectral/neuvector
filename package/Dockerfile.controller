@@ -1,0 +1,65 @@
+#
+# Builder image
+FROM registry.suse.com/bci/golang:1.22.7 AS builder
+
+ENV GOPATH=/go
+ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+
+# Setup build dependencies
+RUN zypper install -y pcre-devel
+
+# Build controller
+COPY . /src
+WORKDIR /src
+#RUN ls -al /src/ && false
+RUN bash package/build_controller.sh
+
+#
+# base image
+FROM registry.suse.com/bci/bci-micro:15.6@sha256:97d363d79a2e8e20491bb7f5b51bb2db066ad410431bc933f832c9b17bff8f23 AS micro
+FROM registry.suse.com/bci/bci-base:15.6@sha256:8e4bd4ffcb3c079924e57cc1264a242746148de118f9cb547cf2149e120a0d87 AS base
+
+ARG TARGETOS
+ARG TARGETARCH
+
+COPY --from=micro / /chroot/
+
+# Build time dependencies
+RUN zypper --non-interactive --gpg-auto-import-keys install --no-recommends unzip
+
+# Runtime dependencies
+RUN zypper --non-interactive --installroot /chroot --gpg-auto-import-keys install --no-recommends \
+    ca-certificates iproute2 ethtool lsof procps curl jq iptables grep tar awk libpcre2-posix3 && \
+    zypper --non-interactive --installroot /chroot clean -a && \
+    rm -rf /chroot/var/log/
+
+RUN touch /chroot/usr/local/bin/.nvcontainer
+# TODO: Let container create it automatically.
+RUN mkdir -p /chroot/etc/neuvector/certs/internal/
+
+COPY package/deps /deps/
+
+RUN curl -fL https://releases.hashicorp.com/consul/1.19.2/consul_1.19.2_${TARGETOS}_${TARGETARCH}.zip -o consul.zip \
+    && cat /deps/${TARGETOS}_${TARGETARCH}/consul.checksum | sha256sum --check --status && unzip consul.zip -d /chroot/usr/local/bin/
+
+RUN curl -fL https://github.com/open-policy-agent/opa/releases/download/v0.69.0/opa_${TARGETOS}_${TARGETARCH}_static -o opa \
+    && cat /deps/${TARGETOS}_${TARGETARCH}/opa.checksum | sha256sum --check --status && chmod +x opa && mv opa /chroot/usr/local/bin
+
+FROM micro
+ARG VERSION
+ARG COMMIT
+WORKDIR /
+COPY --from=base /chroot/ /
+COPY --from=builder /src/stage /
+
+RUN cd /usr/bin/ && rm -rf basename chcon chgrp chmod chown chroot cksum dd df dircolors dirname du install install-info join locale localedef mkdir mkfifo mknod mktemp paste pathchk readlink realpath sync smidiff smidump smilink smiquery smistrip smixlate tee tiemout tload top truncate unlink watch
+
+LABEL name="controller" \
+      vendor="SuSE Security" \
+      version=${VERSION} \
+      release=${VERSION} \
+      neuvector.image="neuvector/controller" \
+      neuvector.role="controller" \
+      neuvector.rev="${COMMIT}"
+
+ENTRYPOINT ["/usr/local/bin/monitor", "-c"]
