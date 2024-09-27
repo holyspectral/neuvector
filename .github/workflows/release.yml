@@ -22,6 +22,9 @@ jobs:
           - target: controller
             make-target: push-controller-image
             platforms: linux/amd64,linux/arm64
+          - target: enforcer
+            make-target: push-enforcer-image
+            platforms: linux/amd64,linux/arm64
     
     steps:
     - name: Checkout code

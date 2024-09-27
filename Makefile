@@ -20,3 +20,8 @@ push-controller-image: buildx-machine
 		--build-arg VERSION=$(VERSION) --platform=$(TARGET_PLATFORMS) -t "$(REPO)/controller:$(TAG)" --push .
 	@echo "Pushed $(IMAGE)"
 	
+push-enforcer-image: buildx-machine
+	$(IMAGE_BUILDER) build -f build/Dockerfile.enforcer \
+		--builder $(MACHINE) $(IMAGE_ARGS) $(IID_FILE_FLAG) $(BUILDX_ARGS) \
+		--build-arg VERSION=$(VERSION) --platform=$(TARGET_PLATFORMS) -t "$(REPO)/enforcer:$(TAG)" --push .
+	@echo "Pushed $(IMAGE)"
