@@ -1,23 +1,17 @@
-FROM ubuntu:20.04 AS builder
+FROM registry.suse.com/bci/golang:1.22 AS builder
 
 ENV GOPATH=/go
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 
 # Setup build dependencies
-RUN apt-get update && apt-get install -y build-essential autoconf libtool libpcap-dev libpcre++-dev bzr curl upx wget zip git
-
-# Setup golang build env
-RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && curl -o /tmp/golang.tar.gz -fL https://go.dev/dl/go1.22.7.linux-${arch}.tar.gz
-RUN tar -C /usr/local -xzf /tmp/golang.tar.gz && rm /tmp/golang.tar.gz && \
-    mkdir -p $GOPATH/src/neuvector.com && mkdir -p $GOPATH/bin
+RUN zypper install -y pcre-devel
 
 # Build controller
 # TODO: keys.go
 # TODO: debuginfo
+# TODO: Use Makefile?
 COPY . /src
 WORKDIR /src
-#RUN ls -al /src/ && false
 RUN bash build/build_controller.sh
 
 #
