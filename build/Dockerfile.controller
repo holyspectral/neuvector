@@ -1,14 +1,14 @@
-FROM ubuntu:18.04 AS builder
+FROM ubuntu:20.04 AS builder
 
 ENV GOPATH=/go
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 
 # Setup build dependencies
-RUN apt-get update && apt-get install -y build-essential autoconf libtool libpcap-dev libpcre++-dev bzr curl upx wget zip git debconf-utils software-properties-common libnfnetlink-dev libnetfilter-queue-dev libmnl-dev
+RUN apt-get update && apt-get install -y build-essential autoconf libtool libpcap-dev libpcre++-dev bzr curl upx wget zip git
 
 # Setup golang build env
-RUN curl -o /tmp/golang.tar.gz -fL https://go.dev/dl/go1.22.7.linux-amd64.tar.gz
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && curl -o /tmp/golang.tar.gz -fL https://go.dev/dl/go1.22.7.linux-${arch}.tar.gz
 RUN tar -C /usr/local -xzf /tmp/golang.tar.gz && rm /tmp/golang.tar.gz && \
     mkdir -p $GOPATH/src/neuvector.com && mkdir -p $GOPATH/bin
 
