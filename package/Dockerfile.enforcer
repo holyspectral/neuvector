@@ -55,15 +55,15 @@ RUN touch /chroot/usr/local/bin/.nvcontainer
 RUN mkdir -p /chroot/etc/neuvector/certs/internal/
 
 # TODO: remove prebuild
-COPY prebuild/ /prebuild/
+#COPY prebuild/ /prebuild/
 COPY package/deps /deps/
 
 RUN curl -fL https://releases.hashicorp.com/consul/1.19.2/consul_1.19.2_linux_${TARGETARCH}.zip -o consul.zip \
     && cat /deps/${TARGETARCH}/consul.checksum | sha256sum --check --status && unzip consul.zip -d /chroot/usr/local/bin/
-RUN cp prebuild/liburcu.so.2.0.0 /chroot/usr/local/bin/liburcu.so.2
-RUN cp prebuild/liburcu-cds.so.2.0.0 /chroot/usr/local/bin/liburcu-cds.so.2
+#RUN cp prebuild/liburcu.so.2.0.0 /chroot/usr/local/bin/liburcu.so.2
+#RUN cp prebuild/liburcu-cds.so.2.0.0 /chroot/usr/local/bin/liburcu-cds.so.2
 # TODO: Different between amd64 and arm
-RUN cp prebuild/libpcre.so.3.13.1 /chroot/usr/local/bin/
+#RUN cp prebuild/libpcre.so.3.13.1 /chroot/usr/local/bin/
 
 
 FROM micro
