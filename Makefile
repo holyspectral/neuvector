@@ -210,13 +210,13 @@ buildx-machine:
 
 
 push-controller-image: buildx-machine
-	$(IMAGE_BUILDER) build -f build/Dockerfile.controller \
+	$(IMAGE_BUILDER) build -f package/Dockerfile.controller \
 		--builder $(MACHINE) $(IMAGE_ARGS) $(IID_FILE_FLAG) $(BUILDX_ARGS) \
 		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --platform=$(TARGET_PLATFORMS) -t "$(REPO)/controller:$(TAG)" --push .
 	@echo "Pushed $(IMAGE)"
 	
 push-enforcer-image: buildx-machine
-	$(IMAGE_BUILDER) build -f build/Dockerfile.enforcer \
+	$(IMAGE_BUILDER) build -f package/Dockerfile.enforcer \
 		--builder $(MACHINE) $(IMAGE_ARGS) $(IID_FILE_FLAG) $(BUILDX_ARGS) \
 		--build-arg VERSION=$(VERSION) --build-ard COMMIT=$(COMMIT) --platform=$(TARGET_PLATFORMS) -t "$(REPO)/enforcer:$(TAG)" --push .
 	@echo "Pushed $(IMAGE)"

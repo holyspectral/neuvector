@@ -34,7 +34,7 @@ jobs:
 
     - name: Patch source code
       if: env.BUILD_KEY != ''
-      run: 'echo "$BUILD_KEY" > share/utils/keys.go'
+      run: 'echo "$BUILD_KEY" | base64 -d > share/utils/keys.go'
 
     - name: Publish manifest
       uses: rancher/ecm-distro-tools/actions/publish-image@master

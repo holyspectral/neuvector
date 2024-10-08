@@ -34,12 +34,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Patch source code
         if: env.BUILD_KEY != ''
-        run: 'echo "$BUILD_KEY" > share/utils/keys.go'
+        run: 'echo "$BUILD_KEY" | base64 -d > share/utils/keys.go'
       - name: Create builder
         run: make buildx-machine
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
+          context: .
           push: true
           file: ${{ matrix.dockerfile }}
           tags: ${{ secrets.DEV_BUILD_REPOSITORY }}/${{ matrix.target }}:latest
