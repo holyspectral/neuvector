@@ -25,15 +25,15 @@ jobs:
               #- target: enforcer
               #make-target: push-enforcer-image
               #platforms: linux/amd64,linux/arm64
+    env:
+      BUILD_KEY: ${{ secrets.BUILD_KEY }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Patch source code
-      env:
-        BUILD_KEY: ${{ secrets.BUILD_KEY }}
-      if: ${{ env.BUILD_KEY != '' }}
+      if: env.BUILD_KEY != ''
       run: 'echo "$BUILD_KEY" > share/utils/keys.go'
 
     - name: Publish manifest

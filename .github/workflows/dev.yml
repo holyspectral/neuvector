@@ -18,6 +18,8 @@ jobs:
             dockerfile: package/Dockerfile.enforcer
             platforms: linux/amd64
     runs-on: ubuntu-latest
+    env:
+      BUILD_KEY: ${{ secrets.BUILD_KEY }}
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -31,9 +33,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Patch source code
-        env:
-          BUILD_KEY: ${{ secrets.BUILD_KEY }}
-        if: ${{ env.BUILD_KEY != '' }}
+        if: env.BUILD_KEY != ''
         run: 'echo "$BUILD_KEY" > share/utils/keys.go'
       - name: Create builder
         run: make buildx-machine
