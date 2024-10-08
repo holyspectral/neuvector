@@ -43,6 +43,7 @@ jobs:
           push: true
           file: ${{ matrix.dockerfile }}
           tags: ${{ secrets.DEV_BUILD_REPOSITORY }}/${{ matrix.target }}:latest
+          platforms: ${{ matrix.platforms }}
           build-args: |
             COMMIT=${{ github.sha }}
             VERSION=${{ github.ref_name }}
