@@ -1,0 +1,126 @@
+name: Slack notifications
+
+on:
+  pull_request:
+    types: [opened, reopened]
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  slack-notification:
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    steps:
+      - name: Parse title and description
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run:
+          echo "PRTITLE=$(echo \"$PR_TITLE\" | head -c 100) >> $GITHUB_ENV" && \
+          echo "PRBODY=$(echo \"$PR_BODY\" | head -c 100) >> $GITHUB_ENV" && \
+          echo "ISSUETITLE=$(echo \"$ISSUE_TITLE\" | head -c 100) >> $GITHUB_ENV" && \
+          echo "ISSUEBODY=$(echo \"$ISSUE_BODY\" | head -c 100) >> $GITHUB_ENV"
+      - name: Send Slack Pull Request Notifications
+        id: slack-pr
+        uses: slackapi/slack-github-action@v1.27.0
+        if: github.event.pull_request.id != ''
+        with:
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "blocks": [
+                          {
+                            "type": "header",
+                              "text": {
+                                "text": "A pull request is created in ${{ github.repository }}",
+                                "type": "plain_text"
+                              }
+                          },
+                          {
+                              "type": "section",
+                              "text": {
+                                      "text": "A pull request <${{ github.event.pull_request.html_url }}|#${{ github.event.pull_request.number }}> is created in ${{ github.repository }}",
+                                      "type": "mrkdwn"
+                              },
+                              "fields": [
+                                      {
+                                              "type": "mrkdwn",
+                                              "text": "*Opener*"
+                                      },
+                                      {
+                                              "type": "mrkdwn",
+                                              "text": "*Title*"
+                                      },
+                                      {
+                                              "type": "mrkdwn",
+                                              "text": "<${{ github.event.pull_request.user.html_url }}|${{ github.event.pull_request.user.login }}>"
+                                      },
+                                      {
+                                              "type": "plain_text",
+                                              "text": "${{ env.PRTITLE }}"
+                                      }
+                              ]
+                      },
+                      {
+                              "type": "section",
+                              "text": {
+                                      "type": "plain_text",
+                                      "text": "${{ env.PRBODY }}"
+                              }
+                      }
+              ]
+            }
+      - name: Send Slack Issues Notifications
+        id: slack-issues
+        uses: slackapi/slack-github-action@v1.27.0
+        if: github.event.issue.id != ''
+        with:
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "blocks": [
+                          {
+                            "type": "header",
+                              "text": {
+                                "text": "An issue is created in ${{ github.repository }}",
+                                "type": "plain_text"
+                              }
+                          },
+                      {
+                              "type": "section",
+                              "text": {
+                                      "text": "A issue <${{ github.event.issue.html_url }}|#${{ github.event.issue.number }}> is created in ${{ github.repository }}",
+                                      "type": "mrkdwn"
+                              },
+                              "fields": [
+                                      {
+                                              "type": "mrkdwn",
+                                              "text": "*Opener*"
+                                      },
+                                      {
+                                              "type": "mrkdwn",
+                                              "text": "*Title*"
+                                      },
+                                      {
+                                              "type": "mrkdwn",
+                                              "text": "<${{ github.event.issue.user.html_url }}|${{ github.event.issue.user.login }}>"
+                                      },
+                                      {
+                                              "type": "plain_text",
+                                              "text": "${{ env.ISSUETITLE }}"
+                                      }
+                              ]
+                      },
+                      {
+                              "type": "section",
+                              "text": {
+                                      "type": "plain_text",
+                                      "text": "${{ env.ISSUEBODY }}"
+                              }
+                      }
+              ]
+            }
