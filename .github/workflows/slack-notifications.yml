@@ -1,0 +1,114 @@
+name: Slack notifications
+
+on:
+  pull_request:
+    types: [opened, reopened]
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  slack-notification:
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      GITHUB_EVENT_TYPE: ${{ github.event.pull_request.id != '' && 'Pull Request' || 'Issue' }}
+      GITHUB_EVENT_URL: ${{ github.event.pull_request.id != '' && github.event.pull_request.html_url  || github.event.issue.html_url }}
+      GITHUB_EVENT_NUMBER: ${{ github.event.pull_request.id != '' && github.event.pull_request.number || github.event.issue.number }}
+      GITHUB_USER_URL: ${{ github.event.pull_request.id != '' && github.event.pull_request.user.html_url || github.event.issue.user.html_url }}
+      GITHUB_USER: ${{ github.event.pull_request.id != '' && github.event.pull_request.user.login || github.event.issue.user.login }}
+    steps:
+      - name: Parse title and description
+        env:
+          TITLE: ${{ github.event.pull_request.id != '' && github.event.pull_request.title || github.event.issue.title }}
+          BODY: ${{ github.event.pull_request.id != '' && github.event.pull_request.body || github.event.issue.body }}
+        run: |
+          echo "MSGTITLE=$(echo $TITLE | sed 's/\n/ /g' | head -c 50)" >> $GITHUB_ENV
+          echo "MSGBODY=$(echo $BODY | sed 's/\n/ /g' | head -c 200)" >> $GITHUB_ENV
+      - name: Send Slack Issues Notifications
+        id: slack-notification
+        uses: slackapi/slack-github-action@v1.27.0
+        if: github.event.issue.id != '' || github.event.pull_request.id != ''
+        with:
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                    "text": {
+                      "text": "New ${{env.GITHUB_EVENT_TYPE}} in ${{ github.repository }}",
+                      "type": "plain_text"
+                    }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "text": "<${{ env.GITHUB_EVENT_URL }}|${{env.GITHUB_EVENT_TYPE}}#${{ env.GITHUB_EVENT_NUMBER }}> is created in ${{ github.repository }}",
+                      "type": "mrkdwn"
+                  },
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Opener*"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Title*"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "<${{ env.GITHUB_USER_URL }}|${{ env.GITHUB_USER }}>"
+                    },
+                    {
+                      "type": "plain_text",
+                      "text": ${{ toJSON(env.MSGTITLE) }}
+                    }
+                  ]
+                },
+                {
+                        "type": "section",
+                        "text": {
+                                "type": "plain_text",
+                                "text": ${{ toJSON(env.MSGBODY) }}
+                        }
+                }
+              ]
+            }
+  on-failure:
+    runs-on: ubuntu-latest
+    if: ${{ always() && (needs.slack-notification.result == 'failure' || needs.slack-notification.result == 'timed_out') }}
+    needs:
+      - slack-notification
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    steps:
+      - name: Send Slack Pull Request Notifications
+        id: slack-pr
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "text": "GitHub action failed and needs attention",
+                    "type": "plain_text"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|GitHub action> failed.",
+                      "type": "mrkdwn"
+                  }
+                }
+              ]
+            }
