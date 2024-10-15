@@ -1,0 +1,27 @@
+* @holyspectral @yasker @flavio
+build/ @neuvector/build @yasker @flavio
+controller/ @neuvector/controller @yasker @flavio
+controller/scan/ @neuvector/controller @neuvector/scanner @yasker @flavio
+db/ @neuvector/controller @yasker @flavio
+templates/ @neuvector/controller @yasker @flavio
+upgrader/ @neuvector/controller @yasker @flavio
+agent/ @neuvector/enforcer @yasker @flavio
+tools/ @neuvector/enforcer @yasker @flavio
+monitor/ @neuvector/enforcer @neuvector/controller @yasker @flavio
+scripts/ @neuvector/enforcer @neuvector/controller @yasker @flavio
+share/auth/ @neuvector/controller @yasker @flavio
+share/cluster/ @neuvector/enforcer @neuvector/controller @yasker @flavio
+share/container/ @neuvector/enforcer @yasker @flavio
+share/fsmon/ @neuvector/enforcer @yasker @flavio
+share/global/ @neuvector/enforcer @neuvector/controller @yasker @flavio
+share/healthz @neuvector/controller @yasker @flavio
+share/httpclient/ @neuvector/controller @neuvector/scanner @yasker @flavio
+share/httptrace/ @neuvector/controller @neuvector/scanner @yasker @flavio
+share/k8sutils/ @neuvector/controller @yasker @flavio
+share/licenseinfo/ @neuvector/controller @yasker @flavio
+share/migration/ @neuvector/controller @yasker @flavio
+share/orchestration/ @neuvector/controller @yasker @flavio
+share/osutil/ @neuvector/enforcer @yasker @flavio
+share/scan/ @neuvector/enforcer @neuvector/controller @neuvector/scanner @yasker @flavio
+share/utils/ @neuvector/enforcer @neuvector/controller @neuvector/scanner @yasker @flavio
+
