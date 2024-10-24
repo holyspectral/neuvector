@@ -158,7 +158,7 @@ fleet:
 RUNNER := docker
 IMAGE_BUILDER := $(RUNNER) buildx
 MACHINE := neuvector
-BUILDX_ARGS ?= --sbom=true --attest type=provenance,mode=max
+BUILDX_ARGS ?= --sbom=true --attest type=provenance,mode=max --cache-to type=gha --cache-from type=gha
 DEFAULT_PLATFORMS := linux/amd64,linux/arm64,linux/x390s,linux/riscv64
 TARGET_PLATFORMS ?= linux/amd64,linux/arm64
 
