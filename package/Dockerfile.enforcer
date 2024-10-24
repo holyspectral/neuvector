@@ -1,3 +1,6 @@
+#
+# Builder
+#
 FROM registry.suse.com/bci/golang:1.22.7 AS builder
 
 RUN zypper ref && \
@@ -23,18 +26,16 @@ ENV GOPATH=/go
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 
-# Build controller
-# TODO: keys.go
-# TODO: debuginfo
 # TODO: Use Makefile?
 COPY . /src
 WORKDIR /src
 RUN bash package/build_enforcer.sh
 
 #
-# Prepare base images
-FROM registry.suse.com/bci/bci-micro:15.6@sha256:97d363d79a2e8e20491bb7f5b51bb2db066ad410431bc933f832c9b17bff8f23 AS micro
-FROM registry.suse.com/bci/bci-base:15.6@sha256:8e4bd4ffcb3c079924e57cc1264a242746148de118f9cb547cf2149e120a0d87 AS base
+# Base image
+# 
+FROM registry.suse.com/bci/bci-micro:15.6 AS micro
+FROM registry.suse.com/bci/bci-base:15.6 AS base
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -51,10 +52,14 @@ RUN zypper --installroot /chroot -n --gpg-auto-import-keys in --no-recommends \
     zypper --installroot /chroot clean -a && \
     rm -rf /chroot/var/log/
 
-# TODO: do we still need this?
-RUN touch /chroot/usr/local/bin/.nvcontainer
-# TODO: Let container create it automatically.
-RUN mkdir -p /chroot/etc/neuvector/certs/internal/
+# Install yq
+RUN zypper addrepo https://download.opensuse.org/repositories/utilities/15.6/utilities.repo && \
+    zypper --installroot /chroot -n --gpg-auto-import-keys refresh && \
+    zypper --installroot /chroot install -y yq
+
+COPY --from=builder /usr/local/lib64/libhs.so.5 /chroot/usr/lib64/libhs.so.5
+
+RUN touch /chroot/usr/local/bin/.nvcontainer && mkdir -p /chroot/etc/neuvector/certs/internal/
 
 COPY package/deps /deps/
 
