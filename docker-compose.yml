@@ -1,7 +1,7 @@
 # Only one service can be running per host.
 # If non-host mode networking is supported, CTRL_HTTPS_PORT env is not needed. We can
 # simply use 'ports' to map port 443.
-
+aa:
 controller:
     image: neuvector/controller
     container_name: neuvector.controller
