@@ -1,0 +1,19 @@
+{
+  "extends": ["github>rancher/renovate-config#release"],
+  "baseBranches": ["main"],
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "pinDigests": true,
+      "schedule": ["every weekend after 4am"]
+    },
+    {
+      "matchPackageNames": ["renovate/renovate"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "schedule": ["every weekend after 4am"]
+    }
+  ]
+}
