@@ -6,7 +6,7 @@ replace (
 	github.com/fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.9
 	github.com/jrhouston/k8slock => github.com/holyspectral/k8slock v0.0.0-20240306020054-dcc2a005b265
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc5
-	google.golang.org/grpc/security/advancedtls => github.com/holyspectral/grpc-go/security/advancedtls v0.0.0-20240202204003-24d7309846bd
+	google.golang.org/grpc/security/advancedtls => github.com/holyspectral/grpc-go/security/advancedtls v0.0.0-20231108191014-be1d1c10a930
 	k8s.io/cri-api => k8s.io/cri-api v0.25.16
 )
 

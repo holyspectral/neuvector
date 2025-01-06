@@ -256,8 +256,8 @@ github.com/hashicorp/mdns v1.0.4/go.mod h1:mtBihi+LeNXGtG8L9dX59gAEa12BDtBQSp4v/
 github.com/hashicorp/memberlist v0.3.0/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/hashicorp/serf v0.9.7 h1:hkdgbqizGQHuU5IPqYM1JdSMV8nKfpuOnZYXssk9muY=
 github.com/hashicorp/serf v0.9.7/go.mod h1:TXZNMjZQijwlDvp+r0b63xZ45H7JmCmgg4gpTwn9UV4=
-github.com/holyspectral/grpc-go/security/advancedtls v0.0.0-20240202204003-24d7309846bd h1:t8U+15rmw5qvjJE6eOlzWrcJl5afnm/1A9osOu3G/P8=
-github.com/holyspectral/grpc-go/security/advancedtls v0.0.0-20240202204003-24d7309846bd/go.mod h1:MqvBVrZckRvDn3WrLNRHuHWrNGuZISOF4ohGDsL+tK4=
+github.com/holyspectral/grpc-go/security/advancedtls v0.0.0-20231108191014-be1d1c10a930 h1:jXE4W5FDBE19lAXfgeT/j7TEkdgKc9oXhAoF2+iLtrg=
+github.com/holyspectral/grpc-go/security/advancedtls v0.0.0-20231108191014-be1d1c10a930/go.mod h1:uI0/KvXKkxz8zvG3JCOh4i4alG+WEXD2kSw1jrpk/zw=
 github.com/holyspectral/k8slock v0.0.0-20240306020054-dcc2a005b265 h1:4DVxR7Gg50vQByKViAY+nGISleH7r8GtD4yNc4XGAmI=
 github.com/holyspectral/k8slock v0.0.0-20240306020054-dcc2a005b265/go.mod h1:sXwZReWBHg600XWOgS1F8VViyUvM/JdSvhGVMz3iWdQ=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
@@ -650,6 +650,8 @@ google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8
 google.golang.org/grpc v1.33.2/go.mod h1:JMHMWHQWaTccqQQlmk3MJZS+GWXOdAesneDmEnv2fbc=
 google.golang.org/grpc v1.62.1 h1:B4n+nfKzOICUXMgyrNd19h/I9oH0L1pizfk1d4zSgTk=
 google.golang.org/grpc v1.62.1/go.mod h1:IWTG0VlJLCh1SkC58F7np9ka9mx/WNkjl4PGJaiq+QE=
+google.golang.org/grpc/examples v0.0.0-20201112215255-90f1b3ee835b h1:NuxyvVZoDfHZwYW9LD4GJiF5/nhiSyP4/InTrvw9Ibk=
+google.golang.org/grpc/examples v0.0.0-20201112215255-90f1b3ee835b/go.mod h1:IBqQ7wSUJ2Ep09a8rMWFsg4fmI2r38zwsq8a0GgxXpM=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
 google.golang.org/protobuf v0.0.0-20200228230310-ab0ca4ff8a60/go.mod h1:cfTl7dwQJ+fmap5saPgwCLgHXTUD7jkjRqWcaiX5VyM=
