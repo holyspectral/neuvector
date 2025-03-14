@@ -489,7 +489,7 @@ func (p *Probe) addContainer(id string, proc *procInternal, scanMode bool) {
 			c1.children.Remove(proc.pid)
 		}
 	}
-	log.WithFields(log.Fields{"pid": pid, "id": id, "cnt": len(p.containerMap) - 2}).Debug("PROC: New container")
+	log.WithFields(log.Fields{"pid": pid, "id": id, "cnt": len(p.containerMap) - 2}).Info("PROC: New container")
 }
 
 func (p *Probe) addContainerProcess(c *procContainer, pid int) {
@@ -3060,7 +3060,7 @@ func (p *Probe) IsAllowedShieldProcess(id, mode, svcGroup string, proc *procInte
 	c, ok := p.containerMap[id]
 	if !ok {
 		// the container was exited before we investigate into it
-		mLog.WithFields(log.Fields{"proc": proc, "id": id}).Debug("SHD: Unknown ID")
+		mLog.WithFields(log.Fields{"proc": proc, "id": id}).Info("SHD: Unknown ID")
 		return true
 	}
 
