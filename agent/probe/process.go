@@ -2497,7 +2497,7 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 			if !bKeepAlive { // bKeepAlive action : keep its original decision for existing process
 				p.killProcess(proc.pid)
 				proc.action = pp.Action
-				log.WithFields(log.Fields{"name": proc.name, "pid": proc.pid}).Debug("PROC: Denied and killed")
+				log.WithFields(log.Fields{"name": proc.name, "pid": proc.pid}).Error("PROC: Denied and killed")
 			}
 		}
 	} else {

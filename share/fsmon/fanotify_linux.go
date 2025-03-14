@@ -583,6 +583,8 @@ func (fn *FaNotify) handleEvents() error {
 			if resp {
 				err = fn.fa.ResponseAllow(ev)
 			} else {
+				_, path := fn.sys.ParseContainerFilePath(ifile.path)
+				log.WithFields(log.Fields{"path": path, "caller": pInfo.Path, "pid": pid}).Error("FMON: NV blocked")
 				err = fn.fa.ResponseDeny(ev)
 			}
 			if err != nil {
