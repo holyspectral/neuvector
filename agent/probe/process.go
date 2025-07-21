@@ -659,6 +659,10 @@ func (p *Probe) printProcReport(id string, proc *procInternal) {
 	//	p.sleepTestCounter(proc, c.id)
 }
 
+// isSuspiciousProcess checks if a process defined in proc is a suspicious process
+// by matching the list defined in suspicProcMap.
+//
+// This function also updates proc.action, so the result will be inherited by its children processes.
 func (p *Probe) isSuspiciousProcess(proc *procInternal, id string) (*suspicProcInfo, bool) {
 	if id == "" && proc.name == "sshd" { // exclude sshd from group nodes
 		proc.riskType = "" // reset
@@ -1752,7 +1756,8 @@ func (p *Probe) skipSuspicious(id string, proc *procInternal) (bool, bool) {
 	return true, false
 }
 
-// Application event handler: locked by calling functions
+// evaluateApplication evaluates an application defined in proc.
+// Note: calling functions should lock related resources.
 func (p *Probe) evaluateApplication(proc *procInternal, id string, bKeepAlive bool) {
 	if !p.bProfileEnable {
 		return
@@ -1869,7 +1874,6 @@ func (p *Probe) evaluateApplication(proc *procInternal, id string, bKeepAlive bo
 			}()
 		}
 	}
-
 }
 
 func (p *Probe) checkReversedShellProcess(id string, proc *procInternal) bool {
@@ -2391,6 +2395,7 @@ func (p *Probe) isProcessException(proc *procInternal, group, id string, bParent
 	return false
 }
 
+// procProfileEval evaluates proc and returns its verdict.
 func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) (string, bool) {
 	if filepath.Base(proc.path) != proc.name {
 		if proc.action != share.PolicyActionCheckApp { // preserve the suspicious process name
@@ -2414,6 +2419,7 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 	nShellCmd := p.isShellScript(id, proc)
 	mode, baseline, derivedGroup, svcGroup, allowSuspicious, err := p.procPolicyLookupFunc(id, proc.riskType, proc.pname, proc.ppath, proc.pid, proc.pgid, nShellCmd, pp)
 	if err != nil {
+		log.WithFields(log.Fields{"name": proc.name, "id": id, "error": err}).Debug("SAM: failed to find proc?")
 		// add container task has not established yets
 		go func() {
 			time.Sleep(3 * time.Second)
@@ -2426,6 +2432,9 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 		return share.PolicyActionAllow, false // assuming it is allowed so far
 	}
 
+	log.WithFields(log.Fields{"name": proc.name, "proc": proc, "pp": pp}).Debug("SAM: A")
+
+	// SAM: suspicious apps
 	if id == "" && proc.riskType == "sshd" {
 
 	} else {
@@ -2451,6 +2460,8 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 			}
 		}
 	}
+
+	log.WithFields(log.Fields{"name": proc.name, "proc": proc, "pp": pp}).Debug("SAM: B")
 
 	// NVSHAS-7501 - Adding check for our mode.
 	// If we are in protect mode, we should ignore the reported flag to determine the next actions.
@@ -2488,6 +2499,10 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 			}
 		}
 
+		log.WithFields(log.Fields{"name": proc.name, "proc": proc, "pp": pp}).Debug("SAM: C")
+
+		// SAM: NV protect.
+
 		if pp.Action == share.PolicyActionViolate || pp.Action == share.PolicyActionDeny {
 			if pp.Uuid != share.CLUSReservedUuidAnchorMode || svcGroup == share.GroupNVProtect {
 				var bParentHostProc bool
@@ -2500,6 +2515,8 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 			}
 		}
 
+		log.WithFields(log.Fields{"name": proc.name, "proc": proc, "pp": pp}).Debug("SAM: D")
+		// SAM: sending results.
 		switch pp.Action {
 		case share.PolicyActionViolate:
 			proc.reported |= profileReported
@@ -2519,6 +2536,7 @@ func (p *Probe) procProfileEval(id string, proc *procInternal, bKeepAlive bool) 
 			if proc.action != pp.Action {
 				proc.reported |= profileReported
 				pp.Action = proc.action
+				log.WithFields(log.Fields{"name": proc.name, "proc": proc, "pp": pp}).Debug("SAM: GG")
 				go p.sendProcessIncident(false, id, pp.Uuid, svcGroup, derivedGroup, proc)
 			}
 		}
@@ -2623,41 +2641,6 @@ func (p *Probe) addProcHistory(id string, proc *procInternal, bFromMonitor bool)
 		histProc = append(histProc[1:], proc)
 	}
 	p.procHistoryMap[id] = histProc
-}
-
-// Patch for newly created conatiners, not for host
-func (p *Probe) PutBeginningProcEventsBackToWork(id string) int {
-	var cnt int
-
-	// TODO:check the calling function, should be guarded only by procMux
-	p.lockProcMux()
-	defer p.unlockProcMux()
-
-	if elements, ok := p.procHistoryMap[id]; ok {
-		for i := 0; i < len(elements); i++ {
-			proc := elements[i]
-
-			// filter the docker run events since the path is not in the containers
-			if global.RT.IsRuntimeProcess(proc.name, nil) {
-				// skip: runtime processes,  filter it out
-				continue
-			}
-
-			// log.WithFields(log.Fields{"proc": proc, "id": id}).Debug("PROC:")
-			//  Skip the inherted actions from parents.
-			//  These processes has not been justified by policy, all the actions and riskinfo are default values
-			//  assume no ousiders during the initial stage, only justify insider processes
-			if pp, ok := p.pidProcMap[proc.pid]; ok {
-				p.evaluateApplication(pp, id, true)
-			} else { // process was gone
-				p.evaluateApplication(proc, id, true)
-			}
-			cnt++
-		}
-	}
-
-	p.cleanupProcessInContainer(id) // remove dead processes
-	return cnt
 }
 
 // / garbage collection : reference the actual removal events at container engine

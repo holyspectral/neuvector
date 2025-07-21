@@ -606,6 +606,7 @@ func mergeFileAccessProfile(cur, add *share.CLUSFileAccessRule) {
 }
 
 // //
+// SAM: where the group profiles are merged.
 func calculateProcGroupProfile(id, svc string) (*share.CLUSProcessProfile, bool) {
 	log.WithFields(log.Fields{"id": id, "svc": svc}).Debug("GRP: ")
 
@@ -956,7 +957,7 @@ func workloadLeaveGroup(c *containerData) {
 	wlCacheLock.Unlock()
 }
 
-// /////// Use GRPC to return actual policy to CTL
+// ObtainGroupProcessPolicy returns the process profile from its cache.
 func ObtainGroupProcessPolicy(id string) (*share.CLUSProcessProfile, bool) {
 	if id == "nodes" { // from controller, workload id from runtime can not be like "nodes"
 		id = ""
@@ -977,7 +978,7 @@ func ObtainGroupProcessPolicy(id string) (*share.CLUSProcessProfile, bool) {
 	return nil, false
 }
 
-// /////// Use GRPC to return actual policy to CTL
+// ObtainGroupFilePolicies returns the file profile from its cache.
 func ObtainGroupFilePolicies(id string) (*share.CLUSFileMonitorProfile, *share.CLUSFileAccessRule, bool) {
 	if id == "nodes" { // TODO: from controller, workload id from runtime can not be like "nodes"
 		id = ""

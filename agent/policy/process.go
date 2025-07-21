@@ -37,6 +37,7 @@ var k8sGrpProbe utils.Set = utils.NewSet()
 func (e *Engine) UpdateProcessPolicy(name string, profile *share.CLUSProcessProfile) (bool, *share.CLUSProcessProfile) {
 	e.Mutex.Lock()
 	defer e.Mutex.Unlock()
+	// SAM: where process policy is updated.
 	exist, ok := e.ProcessPolicy[name]
 	if !ok || !reflect.DeepEqual(exist, profile) {
 		e.ProcessPolicy[name] = profile
@@ -52,6 +53,9 @@ func (e *Engine) UpdateProcessPolicy(name string, profile *share.CLUSProcessProf
 	}
 }
 
+// ObtainProcessPolicy retrieves policies from enforcer's cache via e.getGroupRule(), i.e., ObtainGroupProcessPolicy().
+// When protection mode is being switched, profile.Mode and the item in cache might be different.
+// This is also handled in this function.
 func (e *Engine) ObtainProcessPolicy(name, id string) (*share.CLUSProcessProfile, bool) {
 	e.Mutex.Lock()
 	profile := e.ProcessPolicy[name]
@@ -66,6 +70,7 @@ func (e *Engine) ObtainProcessPolicy(name, id string) (*share.CLUSProcessProfile
 		e.ProcessPolicy[name] = profile
 		e.Mutex.Unlock()
 	} else { // the process policy per group has been fetched
+		// SAM: group is re-searched again here.
 		e.Mutex.Unlock()
 		if grp_profile, ok := e.getGroupRule(id); ok {
 			if grp_profile == nil { // neuvector pods only
@@ -73,7 +78,7 @@ func (e *Engine) ObtainProcessPolicy(name, id string) (*share.CLUSProcessProfile
 			}
 			grp_profile.Baseline = profile.Baseline // following original profile
 			if grp_profile.Mode == "" {
-				grp_profile.Mode = profile.Mode // update
+				grp_profile.Mode = profile.Mode // SAM: this is one of the issues.  This leads to an empty profile with mode specified.
 			} else if grp_profile.Mode != profile.Mode {
 				// Detected: incomplete profile calculation, conflicts by timing
 				// The new profile has not been calculated (it could be 5 seconds later) yet.
@@ -176,10 +181,13 @@ func MatchProfileProcess(entry *share.CLUSProcessProfileEntry, proc *share.CLUSP
 	return true
 }
 
+// ProcessPolicyLookup evaluates proc and writes its verdict in proc.Action.
 func (e *Engine) ProcessPolicyLookup(name, id string, proc *share.CLUSProcessProfileEntry, pid int) (string, string, string, error) {
 	group := name // service group
 	profile, ok := e.ObtainProcessPolicy(name, id)
 	if ok {
+
+		// SAM: The real matching logic.
 		var matchedEntry *share.CLUSProcessProfileEntry
 		for _, p := range profile.Process {
 			if profile.Mode == share.PolicyModeLearn && len(p.ProbeCmds) > 0 {
@@ -202,7 +210,11 @@ func (e *Engine) ProcessPolicyLookup(name, id string, proc *share.CLUSProcessPro
 			}
 		}
 
+		log.WithFields(log.Fields{"group": name, "proc": proc, "action": proc.Action}).Debug("SAM")
+
 		if matchedEntry != nil {
+			log.WithFields(log.Fields{"group": name, "proc": proc, "action": proc.Action}).Debug("SAM: found")
+
 			proc.Uuid = matchedEntry.Uuid
 			if matchedEntry.DerivedGroup != "" { // "" : internal reference for service group
 				group = matchedEntry.DerivedGroup
@@ -246,26 +258,32 @@ func (e *Engine) ProcessPolicyLookup(name, id string, proc *share.CLUSProcessPro
 				}
 			} else { // deny decision
 				// update deny decision in two other modes
+				log.WithFields(log.Fields{"group": name, "proc": proc, "action": proc.Action}).Debug("SAM: GG3")
 				if profile.Mode != share.PolicyModeEnforce {
 					proc.Action = share.PolicyActionViolate
 				}
 			}
 		} else {
+			log.WithFields(log.Fields{"group": name, "proc": proc, "action": proc.Action}).Debug("SAM: not found")
 			if profile.Baseline == share.ProfileBasic || !e.IsK8sGroupWithProbe(name) {
 				//not found in profile
+				log.WithFields(log.Fields{"group": name, "proc": proc, "action": proc.Action, "mode": profile.Mode}).Debug("SAM: GG1")
 				act := defaultProcessAction(profile.Mode)
 				proc.Action = act
 				proc.Uuid = share.CLUSReservedUuidNotAllowed
+				log.WithFields(log.Fields{"group": name, "proc": proc, "action": proc.Action}).Debug("SAM: GG2")
 			}
 		}
-		//log.WithFields(log.Fields{"group": name, "proc": proc}).Debug("")
+		log.WithFields(log.Fields{"group": name, "proc": proc}).Debug("")
 	} else {
-		//log.WithFields(log.Fields{"group": name, "proc": proc}).Debug("Profile not found")
+		log.WithFields(log.Fields{"group": name, "proc": proc}).Debug("Profile not found")
 		return "", "", "", errors.New("Profile not found")
 	}
 	return profile.Mode, profile.Baseline, group, nil
 }
 
+// IsAllowedSuspiciousApp checks if a suspicious application is allowed by policy.
+//
 // matching the process name: suspicious process is defined by name only
 func (e *Engine) IsAllowedSuspiciousApp(service, id, name string) bool {
 	profile, ok := e.ObtainProcessPolicy(service, id)
@@ -284,6 +302,9 @@ func (e *Engine) IsAllowedSuspiciousApp(service, id, name string) bool {
 	return false
 }
 
+// IsAllowedByParentApp checks if an app defined using id, name, pname, etc. is allowed by the current profile
+// by a wildcard rule.
+//
 // allowed by parent process name
 // The program logic is located at faccess_linux.go: isAllowedByParentApp()
 func (e *Engine) IsAllowedByParentApp(service, id, name, pname, ppath string, pgid int) bool {
