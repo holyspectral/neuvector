@@ -706,11 +706,11 @@ var DefaultFileMonitorConfig share.CLUSFileMonitorProfile = share.CLUSFileMonito
 }
 
 func FsmonFilterToRest(path, regex string) string {
-	regex = strings.Replace(regex, ".*", "*", -1)
-	regex = strings.Replace(regex, "\\.", ".", -1)
+	regex = strings.ReplaceAll(regex, ".*", "*")
+	regex = strings.ReplaceAll(regex, "\\.", ".")
 	regex = strings.TrimRight(regex, "$")
-	path = strings.Replace(path, "\\.", ".", -1)
-	path = strings.Replace(path, ".*", "*", -1)
+	path = strings.ReplaceAll(path, "\\.", ".")
+	path = strings.ReplaceAll(path, ".*", "*")
 	var flt string
 	if regex != "" {
 		flt = fmt.Sprintf("%s/%s", path, regex)
@@ -771,16 +771,17 @@ func MergeDlpSensors(list []*share.CLUSDlpSetting, p *share.CLUSDlpSetting) ([]*
 func GetAvailablePolicyID(ids utils.Set, cfgType share.TCfgType) uint32 {
 	var id, max uint32
 	var idMax, idMin uint32
-	if cfgType == share.GroundCfg {
+	switch cfgType {
+	case share.GroundCfg:
 		idMax = api.PolicyGroundRuleIDMax
 		idMin = api.PolicyGroundRuleIDBase + 1
-	} else if cfgType == share.FederalCfg {
+	case share.FederalCfg:
 		idMax = api.PolicyFedRuleIDMax
 		idMin = api.PolicyFedRuleIDBase + 1
-	} else if cfgType == share.Learned {
+	case share.Learned:
 		idMin = api.PolicyLearnedIDBase + 1
 		idMax = api.PolicyFedRuleIDBase
-	} else {
+	default:
 		idMax = api.PolicyLearnedIDBase
 		idMin = 1
 	}

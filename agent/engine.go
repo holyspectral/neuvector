@@ -895,7 +895,8 @@ func notifyContainerChanges(c *containerData, parent *containerData, change int)
 			}
 		}
 	} else {
-		if change == changeInit || change == changeApp {
+		switch change {
+		case changeInit, changeApp:
 			// App map already populated to parent, send update to cluster channel.
 			parentEv := ClusterEvent{
 				event:       EV_UPDATE_CONTAINER,
@@ -906,7 +907,7 @@ func notifyContainerChanges(c *containerData, parent *containerData, change int)
 				hasDatapath: &parent.hasDatapath,
 			}
 			ClusterEventChan <- &parentEv
-		} else if change == changeIntf {
+		case changeIntf:
 			if c.examIntface { // only if POD's pid is 0
 				// Notify the children/POD for interface change
 				parent.intcpPairs = c.intcpPairs
@@ -2600,7 +2601,7 @@ func intfHostMonitorLoop(hid string, stopCh chan struct{}) {
 			log.WithFields(log.Fields{"hostid": hid}).Debug("Monitor host i/f Stopped")
 			return
 		case updateLink := <-chLink:
-			if updateLink.Link == nil || updateLink.Link.Attrs() == nil {
+			if updateLink.Link == nil || updateLink.Attrs() == nil {
 				continue
 			}
 			linkName := updateLink.Link.Attrs().Name

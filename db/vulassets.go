@@ -16,7 +16,6 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	"github.com/doug-martin/goqu/v9/exp"
 	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/neuvector/neuvector/controller/api"
 	"github.com/neuvector/neuvector/share/utils"
 	log "github.com/sirupsen/logrus"
@@ -753,19 +752,20 @@ func meetCVEBasedFilter(vulasset *DbVulAsset, qf *VulQueryFilter) bool {
 	}
 
 	// profile, ==  severityType, possible values are [all/high/medium/low]
-	if q.SeverityType == "high" {
+	switch q.SeverityType {
+	case "high":
 		expectedMeetCount += 1
 
 		if vulasset.Severity == "High" {
 			meetCount += 1
 		}
-	} else if q.SeverityType == "medium" {
+	case "medium":
 		expectedMeetCount += 1
 
 		if vulasset.Severity == "Medium" {
 			meetCount += 1
 		}
-	} else if q.SeverityType == "low" {
+	case "low":
 		expectedMeetCount += 1
 
 		if vulasset.Severity == "Low" {

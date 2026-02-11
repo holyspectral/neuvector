@@ -210,10 +210,7 @@ func RegistryConfigHandler(nType cluster.ClusterNotifyType, key string, value []
 
 	// decide it is a full functioning registry or just a fed registry deployed to managed cluster for refernece only
 	// (fed registry on master clster is also full functioning registry)
-	isFullFuncReg := false
-	if !strings.HasPrefix(name, api.FederalGroupPrefix) || smd.fedRole == api.FedRoleMaster {
-		isFullFuncReg = true
-	}
+	isFullFuncReg := !strings.HasPrefix(name, api.FederalGroupPrefix) || smd.fedRole == api.FedRoleMaster
 
 	switch nType {
 	case cluster.ClusterNotifyAdd, cluster.ClusterNotifyModify:
@@ -548,11 +545,12 @@ func RegistryImageStateUpdate(name, id string, sum *share.CLUSRegistryImageSumma
 							continue
 						}
 
-						if v.Severity == share.VulnSeverityCritical {
+						switch v.Severity {
+						case share.VulnSeverityCritical:
 							layerCriticals = append(layerCriticals, v.Name)
-						} else if v.Severity == share.VulnSeverityHigh {
+						case share.VulnSeverityHigh:
 							layerHighs = append(layerHighs, v.Name)
-						} else if v.Severity == share.VulnSeverityMedium {
+						case share.VulnSeverityMedium:
 							layerMeds = append(layerMeds, v.Name)
 						}
 					}
@@ -736,16 +734,17 @@ func newRepoScanRegistry(name string) {
 		digest2ID: make(map[string]string),
 		taskQueue: utils.NewSet(),
 	}
-	if name == common.RegistryRepoScanName {
+	switch name {
+	case common.RegistryRepoScanName:
 		repoScanRegistry = reg
-	} else if name == common.RegistryFedRepoScanName {
+	case common.RegistryFedRepoScanName:
 		repoFedScanRegistry = reg
 	}
 }
 
 func (rs *Registry) newScanContext() (*scanContext, error) {
-	if err, msg := rs.driver.Login(rs.config); err != nil {
-		rs.errDetail = msg
+	if err := rs.driver.Login(rs.config); err != nil {
+		rs.errDetail = err.Error()
 		return nil, err
 	} else {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1023,7 +1022,7 @@ func (rs *Registry) checkAndPutImageResult(sctx *scanContext, id string, result 
 
 		scanReportKey := share.CLUSRegistryImageDataKey(rs.config.Name, id)
 		var previousReport *share.CLUSScanReport
-		if !(vulnResultUpdated && signatureResultUpdated) {
+		if !vulnResultUpdated || !signatureResultUpdated {
 			// we only have partial results, we'll need to fetch the previous scan result
 			// in order to merge the new partial scan results into it
 			previousReport = clusHelper.GetScanReport(scanReportKey)
@@ -1034,8 +1033,8 @@ func (rs *Registry) checkAndPutImageResult(sctx *scanContext, id string, result 
 			}
 
 			// possible if image has never been signature scanned
-			if previousReport.ScanResult.SignatureInfo == nil {
-				previousReport.ScanResult.SignatureInfo = &share.ScanSignatureInfo{}
+			if previousReport.SignatureInfo == nil {
+				previousReport.SignatureInfo = &share.ScanSignatureInfo{}
 			}
 		}
 
@@ -1050,9 +1049,9 @@ func (rs *Registry) checkAndPutImageResult(sctx *scanContext, id string, result 
 		}
 
 		if signatureResultUpdated {
-			report.ScanResult.SignatureInfo = result.SignatureInfo
+			report.SignatureInfo = result.SignatureInfo
 		} else {
-			report.ScanResult.SignatureInfo = previousReport.SignatureInfo
+			report.SignatureInfo = previousReport.SignatureInfo
 		}
 
 		if vulnResultUpdated || signatureResultUpdated {
@@ -1206,7 +1205,7 @@ func (rs *Registry) imageScanAdd(img *share.CLUSImage) {
 
 	filteredTags, _ := filterTags(tags, imageTagFilter.Tag, 0)
 
-	if err, _ := rs.backupDrv.Login(rs.config); err != nil {
+	if err := rs.backupDrv.Login(rs.config); err != nil {
 		smd.scanLog.WithFields(log.Fields{"registry": rs.config.Name, "error": err}).Error()
 		return
 	}
@@ -1801,13 +1800,14 @@ func (rs *Registry) getConfigSummary(acc *access.AccessControl) *api.RESTRegistr
 	rs.stateLock()
 	defer rs.stateUnlock()
 	for _, sum := range rs.summary {
-		if sum.Status == api.ScanStatusScheduled {
+		switch sum.Status {
+		case api.ScanStatusScheduled:
 			queue += len(sum.Images)
-		} else if sum.Status == api.ScanStatusScanning {
+		case api.ScanStatusScanning:
 			scan += len(sum.Images)
-		} else if sum.Status == api.ScanStatusFailed {
+		case api.ScanStatusFailed:
 			failed += len(sum.Images)
-		} else if sum.Status == api.ScanStatusFinished {
+		case api.ScanStatusFinished:
 			finish += len(sum.Images)
 		}
 	}

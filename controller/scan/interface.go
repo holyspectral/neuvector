@@ -759,14 +759,15 @@ func (m *scanMethod) GetRegistrySummary(name string, acc *access.AccessControl) 
 func (m *scanMethod) GetAllRegistrySummary(scope string, acc *access.AccessControl) []*api.RESTRegistrySummary {
 	var getLocal, getFed bool
 
-	if scope == share.ScopeLocal {
+	switch scope {
+	case share.ScopeLocal:
 		getLocal = true
-	} else if scope == share.ScopeFed {
+	case share.ScopeFed:
 		getFed = true
-	} else if scope == share.ScopeAll {
+	case share.ScopeAll:
 		getLocal = true
 		getFed = true
-	} else {
+	default:
 		return nil
 	}
 
@@ -887,7 +888,7 @@ func (m *scanMethod) TestRegistry(ctx context.Context, config *share.CLUSRegistr
 	rs.driver.SetTracer(tracer)
 
 	rs.driver.GetTracer().SetPhase("Test registry connection")
-	err, _ := rs.driver.Login(rs.config)
+	err := rs.driver.Login(rs.config)
 	if err != nil {
 		rs.driver.GetTracer().GotError(fmt.Sprintf("Test registry connection failed: %s", err.Error()))
 		return err
