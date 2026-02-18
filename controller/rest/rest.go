@@ -57,6 +57,8 @@ const DEFAULT_TLSCERT_VALIDITY_DAYS = 365
 const DEFAULT_CERTMANAGER_EXPIRY_CHECK_PERIOD = time.Minute * 30
 const DEFAULT_CERTMANAGER_RENEW_THRESHOLD = time.Hour * 24 * 30
 
+const MAX_REQUEST_BODY_SIZE = 2 * 1024 * 1024 // 2MB
+
 type ApiVersion int
 
 const (
@@ -1854,7 +1856,7 @@ func StartRESTServer(isNewCluster, isLead bool, maxConcurrentRepoScanTasks, scan
 	r.GET("/v1/scan/image/:id", handlerScanImageReport)                  // Returns workload scan result by workload's image ID
 	r.POST("/v1/scan/host/:id", handlerScanHostReq)
 	r.GET("/v1/scan/host/:id", handlerScanHostReport)
-	r.POST("/v1/scan/hosts/scan_report", handlerHostsScanReport) // Returns scan report of all queried hosts' scan result
+	//	r.POST("/v1/scan/hosts/scan_report", handlerHostsScanReport) // Returns scan report of all queried hosts' scan result
 	r.POST("/v1/scan/platform/platform", handlerScanPlatformReq)
 	r.GET("/v1/scan/platform", handlerScanPlatformSummary)
 	r.GET("/v1/scan/platform/platform", handlerScanPlatformReport)

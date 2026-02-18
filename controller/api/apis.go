@@ -2555,8 +2555,7 @@ type RESTScanReportAsset struct {
 type RESTAssetsScanReportQuery struct {
 	ShowAccepted    bool                         `json:"show_accepted"`
 	MaxCveRecords   int                          `json:"max_cve_records"`    // one cve per-record
-	Page            int                          `json:"page"`               // 1st-layer pagination for assets. it starts from page 0
-	AssetsPerPage   int                          `json:"assets_per_page"`    // number of assets in the page. 0 means no limit
+	MaxAssets       int                          `json:"max_assets"`         // number of assets in the page. 0 means no limit
 	LastStopAtAsset RESTScanReportAsset          `json:"last_stop_at_asset"` // last query stopped at this asset
 	LastStopAtCVE   string                       `json:"last_stop_at_cve"`   // last query stopped at this cve for asset {LastStoppedAtAsset}
 	ViewPod         *string                      `json:"view_pod,omitempty"` // for workloads only
