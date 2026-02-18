@@ -409,6 +409,9 @@ func filterWorkloads(filters []api.RESTAssetsScanReportFilter, cursor *api.RESTS
 
 // filterCVEs applies the filters to the CVEs and returns the filtered list.
 func filterCVE(filter *api.RESTVulScoreFilter, vuls []*api.RESTVulnerability) ([]*api.RESTVulnerability, error) {
+	if filter == nil {
+		return vuls, nil
+	}
 	ret := []*api.RESTVulnerability{}
 	for _, vul := range vuls {
 		if skipCVE(*filter, vul) {
@@ -497,8 +500,11 @@ outer:
 			}
 		}
 	}
-	ret.AssetsLeft = len(cachedWorkloads) - i
-	ret.StopAtAsset = api.RESTScanReportAsset{Domain: workload.Domain, HostName: workload.HostName, Name: workload.Name}
+	if len(cachedWorkloads) > 0 {
+		ret.AssetsLeft = len(cachedWorkloads) - i
+		ret.StopAtAsset = api.RESTScanReportAsset{Domain: workload.Domain, HostName: workload.HostName, Name: workload.Name}
+	}
+
 	return ret, nil
 }
 

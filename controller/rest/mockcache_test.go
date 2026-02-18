@@ -1,8 +1,9 @@
-package cache
+package rest
 
 import (
 	"github.com/neuvector/neuvector/controller/access"
 	"github.com/neuvector/neuvector/controller/api"
+	"github.com/neuvector/neuvector/controller/cache"
 	"github.com/neuvector/neuvector/controller/common"
 	nvsysadmission "github.com/neuvector/neuvector/controller/nvk8sapi/nvvalidatewebhookcfg/admission"
 	"github.com/neuvector/neuvector/share"
@@ -18,7 +19,7 @@ type MockCache struct {
 }
 
 // Ensure MockCache implements CacheInterface at compile time
-var _ CacheInterface = (*MockCache)(nil)
+var _ cache.CacheInterface = (*MockCache)(nil)
 
 func NewMockCache() *MockCache {
 	return &MockCache{}
