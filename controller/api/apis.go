@@ -2552,6 +2552,10 @@ type RESTScanReportAsset struct {
 	Domain   string `json:"domain"`
 }
 
+func (a *RESTScanReportAsset) String() string {
+	return a.HostName + "/" + a.Domain + "/" + a.Name
+}
+
 type RESTAssetsScanReportQuery struct {
 	ShowAccepted    bool                         `json:"show_accepted"`
 	MaxCveRecords   int                          `json:"max_cve_records"`    // one cve per-record

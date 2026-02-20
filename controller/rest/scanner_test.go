@@ -588,6 +588,133 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 	}
 }
 
+func TestFilterCVE(t *testing.T) {
+	tests := []struct {
+		name          string
+		filter        *api.RESTVulScoreFilter
+		vuls          []*api.RESTVulnerability
+		expectedLen   int
+		expectedOrder []string
+		shouldError   bool
+	}{
+		{
+			name:   "nil filter with vulnerabilities",
+			filter: nil,
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", Score: 7.5, ScoreV3: 8.1},
+				{Name: "CVE-2021-002", Score: 5.0, ScoreV3: 6.2},
+			},
+			expectedLen:   2,
+			expectedOrder: []string{"CVE-2021-001", "CVE-2021-002"},
+			shouldError:   false,
+		},
+		{
+			name:        "empty vulnerabilities list",
+			filter:      nil,
+			vuls:        []*api.RESTVulnerability{},
+			expectedLen: 0,
+			shouldError: false,
+		},
+		{
+			name:   "filter with version v2 - within range",
+			filter: &api.RESTVulScoreFilter{ScoreVersion: "v2", ScoreBottom: 5.0, ScoreTop: 8.0},
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", Score: 7.5},
+				{Name: "CVE-2021-002", Score: 5.5},
+				{Name: "CVE-2021-003", Score: 9.0},
+			},
+			expectedLen:   2,
+			expectedOrder: []string{"CVE-2021-001", "CVE-2021-002"},
+			shouldError:   false,
+		},
+		{
+			name:   "filter with version v3 - within range",
+			filter: &api.RESTVulScoreFilter{ScoreVersion: "v3", ScoreBottom: 6.0, ScoreTop: 9.0},
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", ScoreV3: 8.1},
+				{Name: "CVE-2021-002", ScoreV3: 5.5},
+				{Name: "CVE-2021-003", ScoreV3: 7.2},
+			},
+			expectedLen:   2,
+			expectedOrder: []string{"CVE-2021-001", "CVE-2021-003"},
+			shouldError:   false,
+		},
+		{
+			name:   "filter excludes all vulnerabilities",
+			filter: &api.RESTVulScoreFilter{ScoreVersion: "v2", ScoreBottom: 9.0, ScoreTop: 10.0},
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", Score: 7.5},
+				{Name: "CVE-2021-002", Score: 5.0},
+			},
+			expectedLen: 0,
+			shouldError: false,
+		},
+		{
+			name:   "filter boundary values",
+			filter: &api.RESTVulScoreFilter{ScoreVersion: "v2", ScoreBottom: 5.0, ScoreTop: 5.0},
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", Score: 5.0},
+				{Name: "CVE-2021-002", Score: 5.5},
+			},
+			expectedLen:   1,
+			expectedOrder: []string{"CVE-2021-001"},
+			shouldError:   false,
+		},
+		{
+			name:   "vulnerabilities sorted by name",
+			filter: nil,
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-003"},
+				{Name: "CVE-2021-001"},
+				{Name: "CVE-2021-002"},
+			},
+			expectedLen:   3,
+			expectedOrder: []string{"CVE-2021-001", "CVE-2021-002", "CVE-2021-003"},
+			shouldError:   false,
+		},
+		{
+			name:   "single vulnerability with filter",
+			filter: &api.RESTVulScoreFilter{ScoreVersion: "v2", ScoreBottom: 5.0, ScoreTop: 8.0},
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", Score: 6.5},
+			},
+			expectedLen:   1,
+			expectedOrder: []string{"CVE-2021-001"},
+			shouldError:   false,
+		},
+		{
+			name:   "filter v3 with zero scores",
+			filter: &api.RESTVulScoreFilter{ScoreVersion: "v3", ScoreBottom: 0.0, ScoreTop: 10.0},
+			vuls: []*api.RESTVulnerability{
+				{Name: "CVE-2021-001", ScoreV3: 0.0},
+				{Name: "CVE-2021-002", ScoreV3: 5.0},
+			},
+			expectedLen:   2,
+			expectedOrder: []string{"CVE-2021-001", "CVE-2021-002"},
+			shouldError:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := filterCVE(tc.filter, tc.vuls)
+
+			if tc.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedLen, len(result), "expected %d vulnerabilities, got %d", tc.expectedLen, len(result))
+
+				if len(tc.expectedOrder) > 0 {
+					for i, expectedName := range tc.expectedOrder {
+						assert.Equal(t, expectedName, result[i].Name, "expected vulnerability at index %d to be %s, got %s", i, expectedName, result[i].Name)
+					}
+				}
+			}
+		})
+	}
+}
+
 // Helper function to create string pointer
 func stringPtr(s string) *string {
 	return &s
