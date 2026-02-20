@@ -550,13 +550,13 @@ func handlerWorkloadsScanReport(w http.ResponseWriter, r *http.Request, ps httpr
 		}
 	}
 
-	var view string
+	var showTag string
 	if rconf.ViewPod != nil && *rconf.ViewPod == api.QueryValueViewPod {
-		view = api.QueryValueViewPod
+		showTag = api.QueryValueViewPod
 	}
 
 	resp, err := handlerWorkloadsScanReportInternal(acc, cacher, &rconf, func() []api.AssetScanReportInterface {
-		workloads := cacher.GetAllWorkloads(view, acc, utils.NewSet())
+		workloads := cacher.GetAllWorkloads(showTag, acc, utils.NewSet())
 		ret := make([]api.AssetScanReportInterface, len(workloads))
 		for i, wl := range workloads {
 			ret[i] = wl
@@ -781,16 +781,12 @@ func handlerScanHostReport(w http.ResponseWriter, r *http.Request, ps httprouter
 	restRespSuccess(w, r, resp, acc, login, nil, "Get host scan report")
 }
 
-/*
 func handlerHostsScanReport(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug("")
 	defer r.Body.Close()
 
 	acc, login := getAccessControl(w, r, "")
 	if acc == nil {
-		return
-	} else if !acc.HasRequiredPermissions() {
-		restRespAccessDenied(w, login)
 		return
 	}
 
@@ -799,113 +795,35 @@ func handlerHostsScanReport(w http.ResponseWriter, r *http.Request, ps httproute
 	// validation
 	var rconf api.RESTAssetsScanReportQuery
 	err := json.Unmarshal(body, &rconf)
-	if rconf.VulScoreFilter != nil {
-		err = errors.Join(err, validateVulScoreFilter(*rconf.VulScoreFilter))
-	}
 	if err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("Request error")
 		restRespError(w, http.StatusBadRequest, api.RESTErrInvalidRequest)
 		return
 	}
-
-	var resp api.RESTHostsScanReportData
-	resp.HostsScanData = make([]*api.RESTHostScanData, 0)
-	showTag := ""
-	if rconf.ShowAccepted {
-		showTag = api.QueryValueShowAccepted
+	if rconf.VulScoreFilter != nil {
+		if err := validateVulScoreFilter(*rconf.VulScoreFilter); err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Request error")
+			restRespError(w, http.StatusBadRequest, api.RESTErrInvalidRequest)
+			return
+		}
 	}
 
-	queryStart := rconf.Page * rconf.AssetsPerPage
-	if cacher.GetHostCount(acc) <= queryStart {
-		restRespSuccess(w, r, resp, acc, login, nil, "Get hosts scan report")
-		return
-	}
-
-	cached := cacher.GetAllHosts(acc)
-	if len(cached) <= queryStart {
-		restRespSuccess(w, r, resp, acc, login, nil, "Get hosts scan report")
-		return
-	}
-
-	// Sort by host name
-	sort.Slice(cached, func(i, j int) bool {
-		return cached[i].Name < cached[j].Name
+	resp, err := handlerWorkloadsScanReportInternal(acc, cacher, &rconf, func() []api.AssetScanReportInterface {
+		hosts := cacher.GetAllHosts(acc)
+		ret := make([]api.AssetScanReportInterface, len(hosts))
+		for i, host := range hosts {
+			ret[i] = host
+		}
+		return ret
 	})
-
-	// Filter
-	var rf *restFilter
-	hosts := make([]*api.RESTHost, 0)
-	filterNames := utils.NewSetFromStringSlice([]string{"name"})
-	filters := parseFilters(filterNames, rconf.Filters)
-	if len(filters) > 0 {
-		var dummy api.RESTHost
-		rf = restNewFilter(&dummy, filters)
-	}
-
-	if len(rf.filters) > 0 {
-		for _, host := range cached[queryStart:] {
-			if !rf.Filter(host) {
-				continue
-			}
-
-			hosts = append(hosts, host)
-
-			if rconf.AssetsPerPage > 0 && len(hosts) >= rconf.AssetsPerPage {
-				break
-			}
-		}
-	} else if rconf.AssetsPerPage == 0 {
-		hosts = cached[queryStart:]
-	} else {
-		var end int
-		if queryStart+rconf.AssetsPerPage > len(cached) {
-			end = len(cached)
-		} else {
-			end = queryStart + rconf.AssetsPerPage
-		}
-		hosts = cached[queryStart:end]
-	}
-	for _, host := range hosts {
-		host.DockerBenchStatus, host.KubeBenchStatus = getHostBenchStatus(host.ID)
-	}
-
-	log.WithFields(log.Fields{"entries": len(hosts)}).Debug("Response")
-
-	resp.HostsScanData = make([]*api.RESTHostScanData, 0, len(hosts))
-	for i, host := range hosts {
-		if rconf.LastStopAtAsset.HostName != "" && host.Name < rconf.LastStopAtAsset.HostName {
-			continue
-		}
-		vuls, _, _ := cacher.GetVulnerabilityReport(host.ID, showTag)
-		if len(vuls) == 0 {
-			continue
-		}
-		sort.Slice(vuls, func(i, j int) bool {
-			return vuls[i].Name < vuls[j].Name
-		})
-		for _, cve := range vuls {
-			if rconf.VulScoreFilter != nil {
-				if skipCVE(*rconf.VulScoreFilter, rconf.LastStopAtCVE, cve) {
-					continue
-				}
-			}
-			scanData := &api.RESTHostScanData{
-				HostName:          host.Name,
-				RESTVulnerability: *cve,
-			}
-			resp.HostsScanData = append(resp.HostsScanData, scanData)
-			if rconf.MaxCveRecords != 0 && len(resp.HostsScanData) >= rconf.MaxCveRecords {
-				resp.AssetsLeft = len(hosts) - i
-				resp.StopAtAsset = api.RESTScanReportAsset{HostName: host.Name}
-				resp.StopAtCVE = cve.Name
-				break
-			}
-		}
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("failed to handle host scan report")
+		restRespError(w, http.StatusInternalServerError, api.RESTErrInvalidRequest)
+		return
 	}
 
 	restRespSuccess(w, r, resp, acc, login, nil, "Get hosts scan report")
 }
-*/
 
 func handlerScanPlatformReport(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log.WithFields(log.Fields{"URL": r.URL.String()}).Debug("")

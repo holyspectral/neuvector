@@ -4396,3 +4396,18 @@ func (a *RESTWorkload) GetScanData() RESTAssetScanData {
 		WorkloadHostName: a.HostName,
 	}
 }
+func (h *RESTHost) GetID() string {
+	return h.ID
+}
+
+func (h *RESTHost) GetCursor() RESTScanReportCursor {
+	return RESTScanReportCursor{
+		Name: h.Name,
+	}
+}
+
+func (h *RESTHost) GetScanData() RESTAssetScanData {
+	return RESTAssetScanData{
+		HostName: h.Name,
+	}
+}
