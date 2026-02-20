@@ -268,7 +268,7 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 		query          *api.RESTAssetsScanReportQuery
 		expectedLen    int
 		expectedError  bool
-		validate       func(*testing.T, api.RESTWorkloadsScanReportData)
+		validate       func(*testing.T, api.RESTAssetScanReportData)
 	}{
 		{
 			name: "empty workloads",
@@ -327,7 +327,7 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 			},
 			expectedLen:   0,
 			expectedError: false,
-			validate: func(t *testing.T, data api.RESTWorkloadsScanReportData) {
+			validate: func(t *testing.T, data api.RESTAssetScanReportData) {
 				// Workloads should be sorted by domain
 				assert.GreaterOrEqual(t, data.AssetsLeft, 0)
 			},
@@ -352,7 +352,7 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 			},
 			expectedLen:   0,
 			expectedError: false,
-			validate: func(t *testing.T, data api.RESTWorkloadsScanReportData) {
+			validate: func(t *testing.T, data api.RESTAssetScanReportData) {
 				assert.GreaterOrEqual(t, data.AssetsLeft, 0)
 			},
 		},
@@ -569,14 +569,21 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 			mockCache = NewScannerMockCache()
 			tc.setupWorkloads()
 
-			result, err := handlerWorkloadsScanReportInternal(acc, mockCache, tc.query)
+			result, err := handlerWorkloadsScanReportInternal(acc, mockCache, tc.query, func() []api.AssetScanReportInterface {
+				workloads := mockCache.GetAllWorkloads("", acc, utils.NewSet())
+				ret := make([]api.AssetScanReportInterface, len(workloads))
+				for i, wl := range workloads {
+					ret[i] = wl
+				}
+				return ret
+			})
 
 			if tc.expectedError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.NotNil(t, result.WorkloadsScanData)
-				assert.Equal(t, tc.expectedLen, len(result.WorkloadsScanData))
+				assert.NotNil(t, result.ScanData)
+				assert.Equal(t, tc.expectedLen, len(result.ScanData))
 
 				if tc.validate != nil {
 					tc.validate(t, result)

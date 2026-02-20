@@ -2568,29 +2568,18 @@ type RESTAssetsScanReportQuery struct {
 	Filters        []RESTAssetsScanReportFilter `json:"filters,omitempty"`
 }
 
-type RESTHostScanData struct {
-	HostName string `json:"host_name"`
-	RESTVulnerability
-}
-
-type RESTHostsScanReportData struct {
-	AssetsLeft    int                  `json:"assets_left"` // number of hosts not done yet for this page
-	StopAtAsset   RESTScanReportCursor `json:"stop_at_asset"`
-	StopAtCVE     string               `json:"stop_at_cve"`     // last collected {cve} in the {StoppedAtAsset}
-	HostsScanData []*RESTHostScanData  `json:"hosts_scan_data"` // each cve for each host has an entry
-}
-
-type RESTWorkloadScanData struct {
+type RESTAssetScanData struct {
+	HostName         string `json:"host_name"`
 	WorkloadName     string `json:"workload_name"`
 	WorkloadDomain   string `json:"workload_domain"`
 	WorkloadHostName string `json:"workload_host_name"`
 	RESTVulnerability
 }
 
-type RESTWorkloadsScanReportData struct {
-	AssetsLeft        int                     `json:"assets_left"` // number of workloads not done yet for this page
-	Cursor            RESTScanReportCursor    `json:"cursor"`
-	WorkloadsScanData []*RESTWorkloadScanData `json:"workloads_scan_data"` // each cve for each workload has an entry
+type RESTAssetScanReportData struct {
+	AssetsLeft int                  `json:"assets_left"` // number of workloads not done yet for this page
+	Cursor     RESTScanReportCursor `json:"cursor"`
+	ScanData   []*RESTAssetScanData `json:"scan_data"` // each cve for each asset has an entry
 }
 
 type RESTScanReport struct {
@@ -4379,4 +4368,31 @@ type AssetCVECount struct {
 
 type RESTAssetIDList struct {
 	IDs []string `json:"ids"`
+}
+
+type AssetScanReportInterface interface {
+	GetID() string
+	GetCursor() RESTScanReportCursor
+	GetScanData() RESTAssetScanData
+}
+
+func (a *RESTWorkload) GetID() string {
+	return a.ID
+}
+
+func (a *RESTWorkload) GetCursor() RESTScanReportCursor {
+	return RESTScanReportCursor{
+		Name:     a.Name,
+		Domain:   a.Domain,
+		HostName: a.HostName,
+	}
+}
+
+func (a *RESTWorkload) GetScanData() RESTAssetScanData {
+	return RESTAssetScanData{
+		HostName:         "",
+		WorkloadName:     a.Name,
+		WorkloadDomain:   a.Domain,
+		WorkloadHostName: a.HostName,
+	}
 }
