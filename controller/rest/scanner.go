@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -277,7 +278,7 @@ func handlerScanWorkloadReport(w http.ResponseWriter, r *http.Request, ps httpro
 	restRespSuccess(w, r, resp, acc, login, nil, "Get container scan report")
 }
 
-func compareWorkload(p1 api.RESTScanReportAsset, p2 api.RESTScanReportAsset) int {
+func compareWorkload(p1 api.RESTScanReportCursor, p2 api.RESTScanReportCursor) int {
 	if p1.Domain != p2.Domain {
 		if p1.Domain < p2.Domain {
 			return -1
@@ -299,8 +300,8 @@ func compareWorkload(p1 api.RESTScanReportAsset, p2 api.RESTScanReportAsset) int
 	return 0
 }
 
-func skipWorkload(lastStopAtAsset api.RESTScanReportAsset, wlDomain, wlHostName, wlName string) bool {
-	none := api.RESTScanReportAsset{}
+func skipWorkload(lastStopAtAsset api.RESTScanReportCursor, wlDomain, wlHostName, wlName string) bool {
+	none := api.RESTScanReportCursor{}
 	if lastStopAtAsset == none {
 		return false
 	}
@@ -371,7 +372,7 @@ func parseFilters(filterNames utils.Set, rconfFilters []api.RESTAssetsScanReport
 }
 
 // filterWorkloads applies the filters to the workloads and returns the filtered list.
-func filterWorkloads(filters []api.RESTAssetsScanReportFilter, cursor *api.RESTScanReportAsset, max int, workloads []*api.RESTWorkload) ([]*api.RESTWorkload, error) {
+func filterWorkloads(filters []api.RESTAssetsScanReportFilter, cursor *api.RESTScanReportCursor, max int, workloads []*api.RESTWorkload) ([]*api.RESTWorkload, error) {
 	ret := []*api.RESTWorkload{}
 	if len(filters) == 0 {
 		// nothing to do
@@ -391,10 +392,13 @@ func filterWorkloads(filters []api.RESTAssetsScanReportFilter, cursor *api.RESTS
 
 		if cursor != nil {
 			if compareWorkload(
-				api.RESTScanReportAsset{
-					Domain:   workload.Domain,
-					HostName: workload.HostName,
-					Name:     workload.Name},
+				api.RESTScanReportCursor{
+					Domain:     workload.Domain,
+					HostName:   workload.HostName,
+					Name:       workload.Name,
+					CVEName:    "",
+					CVEPackage: "",
+				},
 				*cursor,
 			) <= 0 {
 				// here we keep the workload with the same name as the cursor, so we will still look into CVEs later.
@@ -416,10 +420,27 @@ func filterCVE(filter *api.RESTVulScoreFilter, vuls []*api.RESTVulnerability) ([
 		}
 		ret = append(ret, vul)
 	}
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].Name < ret[j].Name
+	slices.SortFunc(ret, func(a, b *api.RESTVulnerability) int {
+		return compareCursor(
+			api.RESTScanReportCursor{
+				CVEName:    a.Name,
+				CVEPackage: a.PackageName,
+			}, api.RESTScanReportCursor{
+				CVEName:    b.Name,
+				CVEPackage: b.PackageName,
+			},
+		)
+
 	})
 	return ret, nil
+}
+
+func compareCursor(itemKey api.RESTScanReportCursor, cursor api.RESTScanReportCursor) int {
+	return strings.Compare(itemKey.String(), cursor.String())
+}
+
+func priorToCursor(itemKey api.RESTScanReportCursor, cursor api.RESTScanReportCursor) bool {
+	return compareCursor(itemKey, cursor) <= 0
 }
 
 func handlerWorkloadsScanReportInternal(acc *access.AccessControl, cacheInterface cache.CacheInterface, rconf *api.RESTAssetsScanReportQuery) (api.RESTWorkloadsScanReportData, error) {
@@ -448,19 +469,21 @@ func handlerWorkloadsScanReportInternal(acc *access.AccessControl, cacheInterfac
 	}
 	cachedWorkloads := cacheInterface.GetAllWorkloads(view, acc, utils.NewSet())
 
-	// Sort by namespace -> host_name -> workload name
-	sort.Slice(cachedWorkloads, func(i, j int) bool {
-		if cachedWorkloads[i].Domain == cachedWorkloads[j].Domain {
-			if cachedWorkloads[i].HostName == cachedWorkloads[j].HostName {
-				return cachedWorkloads[i].Name < cachedWorkloads[j].Name
-			}
-			return cachedWorkloads[i].HostName < cachedWorkloads[j].HostName
-		}
-		return cachedWorkloads[i].Domain < cachedWorkloads[j].Domain
+	slices.SortFunc(cachedWorkloads, func(a, b *api.RESTWorkload) int {
+		return compareWorkload(
+			api.RESTScanReportCursor{
+				Domain:   a.Domain,
+				HostName: a.HostName,
+				Name:     a.Name,
+			}, api.RESTScanReportCursor{
+				Domain:   b.Domain,
+				HostName: b.HostName,
+				Name:     b.Name,
+			})
 	})
 
 	var err error
-	cachedWorkloads, err = filterWorkloads(rconf.Filters, &rconf.LastStopAtAsset, maxAssets, cachedWorkloads)
+	cachedWorkloads, err = filterWorkloads(rconf.Filters, &rconf.Cursor, maxAssets, cachedWorkloads)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err}).Warn("Failed to filter workloads")
 		// fallthrough
@@ -470,6 +493,8 @@ func handlerWorkloadsScanReportInternal(acc *access.AccessControl, cacheInterfac
 
 	var i int
 	var workload *api.RESTWorkload
+	var itemKey api.RESTScanReportCursor
+	maxReached := false
 outer:
 	for i, workload = range cachedWorkloads {
 		vuls, _, _ := cacheInterface.GetVulnerabilityReport(workload.ID, showTag)
@@ -480,10 +505,16 @@ outer:
 			// fallthrough
 		}
 
-		workloadCursor := api.RESTScanReportAsset{Domain: workload.Domain, HostName: workload.HostName, Name: workload.Name}
-
 		for _, cve := range vuls {
-			if workloadCursor.String()+cve.Name <= rconf.LastStopAtAsset.String()+rconf.LastStopAtCVE {
+			itemKey = api.RESTScanReportCursor{
+				Domain:     workload.Domain,
+				HostName:   workload.HostName,
+				Name:       workload.Name,
+				CVEName:    cve.Name,
+				CVEPackage: cve.PackageName,
+			}
+
+			if priorToCursor(itemKey, rconf.Cursor) {
 				continue
 			}
 			scanData := &api.RESTWorkloadScanData{
@@ -494,14 +525,16 @@ outer:
 			}
 			ret.WorkloadsScanData = append(ret.WorkloadsScanData, scanData)
 			if len(ret.WorkloadsScanData) >= maxCveRecords {
-				ret.StopAtCVE = cve.Name
+				maxReached = true
 				break outer
 			}
 		}
 	}
-	if len(cachedWorkloads) > 0 {
-		ret.AssetsLeft = len(cachedWorkloads) - i
-		ret.StopAtAsset = api.RESTScanReportAsset{Domain: workload.Domain, HostName: workload.HostName, Name: workload.Name}
+
+	ret.AssetsLeft = len(cachedWorkloads) - i
+	if maxReached {
+		// Only set cursor when there are more items to process.
+		ret.Cursor = itemKey
 	}
 
 	return ret, nil

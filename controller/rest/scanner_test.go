@@ -65,18 +65,18 @@ func (m *ScannerMockCache) AddVulnerability(id string, vuln *api.RESTVulnerabili
 func TestCompareWorkload(t *testing.T) {
 	tests := []struct {
 		name     string
-		p1       api.RESTScanReportAsset
-		p2       api.RESTScanReportAsset
+		p1       api.RESTScanReportCursor
+		p2       api.RESTScanReportCursor
 		expected int
 	}{
 		{
 			name: "equal workloads",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
@@ -85,12 +85,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "different domains - p1 less than p2",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "prod",
 				HostName: "host1",
 				Name:     "workload1",
@@ -99,12 +99,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "different domains - p1 greater than p2",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "prod",
 				HostName: "host1",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
@@ -113,12 +113,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "same domain, different hostnames - p1 less than p2",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host2",
 				Name:     "workload1",
@@ -127,12 +127,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "same domain, different hostnames - p1 greater than p2",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host2",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
@@ -141,12 +141,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "same domain and hostname, different names - p1 less than p2",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload2",
@@ -155,12 +155,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "same domain and hostname, different names - p1 greater than p2",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload2",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "host1",
 				Name:     "workload1",
@@ -169,12 +169,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "empty domains",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "",
 				HostName: "host1",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "",
 				HostName: "host1",
 				Name:     "workload1",
@@ -183,12 +183,12 @@ func TestCompareWorkload(t *testing.T) {
 		},
 		{
 			name: "empty hostnames with same domain",
-			p1: api.RESTScanReportAsset{
+			p1: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "",
 				Name:     "workload1",
 			},
-			p2: api.RESTScanReportAsset{
+			p2: api.RESTScanReportCursor{
 				Domain:   "default",
 				HostName: "",
 				Name:     "workload1",
@@ -447,7 +447,7 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 			query: &api.RESTAssetsScanReportQuery{
 				MaxCveRecords: 100,
 				MaxAssets:     10,
-				LastStopAtAsset: api.RESTScanReportAsset{
+				Cursor: api.RESTScanReportCursor{
 					Domain:   "default",
 					HostName: "host1",
 					Name:     "workload1",
@@ -523,12 +523,12 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 				MaxCveRecords: 100,
 				MaxAssets:     10,
 				ViewPod:       stringPtr(api.QueryValueViewPod),
-				LastStopAtAsset: api.RESTScanReportAsset{
+				Cursor: api.RESTScanReportCursor{
 					Domain:   "default",
 					HostName: "host1",
 					Name:     "workload1",
+					CVEName:  "vulnerability2",
 				},
-				LastStopAtCVE: "vulnerability2",
 			},
 			expectedLen:   3,
 			expectedError: false,
@@ -539,11 +539,10 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 				setupWorkloads(mockCache)
 			},
 			query: &api.RESTAssetsScanReportQuery{
-				MaxCveRecords:   100,
-				MaxAssets:       10,
-				ViewPod:         stringPtr(api.QueryValueViewPod),
-				LastStopAtAsset: api.RESTScanReportAsset{},
-				LastStopAtCVE:   "",
+				MaxCveRecords: 100,
+				MaxAssets:     10,
+				ViewPod:       stringPtr(api.QueryValueViewPod),
+				Cursor:        api.RESTScanReportCursor{},
 			},
 			expectedLen:   5,
 			expectedError: false,
@@ -554,11 +553,10 @@ func TestHandlerWorkloadsScanReportInternal(t *testing.T) {
 				setupWorkloads(mockCache)
 			},
 			query: &api.RESTAssetsScanReportQuery{
-				MaxCveRecords:   1,
-				MaxAssets:       1,
-				ViewPod:         stringPtr(api.QueryValueViewPod),
-				LastStopAtAsset: api.RESTScanReportAsset{},
-				LastStopAtCVE:   "",
+				MaxCveRecords: 1,
+				MaxAssets:     1,
+				ViewPod:       stringPtr(api.QueryValueViewPod),
+				Cursor:        api.RESTScanReportCursor{},
 			},
 			expectedLen:   1,
 			expectedError: false,
