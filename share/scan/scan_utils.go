@@ -23,7 +23,6 @@ import (
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/system"
 	"github.com/neuvector/neuvector/share/utils"
-	"github.com/quay/clair/v2/pkg/tarutil"
 )
 
 var RPMPkgFiles utils.Set = utils.NewSet(
@@ -124,8 +123,8 @@ func NewScanUtil(sys *system.SystemTools) *ScanUtil {
 	return s
 }
 
-func (s *ScanUtil) readRunningPackages(pid int, prefix, kernel string, pidHost bool) (tarutil.FilesMap, bool) {
-	files := make(tarutil.FilesMap)
+func (s *ScanUtil) readRunningPackages(pid int, prefix, kernel string, pidHost bool) (utils.FilesMap, bool) {
+	files := make(utils.FilesMap)
 	var hasPackage bool
 	for itr := range OSPkgFiles.Iter() {
 		var data []byte
@@ -246,7 +245,7 @@ func (s *ScanUtil) GetAppPackages(path string) ([]AppPackage, []byte, share.Scan
 	apps := NewScanApps(true)
 	apps.ExtractAppPkg(path, path)
 	pkgs := apps.marshal()
-	files := make(tarutil.FilesMap)
+	files := make(utils.FilesMap)
 	files[AppFileName] = pkgs
 	buf, _ := utils.MakeTar(files)
 	appPkgs := apps.Data()[path]

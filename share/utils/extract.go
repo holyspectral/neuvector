@@ -3,6 +3,7 @@ package utils
 import (
 	"archive/tar"
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -12,9 +13,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/quay/clair/v2/pkg/tarutil"
 	log "github.com/sirupsen/logrus"
 )
+
+type FilesMap map[string][]byte
 
 var (
 	ErrRequestCanceled     = errors.New("request conceled")
@@ -30,11 +32,11 @@ func ExtractAllArchiveData(r io.Reader, maxFileSize int64) (map[string][]byte, e
 		return true
 	}
 
-	extract := func(filename string, size int64, reader io.ReadCloser) error {
+	extract := func(filename string, size int64, reader io.Reader) error {
 		// File size limit
 		if maxFileSize > 0 && size > maxFileSize {
 			log.WithFields(log.Fields{"size": size, "filename": filename}).Error("file too big")
-			return tarutil.ErrExtractedFileTooBig
+			return errors.New("size is too big")
 		}
 		d, _ := io.ReadAll(reader)
 		data[filename] = d
@@ -59,11 +61,7 @@ func EnsureBaseDir(fpath string) error {
 }
 
 func ExtractAllArchiveToFiles(path string, r io.Reader, maxFileSize int64, encryptKey []byte) error {
-	tr, err := tarutil.NewTarReadCloser(r)
-	if err != nil {
-		return tarutil.ErrCouldNotExtract
-	}
-	defer tr.Close()
+	tr := tar.NewReader(bufio.NewReader(r))
 
 	// For each element in the archive
 	for {
@@ -72,7 +70,7 @@ func ExtractAllArchiveToFiles(path string, r io.Reader, maxFileSize int64, encry
 			break
 		}
 		if err != nil {
-			return tarutil.ErrCouldNotExtract
+			return fmt.Errorf("failed to extract: %w", err)
 		}
 
 		// Get element filename
@@ -81,7 +79,7 @@ func ExtractAllArchiveToFiles(path string, r io.Reader, maxFileSize int64, encry
 
 		// File size limit
 		if maxFileSize > 0 && hdr.Size > maxFileSize {
-			return tarutil.ErrExtractedFileTooBig
+			return errors.New("size is too big")
 		}
 
 		// Extract the element
@@ -105,11 +103,7 @@ func ExtractAllArchiveToFiles(path string, r io.Reader, maxFileSize int64, encry
 func ExtractAllArchive(dst string, r io.Reader, maxFileSize int64) (int64, error) {
 	var untarSize int64
 
-	tr, err := tarutil.NewTarReadCloser(r)
-	if err != nil {
-		return untarSize, err
-	}
-	defer tr.Close()
+	tr := tar.NewReader(bufio.NewReader(r))
 
 	for {
 		header, err := tr.Next()
@@ -143,7 +137,7 @@ func ExtractAllArchive(dst string, r io.Reader, maxFileSize int64) (int64, error
 		// fi := header.FileInfo()
 		// File size limit
 		if maxFileSize > 0 && header.Size > maxFileSize {
-			return untarSize, tarutil.ErrExtractedFileTooBig
+			return untarSize, errors.New("size is too big")
 		}
 		untarSize += header.Size
 
@@ -195,7 +189,7 @@ func ExtractAllArchive(dst string, r io.Reader, maxFileSize int64) (int64, error
 	}
 }
 
-func MakeTar(files tarutil.FilesMap) (*bytes.Buffer, error) {
+func MakeTar(files FilesMap) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()
@@ -220,7 +214,7 @@ func MakeTar(files tarutil.FilesMap) (*bytes.Buffer, error) {
 func SelectivelyExtractToFile(r io.Reader, selected func(string) bool, dir string) (map[string]string, error) {
 	files := make(map[string]string)
 
-	extract := func(filename string, size int64, reader io.ReadCloser) error {
+	extract := func(filename string, size int64, reader io.Reader) error {
 		fpath := dir + "/" + strings.ReplaceAll(filename, "/", "_")
 		f, err := os.Create(fpath)
 		if err != nil {
@@ -243,19 +237,11 @@ func SelectivelyExtractToFile(r io.Reader, selected func(string) bool, dir strin
 	return files, nil
 }
 
-func extractTarFile(r io.Reader, selected func(string) bool, extract func(string, int64, io.ReadCloser) error) error {
+func extractTarFile(r io.Reader, selected func(string) bool, extract func(string, int64, io.Reader) error) error {
 	// canceled context only reports when reading the response.
 
 	// Create a tar or tar/tar-gzip/tar-bzip2/tar-xz reader
-	tr, err := tarutil.NewTarReadCloser(r)
-	if err == context.Canceled {
-		log.Info("Request canceled")
-		return ErrRequestCanceled
-	} else if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error()
-		return tarutil.ErrCouldNotExtract
-	}
-	defer tr.Close()
+	tr := tar.NewReader(bufio.NewReader(r))
 
 	// For each element in the archive
 	for {
@@ -268,7 +254,7 @@ func extractTarFile(r io.Reader, selected func(string) bool, extract func(string
 			return ErrRequestCanceled
 		} else if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error()
-			return tarutil.ErrCouldNotExtract
+			return fmt.Errorf("failed to extract: %w", err)
 		}
 
 		// Get element filename
