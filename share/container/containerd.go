@@ -11,12 +11,14 @@ import (
 	"time"
 
 	apiEvents "github.com/containerd/containerd/api/events"
+	containerv1 "github.com/containerd/containerd/api/services/containers/v1"
+	eventsv1 "github.com/containerd/containerd/api/services/events/v1"
+	imagesv1 "github.com/containerd/containerd/api/services/images/v1"
 	ctr "github.com/containerd/containerd/v2/client"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	log "github.com/sirupsen/logrus"
 	criRT "k8s.io/cri-api/pkg/apis/runtime/v1"
 
-	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/core/runtime"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/typeurl/v2"
@@ -40,18 +42,13 @@ type containerdDriver struct {
 	endpointHost  string
 	nodeHostname  string
 	selfID        string
-	client        *ctr.Client
+	//client        *ctr.Client
 	criClient     *grpc.ClientConn
 	version       *ctr.Version
 	cancelMonitor context.CancelFunc
 	rtProcMap     utils.Set
 	snapshotter   string
 	pidHost       bool
-}
-
-// patch for the mismatched grpc versions
-func wrapIntoErrorString(err error) error {
-	return errors.New(err.Error())
 }
 
 func containerdConnect(endpoint string, sys *system.SystemTools) (Runtime, error) {
@@ -62,7 +59,7 @@ func containerdConnect(endpoint string, sys *system.SystemTools) (Runtime, error
 		ctr.WithTimeout(clientConnectTimeout))
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Error("")
-		return nil, wrapIntoErrorString(err)
+		return nil, err
 	}
 
 	sockPath := endpoint
@@ -94,13 +91,13 @@ func containerdConnect(endpoint string, sys *system.SystemTools) (Runtime, error
 
 	ver, err := client.Version(ctx)
 	if err != nil {
-		return nil, wrapIntoErrorString(err)
+		return nil, err
 	}
 
 	log.WithFields(log.Fields{"endpoint": endpoint, "sockPath": sockPath, "version": ver}).Info("containerd connected")
 
 	driver := containerdDriver{
-		sys: sys, client: client, version: &ver, criClient: cri, endpoint: endpoint, endpointHost: sockPath,
+		sys: sys, version: &ver, criClient: cri, endpoint: endpoint, endpointHost: sockPath,
 		// Read /host/proc/sys/kernel/hostname doesn't give the correct node hostname. Change UTS namespace to read it
 		sysInfo: sys.GetSystemInfo(), nodeHostname: sys.GetHostname(1), snapshotter: snapshotter, selfID: id,
 	}
@@ -127,7 +124,7 @@ func (d *containerdDriver) reConnect() error {
 		ctr.WithDefaultNamespace(k8sContainerdNamespace),
 		ctr.WithTimeout(clientConnectTimeout))
 	if err != nil {
-		return wrapIntoErrorString(err)
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -135,7 +132,7 @@ func (d *containerdDriver) reConnect() error {
 
 	ver, err := client.Version(ctx)
 	if err != nil {
-		return wrapIntoErrorString(err)
+		return err
 	}
 	log.WithFields(log.Fields{"endpoint": endpoint, "version": ver}).Info("containerd connected")
 
@@ -146,7 +143,6 @@ func (d *containerdDriver) reConnect() error {
 	}
 
 	// update records
-	d.client = client
 	d.criClient = cri
 	d.version = &ver
 	return nil
@@ -186,33 +182,24 @@ func (d *containerdDriver) GetDevice(id string) (*share.CLUSDevice, *ContainerMe
 }
 
 // When a container task is killed, 'task' can still be retrieved; but when it is deleted, task will be nil
-func (d *containerdDriver) getSpecs(ctx context.Context, c ctr.Container) (*containers.Container,
+func (d *containerdDriver) getSpecs(ctx context.Context, c *ctr.Container) (*ctr.Container,
 	*oci.Spec, int, *ctr.Status, int, error) {
 
-	info, err := c.Info(ctx)
-	if err != nil {
-		log.WithFields(log.Fields{"id": c.ID(), "error": err.Error()}).Error("Failed to get container info")
-		return nil, nil, 0, nil, 0, wrapIntoErrorString(err)
-	}
-
-	if info.Labels == nil {
-		info.Labels = make(map[string]string)
-	}
-
+	
 	spec, err := c.Spec(ctx)
 	if err != nil {
 		log.WithFields(log.Fields{"id": c.ID(), "error": err.Error()}).Error("Failed to get container spec")
-		return nil, nil, 0, nil, 0, wrapIntoErrorString(err)
+		return nil, nil, 0, nil, 0, err
 	}
 
 	// if image name is a digest identifier
 	if strings.HasPrefix(info.Image, "sha256:") {
-		if imageName := d.reverseImageNameFromDigestName(info.Image); imageName != "" {
-			info.Image = imageName
+		if imageName := d.reverseImageNameFromDigestName(c.GetImage()); imageName != "" {
+			c.Image = imageName
 		}
 	}
 
-	if meta, pid, attempt, err := d.GetContainerCriSupplement(c.ID()); err == nil && meta != nil {
+	if meta, pid, attempt, err := d.GetContainerCriSupplement(c.GetID()); err == nil && meta != nil {
 		// log.WithFields(log.Fields{"meta": meta}).Info("CRI")
 		state := ctr.Stopped
 		if meta.Running {
@@ -260,7 +247,7 @@ func (d *containerdDriver) getSpecs(ctx context.Context, c ctr.Container) (*cont
 	return &info, spec, rootpid, status, attempts, nil
 }
 
-func (d *containerdDriver) getMeta(info *containers.Container, spec *oci.Spec, pid int, attempt int) (*ContainerMeta, string, time.Time) {
+func (d *containerdDriver) getMeta(info *containerv1.Container, spec *oci.Spec, pid int, attempt int) (*ContainerMeta, string, time.Time) {
 	var author string
 	var imgCreateAt time.Time
 
@@ -359,15 +346,17 @@ func (d *containerdDriver) isPrivileged(spec *oci.Spec, id string, bSandBox bool
 
 func (d *containerdDriver) ListContainers(runningOnly bool) ([]*ContainerMeta, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	containers, err := d.client.Containers(ctx)
+	containersapi := containerv1.NewContainersClient(d.criClient)
+
+	containers, err := containersapi.List(ctx, &containerv1.ListContainersRequest{})
 	defer cancel()
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Error("Failed to list containers")
 		return nil, wrapIntoErrorString(err)
 	}
 
-	metas := make([]*ContainerMeta, 0, len(containers))
-	for _, c := range containers {
+	metas := make([]*ContainerMeta, 0, len(containers.GetContainers()))
+	for _, c := range containers.GetContainers() {
 		info, spec, pid, status, attempt, err := d.getSpecs(ctx, c)
 		if err != nil {
 			log.WithFields(log.Fields{"id": c.ID(), "error": err.Error()}).Error("Failed to get container info")
@@ -388,20 +377,30 @@ func (d *containerdDriver) ListContainers(runningOnly bool) ([]*ContainerMeta, e
 func (d *containerdDriver) GetContainer(id string) (*ContainerMetaExtra, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	c, err := d.client.LoadContainer(ctx, id)
+
+	containersclient := containerv1.NewContainersClient(d.criClient)
+	c, err := containersclient.Get(ctx, &containerv1.GetContainerRequest{ID: id})
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Error("Failed to get container")
 		return nil, wrapIntoErrorString(err)
 	}
 
-	info, spec, pid, status, attempt, err := d.getSpecs(ctx, c)
+	if c.Container == nil {
+		return nil, errors.New("empty container is received")
+	}
+
+	if c.Container.GetLabels() == nil {
+		return nil, errors.New("no container label is available")
+	}
+
+	info, spec, pid, status, attempt, err := d.getSpecs(ctx, c.Container)
 	if err != nil {
-		log.WithFields(log.Fields{"id": c.ID(), "error": err.Error()}).Error("Failed to get container info")
+		log.WithFields(log.Fields{"id": c.Container.GetID(), "error": err.Error()}).Error("Failed to get container info")
 		return nil, wrapIntoErrorString(err)
 	}
 
 	bSandBox := false
-	if kind, ok := info.Labels["io.cri-containerd.kind"]; ok && kind == "sandbox" {
+	if kind, ok := c.Container.GetLabels()["io.cri-containerd.kind"]; ok && kind == "sandbox" {
 		bSandBox = true
 	}
 
@@ -468,15 +467,17 @@ func (d *containerdDriver) ListContainerIDs() (utils.Set, utils.Set) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	containersclient := containerv1.NewContainersClient(d.criClient)
+
 	ids := utils.NewSet()
-	containers, err := d.client.Containers(ctx)
+	containers, err := containersclient.List(ctx, &containerv1.ListContainersRequest{})
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Error("Failed to list containers")
 		return ids, nil
 	}
 
-	for _, c := range containers {
-		ids.Add(c.ID())
+	for _, c := range containers.Containers {
+		ids.Add(c.ID)
 	}
 	return ids, nil
 }
@@ -532,14 +533,27 @@ func (d *containerdDriver) MonitorEvent(cb EventCallback, cpath bool) error {
 	}
 
 	var connectErrorCnt int
+	eventsapi := eventsv1.NewEventsClient(d.criClient)
 	for {
 		ctx, cancel := context.WithCancel(context.Background())
 		d.cancelMonitor = cancel
-		evCh, errCh := d.client.EventService().Subscribe(ctx,
-			fmt.Sprintf(`topic~="%s"`, runtime.TaskStartEventTopic),
-			fmt.Sprintf(`topic~="%s"`, runtime.TaskExitEventTopic),
-			fmt.Sprintf(`topic~="%s"`, runtime.TaskDeleteEventTopic),
+		eventsv1.Events_SubscribeClient
+		
+		// evCh, errCh := 
+
+		subClient, err := eventsapi.Subscribe(ctx,
+			&eventsv1.SubscribeRequest{
+				Filters: []string{
+					fmt.Sprintf(`topic~="%s"`, runtime.TaskStartEventTopic),
+					fmt.Sprintf(`topic~="%s"`, runtime.TaskExitEventTopic),
+					fmt.Sprintf(`topic~="%s"`, runtime.TaskDeleteEventTopic),
+				},
+			},
 		)
+		if err != nil {
+			return fmt.Errorf("failed to subscribe containerd events: %w", err)
+		}
+		subClient.
 	Loop:
 		for {
 			select {
@@ -611,17 +625,23 @@ func (d *containerdDriver) reverseImageNameFromDigestName(digestName string) str
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if image, err := d.client.GetImage(ctx, digestName); err == nil {
-		digest := image.Target().Digest.String()
-		if images, err := d.client.ListImages(ctx, ""); err == nil {
-			for _, img := range images {
-				if img.Name() == digestName { // skip
-					continue
-				}
+	imagesapi := imagesv1.NewImagesClient(d.criClient)
 
-				if img.Target().Digest.String() == digest {
-					log.WithFields(log.Fields{"Name": img.Name()}).Debug("Found")
-					return img.Name()
+	if image, err := imagesapi.Get(ctx, &imagesv1.GetImageRequest{
+		Name: digestName,
+	}); err == nil {
+		if image.GetImage() != nil && image.GetImage().GetTarget() != nil {
+			digest := image.GetImage().GetTarget().GetDigest()
+			if images, err := imagesapi.List(ctx, &imagesv1.ListImagesRequest{}); err == nil {
+				for _, img := range images.GetImages() {
+					if img.GetName() == digestName { // skip
+						continue
+					}
+
+					if img.GetTarget() != nil && img.GetTarget().GetDigest() == digest {
+						log.WithFields(log.Fields{"Name": img.GetName()}).Debug("Found")
+						return img.GetName()
+					}
 				}
 			}
 		}
