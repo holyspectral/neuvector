@@ -8,6 +8,9 @@ linters:
     - staticcheck
     - unused
     - nolintlint # reports ill-formed or insufficient nolint directives
+  settings:
+    errcheck:
+      check-blank: true
   exclusions:
     generated: lax
     presets:
