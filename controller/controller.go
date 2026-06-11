@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -234,8 +236,18 @@ func getConfigKvData(key string) ([]byte, bool) {
 func main() {
 	var joinAddr, advAddr, bindAddr string
 	var err error
-	debug := false
+	debugMode := false
 	debugLevel := make([]string, 0)
+
+	if memlimit := os.Getenv("NVGOMEMLIMIT"); memlimit != "" {
+		var limit int
+		limit, err = strconv.Atoi(memlimit)
+		if err != nil {
+			log.WithError(err).Warn("invalid NVGOMEMLIMIT variable")
+		} else {
+			debug.SetMemoryLimit(int64(limit / 2))
+		}
+	}
 
 	log.SetOutput(os.Stdout)
 	log.SetLevel(share.CLUSGetLogLevel(common.CtrlLogLevel))
@@ -311,7 +323,7 @@ func main() {
 		scanLog.Level = share.CLUSGetLogLevel(common.CtrlLogLevel)
 		k8sResLog.Level = share.CLUSGetLogLevel(common.CtrlLogLevel)
 		if *log_level == share.LogLevel_Debug {
-			debug = true
+			debugMode = true
 			ctrlEnv.debugCPath = true
 			debugLevel = []string{"cpath"}
 		} else {
@@ -319,7 +331,7 @@ func main() {
 			mutexLog.Level = share.CLUSGetLogLevel(common.CtrlLogLevel)
 		}
 	}
-	if debug && *debug_level != "" {
+	if debugMode && *debug_level != "" {
 		var validLevelSet = utils.NewSet("conn", "mutex", "scan", "cluster", "k8s_monitor")
 		splitLevels := strings.Split(*debug_level, " ")
 		var validLevels []string
@@ -662,7 +674,7 @@ func main() {
 		RPCPort:       *rpcPort,
 		LANPort:       *lanPort,
 		DataCenter:    cluster.DefaultDataCenter,
-		EnableDebug:   debug,
+		EnableDebug:   debugMode,
 	}
 	self, lead, err := clusterStart(clusterCfg)
 	if err != nil {
@@ -1134,8 +1146,8 @@ func main() {
 			}
 		}
 		go rest.CleanupSessCfgCache()
-		go rest.AdmissionRestServer(*admctrlPort, false, debug)
-		go rest.CrdValidateRestServer(*crdvalidatectrlPort, false, debug)
+		go rest.AdmissionRestServer(*admctrlPort, false, debugMode)
+		go rest.CrdValidateRestServer(*crdvalidatectrlPort, false, debugMode)
 	}
 
 	go rest.FedPollingClient(Ctrler.Leader, purgeFedRulesOnJoint)
