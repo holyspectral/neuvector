@@ -14,6 +14,7 @@
 3. **Verify fixes:**
    - Run golangci-lint to confirm issues resolved
    - Run relevant tests if available
+   - Run e2e tests and check the logs to make sure you won't get excessive logs (more than 3+) from changed codes. 
    
 4. **Spawn sub-agent for code review**
    
