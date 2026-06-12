@@ -280,7 +280,7 @@ func (c *configHelper) isKvRestoring() (string, bool) {
 	var kvRestore share.CLUSKvRestore
 
 	value, err := cluster.Get(share.CLUSKvRestoreKey)
-	if err != nil {
+	if err != nil && !errors.Is(err, cluster.ErrKeyNotFound) {
 		log.WithError(err).Warn("Failed to get KV restore key")
 	}
 	if value != nil {
@@ -329,7 +329,9 @@ func (c *configHelper) doBackup() error {
 			return nil
 		}, nil)
 	} else {
-		return fmt.Errorf("Another import is ongoing")
+		// Suppress error: import is ongoing is expected; no backup needed
+		log.Debug("Backup skipped: another import is ongoing")
+		return nil
 	}
 }
 
