@@ -596,6 +596,26 @@ func (m *consulMethod) NewLock(key string, wait time.Duration) (LockInterface, e
 	return &lockMethod{lock: l, key: key}, nil
 }
 
+func (m *consulMethod) NewLockWithTTL(key string, wait time.Duration, sessionTTL string) (LockInterface, error) {
+	c, err := m.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	opts := &api.LockOptions{Key: key, SessionTTL: sessionTTL}
+	if wait > 0 {
+		opts.LockTryOnce = true
+		opts.LockWaitTime = wait
+	}
+
+	l, err := c.LockOpts(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lockMethod{lock: l, key: key}, nil
+}
+
 type sessionMethod struct {
 	id string
 	c  *api.Client

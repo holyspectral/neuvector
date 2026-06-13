@@ -152,18 +152,122 @@ func (ss *ScanService) ScannerRegisterStream(stream share.ControllerScanService_
 	if data == nil {
 		return status.Error(codes.Aborted, "empty scanner registration stream")
 	}
-	if err := ss.scannerRegister(data); err != nil {
+	if err := ss.scannerRegister(data, false); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&share.RPCVoid{})
 }
 
 func (ss *ScanService) ScannerRegister(ctx context.Context, data *share.ScannerRegisterData) (*share.RPCVoid, error) {
-	if err := ss.scannerRegister(data); err == nil {
+	if err := ss.scannerRegister(data, false); err == nil {
 		return &share.RPCVoid{}, nil
 	} else {
 		return nil, err
 	}
+}
+
+const (
+	cvedbUploadLockWait       = 3 * time.Minute
+	cvedbUploadSessionTTL     = "300s"
+)
+
+func acquireCVEDBUploadLock(clusHelper kv.ClusterHelper) (cluster.LockInterface, error) {
+	lock, err := clusHelper.AcquireLockWithTTL(share.CLUSLockScannerDBUploadKey, cvedbUploadLockWait, cvedbUploadSessionTTL)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to acquire CVEDB upload lock")
+	}
+	return lock, err
+}
+
+// ScannerRegisterV3 implements bidirectional streaming scanner registration.
+// The scanner sends version info first; the controller checks if its CVE database is
+// already current. If so, it registers the scanner immediately without requiring a
+// database upload. If not, it requests the database from the scanner.
+// A cluster-wide lock serializes all uploads so only one CVEDB transfer occurs at a time.
+func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_ScannerRegisterV3Server) error {
+	req, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+
+	clusHelper := kv.GetClusterHelper()
+
+	lock, err := acquireCVEDBUploadLock(clusHelper)
+	if err != nil {
+		return err
+	}
+	defer clusHelper.ReleaseLock(lock)
+
+	// Check under lock whether the controller's CVE database is already current.
+	s, err := clusHelper.GetScanner(share.CLUSScannerDBVersionID, access.NewReaderAccessControl())
+	upToDate := false
+	if err == nil && s != nil {
+		cur, _ := utils.NewVersion(s.CVEDBVersion)
+		nv, _ := utils.NewVersion(req.CVEDBVersion)
+		upToDate = nv.Compare(cur) <= 0
+	}
+
+	if upToDate {
+		log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion}).Info("CVEDB up-to-date, registering scanner without upload")
+		data := &share.ScannerRegisterData{
+			CVEDBVersion:    req.CVEDBVersion,
+			CVEDBCreateTime: req.CVEDBCreateTime,
+			RPCServer:       req.RPCServer,
+			RPCServerPort:   req.RPCServerPort,
+			ID:              req.ID,
+		}
+		if err := ss.scannerRegister(data, true); err != nil {
+			return stream.Send(&share.ScannerRegisterV3Response{
+				Action:  share.ScannerRegisterV3Response_ERROR,
+				Message: err.Error(),
+			})
+		}
+		return stream.Send(&share.ScannerRegisterV3Response{
+			Action: share.ScannerRegisterV3Response_REGISTERED,
+		})
+	}
+
+	log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion}).Info("Requesting CVEDB from scanner")
+	if err := stream.Send(&share.ScannerRegisterV3Response{
+		Action: share.ScannerRegisterV3Response_SEND_CVEDB,
+	}); err != nil {
+		return err
+	}
+
+	// Receive CVEDB chunks from the scanner.
+	initReq := req
+	cvedb := make(map[string]*share.ScanVulnerability)
+	for {
+		r, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		for k, v := range r.CVEDB {
+			cvedb[k] = v
+		}
+		if r.CVEDBLast {
+			break
+		}
+	}
+
+	log.WithFields(log.Fields{"scanner": initReq.ID, "version": initReq.CVEDBVersion, "entries": len(cvedb)}).Info("CVEDB received, registering scanner")
+	data := &share.ScannerRegisterData{
+		CVEDBVersion:    initReq.CVEDBVersion,
+		CVEDBCreateTime: initReq.CVEDBCreateTime,
+		CVEDB:           cvedb,
+		RPCServer:       initReq.RPCServer,
+		RPCServerPort:   initReq.RPCServerPort,
+		ID:              initReq.ID,
+	}
+	if err := ss.scannerRegister(data, false); err != nil {
+		return stream.Send(&share.ScannerRegisterV3Response{
+			Action:  share.ScannerRegisterV3Response_ERROR,
+			Message: err.Error(),
+		})
+	}
+	return stream.Send(&share.ScannerRegisterV3Response{
+		Action: share.ScannerRegisterV3Response_REGISTERED,
+	})
 }
 
 // HealthCheck checks if the scanner is in the list of controller Consul key-value pairs and if the controller is alive
@@ -190,9 +294,13 @@ func (ss *ScanService) HealthCheck(ctx context.Context, data *share.ScannerRegis
 	return &share.ScannerAvailable{Visible: visible}, nil
 }
 
-func (ss *ScanService) scannerRegister(data *share.ScannerRegisterData) error {
+// scannerRegister writes the scanner record (and optionally the CVE database) to the cluster KV store.
+// When skipDB is true, the CVE database write is skipped entirely; CVEDBEntries is populated from
+// the existing DB version record. This is used by ScannerRegisterV3 when the controller already
+// holds an up-to-date copy of the database.
+func (ss *ScanService) scannerRegister(data *share.ScannerRegisterData, skipDB bool) error {
 	log.WithFields(log.Fields{
-		"id": data.ID, "version": data.CVEDBVersion, "create": data.CVEDBCreateTime, "server": data.RPCServer, "entries": len(data.CVEDB),
+		"id": data.ID, "version": data.CVEDBVersion, "create": data.CVEDBCreateTime, "server": data.RPCServer, "entries": len(data.CVEDB), "skipDB": skipDB,
 	}).Info()
 
 	writeDB := false
@@ -224,10 +332,12 @@ func (ss *ScanService) scannerRegister(data *share.ScannerRegisterData) error {
 	}
 	defer clusHelper.ReleaseLock(lock)
 
-	hasCveDB := len(data.CVEDB) > 0
-	if !hasCveDB {
-		log.WithFields(log.Fields{"scanner": data.ID, "version": data.CVEDBVersion}).Warn("Skip empty scanner DB update")
-		return errors.New("scanner cvedb is empty")
+	if !skipDB {
+		hasCveDB := len(data.CVEDB) > 0
+		if !hasCveDB {
+			log.WithFields(log.Fields{"scanner": data.ID, "version": data.CVEDBVersion}).Warn("Skip empty scanner DB update")
+			return errors.New("scanner cvedb is empty")
+		}
 	}
 
 	// Check if the database is newer.
@@ -236,7 +346,14 @@ func (ss *ScanService) scannerRegister(data *share.ScannerRegisterData) error {
 		log.WithFields(log.Fields{"error": err, "version": data.CVEDBVersion}).Warn("Failed to get scanner DB version record")
 		return fmt.Errorf("failed to get scanner DB version record: %w", err)
 	}
-	if s == nil {
+	if skipDB {
+		// DB upload was handled by the caller (v3 path); only write the scanner record.
+		// Populate CVEDBEntries from the existing record so the scanner record is accurate.
+		if s != nil {
+			newScanner.CVEDBEntries = s.CVEDBEntries
+		}
+		writeDB = false
+	} else if s == nil {
 		writeDB = true
 	} else {
 		ver, _ := utils.NewVersion(s.CVEDBVersion)
@@ -343,8 +460,9 @@ func (ss *ScanService) SubmitScanResult(ctx context.Context, result *share.ScanR
 
 func (s *ScanService) GetCaps(ctx context.Context, v *share.RPCVoid) (*share.ControllerCaps, error) {
 	return &share.ControllerCaps{
-		CriticalVul:     true,
-		ScannerSettings: true,
+		CriticalVul:              true,
+		ScannerSettings:          true,
+		SupportScannerRegisterV3: true,
 	}, nil
 }
 

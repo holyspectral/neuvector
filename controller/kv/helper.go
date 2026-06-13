@@ -45,6 +45,7 @@ type LogEventFunc func(share.TLogEvent, time.Time, int, string)
 
 type ClusterHelper interface {
 	AcquireLock(key string, wait time.Duration) (cluster.LockInterface, error)
+	AcquireLockWithTTL(key string, wait time.Duration, sessionTTL string) (cluster.LockInterface, error)
 	ReleaseLock(cluster.LockInterface)
 
 	UpgradeClusterKV(version string) (verUpdated bool)
@@ -556,6 +557,37 @@ func (m clusterHelper) ReleaseLock(lock cluster.LockInterface) {
 	if err != nil {
 		log.WithFields(log.Fields{"error": err, "key": lock.Key()}).Error()
 	}
+}
+
+func (m clusterHelper) AcquireLockWithTTL(key string, wait time.Duration, sessionTTL string) (cluster.LockInterface, error) {
+	lock, err := cluster.NewLockWithTTL(key, wait, sessionTTL)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "key": key}).Error("Create lock error")
+		return nil, err
+	} else if lock == nil {
+		err = fmt.Errorf("Failed to create lock")
+		log.WithFields(log.Fields{"error": err, "key": key}).Error("Create lock error")
+		return nil, err
+	}
+
+	lKey := share.CLUSCtrlDistLockKey(key)
+	stopCh := make(<-chan struct{})
+	lostCh, err := lock.Lock(stopCh)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "key": key}).Error("Acquire lock error")
+		return nil, err
+	} else if lostCh == nil {
+		err = fmt.Errorf("Unable to acquire lock after %v", wait)
+		log.WithFields(log.Fields{"error": err, "key": key}).Error("Acquire lock error")
+		return nil, err
+	}
+
+	fn := utils.GetCaller(2, []string{"AcquireLockWithTTL"})
+	locker := &share.CLUSDistLocker{LockedBy: m.id, Caller: fn, LockedAt: time.Now()}
+	value, _ := json.Marshal(locker)
+	_ = cluster.Put(lKey, value)
+
+	return lock, nil
 }
 
 func (m clusterHelper) get(key string) ([]byte, uint64, error) {

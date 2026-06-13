@@ -425,6 +425,7 @@ type ClusterDriver interface {
 	GetAllMembers() []ClusterMemberInfo
 
 	NewLock(key string, wait time.Duration) (LockInterface, error)
+	NewLockWithTTL(key string, wait time.Duration, sessionTTL string) (LockInterface, error)
 	NewSession(name string, ttl time.Duration) (SessionInterface, error)
 
 	// KV
@@ -461,6 +462,10 @@ var driver ClusterDriver = &consul
 
 func NewLock(key string, wait time.Duration) (LockInterface, error) {
 	return driver.NewLock(key, wait)
+}
+
+func NewLockWithTTL(key string, wait time.Duration, sessionTTL string) (LockInterface, error) {
+	return driver.NewLockWithTTL(key, wait, sessionTTL)
 }
 
 func NewSession(name string, ttl time.Duration) (SessionInterface, error) {
