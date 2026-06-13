@@ -167,8 +167,8 @@ func (ss *ScanService) ScannerRegister(ctx context.Context, data *share.ScannerR
 }
 
 const (
-	cvedbUploadLockWait       = 3 * time.Minute
-	cvedbUploadSessionTTL     = "300s"
+	cvedbUploadLockWait   = 3 * time.Minute
+	cvedbUploadSessionTTL = "300s"
 )
 
 func acquireCVEDBUploadLock(clusHelper kv.ClusterHelper) (cluster.LockInterface, error) {
@@ -202,9 +202,7 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 	s, err := clusHelper.GetScanner(share.CLUSScannerDBVersionID, access.NewReaderAccessControl())
 	upToDate := false
 	if err == nil && s != nil {
-		cur, _ := utils.NewVersion(s.CVEDBVersion)
-		nv, _ := utils.NewVersion(req.CVEDBVersion)
-		upToDate = nv.Compare(cur) <= 0
+		upToDate = s.CVEDBVersion == req.CVEDBVersion
 	}
 
 	if upToDate {
