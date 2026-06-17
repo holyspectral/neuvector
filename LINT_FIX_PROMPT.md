@@ -6,7 +6,6 @@
 
 1. **Run golangci-lint and select next batch of 50 issues**
    - Group by: same file > same linter rule > order of appearance
-   - Skip if conflicts with current branch work
    
 2. **Fix the issues** following error handling standards (below)
    - **IMPORTANT: For each function call where you add error handling, check if all users of the function already log the error. If they do, remove the logging from that function first.**
@@ -14,18 +13,19 @@
 3. **Verify fixes:**
    - Run golangci-lint to confirm issues resolved
    - Run relevant tests if available
-   - Run `E2E_NO_REBUILD= make test-e2e` and check the logs to make sure you won't get excessive logs (more than 3+) from changed codes. 
    
 4. **Spawn sub-agent for code review**
    
 5. **Address review comments** (max 5 rounds)
    - If >5 rounds needed, notify user to intervene
+
+6. Run `make test-e2e` to trigger e2e test. Check the logs to make sure you won't get excessive logs (more than 3+) from changed codes. 
    
-6. **Commit when reviewer approves** (no critical issues)
+7. **Commit when reviewer approves** (no critical issues)
    - Commit message: `fix(lint): resolve [linter-rule] in [file/area]`
    
-7. **STOP and report progress**
-   - After completing ONE batch (~20 issues), STOP immediately
+8. **STOP and report progress**
+   - After completing ONE batch, STOP immediately
 
 ## Error Handling Standards
 
@@ -33,24 +33,20 @@
 
 1. **Never use //nolint** to suppress issues
 
-2. **Always propagate errors via function signatures**
-   - If the function prototype doesn't return an error, you must attempt to change it to propagate errors to caller.
-   - Always add comment if it's not possible.
-
-3. **Wrap errors with context using %w**
+2. **Wrap errors with context using %w**
    - Wrap with context: `fmt.Errorf("failed to parse port %q: %w", port, err)`
    - Preserve error chain with %w
 
-4. **Never use blank identifier `_` for error returns**
+3. **Never use blank identifier `_` for error returns**
    - This project has `errcheck.check-blank: true` in .golangci.yml
    - Using `_` to ignore errors will fail the linter
    - You MUST handle the error properly by either returning it to caller or logging it or both.
 
-5. **Name error variables must be named `err` by default**
+4. **Name error variables must be named `err` by default**
    - Always reuse the `err` already exists.
    - Only when both errors must be kept, you can use a different name.
 
-6. **Prevent duplicate logging** (see detailed examples below)
+5. **Prevent duplicate logging** (see detailed examples below)
    - When returning errors to caller, do not log in the function
    - Before adding error handling, check if called functions already log the error
    - If they do, remove the log statement from those functions
@@ -127,12 +123,12 @@ if err := ParseConfig("config.yaml"); err != nil {
 
 // ✅ ALSO CORRECT - When called function already logs internally
 // In worker.go
-func doWork() (error, error) {
+func doWork() (error) {
     // ... does work ...
     if criticalErr != nil {
         log.Error(criticalErr)  // Already logs here
     }
-    return criticalErr, debugErr
+    return criticalErr
 }
 // In main.go - MUST assign error even if already logged
 if err, dbgErr := doWork(); err != nil || dbgErr != nil {
@@ -169,8 +165,4 @@ if _, dbgErr := doWork(); dbgErr != nil {  // ❌ Fails lint: check-blank: true
 ## User Intervention Needed When
 
 - Review exceeds 5 rounds
-- Log frequency could exceed 60/min
 - Requires API changes affecting many callers  
-- Uncertain if error can be safely ignored
-- Cannot determine appropriate error handling level
-- Cannot determine a way to handle an error
