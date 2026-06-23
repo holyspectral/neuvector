@@ -90,6 +90,36 @@
 - Add comment explaining WHY: `// Suppress error: this can happen frequently`
 - Use Debug-level logging: `log.WithError(err).Debug("operation failed")`
 
+### Do not change the code flow
+
+When adding logs only, we **MUST NOT** change the code flow.
+
+For code snippet like below, 
+```go
+    value, _ = getSomething()
+    if value != nil {
+        // do stuff
+    }
+```
+
+```go
+// ❌ WRONG - because it changes the code flow.
+    value, err = getSomething()
+    if err != nil {
+        log.WithError(err).Warn("failed to call getSomething")
+    } else if value != nil {
+        // do stuff
+    }
+// ✅ CORRECT - 
+    value, err = getSomething()
+    if err != nil {
+        log.WithError(err).Warn("failed to call getSomething")
+    }
+    if value != nil {
+        // do stuff
+    }
+```
+
 ### Preventing Duplicate Logging
 
 Before adding error handling, check if the function being called already logs the error. If it does, you MUST assign the error to a variable but NOT log it again (to avoid duplicate logging).
