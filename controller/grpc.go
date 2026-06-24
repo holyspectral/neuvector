@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"runtime"
 	"strconv"
@@ -36,11 +37,141 @@ import (
 // const scanImageDataTimeout = time.Second * 45
 const repoScanTimeout = time.Minute * 20
 const (
-	dbSlotsBase = 256
-	dbSlotsMax  = 512
+	defaultSlotMax       = 512
+	defaultCVEDBPageSize = 2000 // CVE entries per page request to the scanner
+	dbSlotsBase          = 256
+	dbSlotsMax           = 512
 )
 
 type ScanService struct {
+}
+
+// incrementalDBWriter writes CVE entries to Consul KV slots as they arrive, one fixed-size
+// slot at a time. This avoids buffering the entire CVE database in memory before writing.
+type incrementalDBWriter struct {
+	store     string
+	slotSize  int
+	db        share.CLUSScannerDB
+	handled   map[string]bool
+	batch     int
+	Total     int                     // total unique CVE entries written (including colon-prefix expansions)
+	writeFunc func(int, []byte) error // abstracted slot write; injected for testability
+}
+
+func newIncrementalDBWriter(version, createTime, store string, cvedbTotal uint32, writeFunc func(int, []byte) error) *incrementalDBWriter {
+	return &incrementalDBWriter{
+		store:     store,
+		slotSize:  max(1, int(cvedbTotal)/getSlotMax()),
+		writeFunc: writeFunc,
+		db: share.CLUSScannerDB{
+			CVEDBVersion:    version,
+			CVEDBCreateTime: createTime,
+			CVEDB:           make(map[string]*share.ScanVulnerability),
+		},
+		handled: make(map[string]bool),
+	}
+}
+
+// Add processes one CVE entry, expanding colon-prefixed names into two entries (with and without
+// the prefix) matching the same logic as preprocessDB.
+func (w *incrementalDBWriter) Add(name string, cve *share.ScanVulnerability) error {
+	if _, after, found := strings.Cut(name, ":"); found {
+		if err := w.addOne(after, &share.ScanVulnerability{
+			Name:             after,
+			Description:      cve.Description,
+			Link:             cve.Link,
+			Score:            cve.Score,
+			Vectors:          cve.Vectors,
+			ScoreV3:          cve.ScoreV3,
+			VectorsV3:        cve.VectorsV3,
+			PublishedDate:    cve.PublishedDate,
+			LastModifiedDate: cve.LastModifiedDate,
+		}); err != nil {
+			return err
+		}
+	}
+	return w.addOne(name, cve)
+}
+
+func (w *incrementalDBWriter) addOne(name string, cve *share.ScanVulnerability) error {
+	if w.handled[name] {
+		return nil
+	}
+	w.handled[name] = true
+	w.db.CVEDB[name] = cve
+	w.Total++
+	if len(w.db.CVEDB) >= w.slotSize {
+		return w.flush()
+	}
+	return nil
+}
+
+func (w *incrementalDBWriter) flush() error {
+	value, err := json.Marshal(w.db)
+	if err != nil {
+		return fmt.Errorf("failed to marshal db slot %d: %w", w.batch, err)
+	}
+	zb := utils.GzipBytes(value)
+	log.WithFields(log.Fields{"slot": w.batch, "size": len(zb)}).Debug()
+	if len(zb) >= cluster.KVValueSizeMax {
+		return errors.New("database slot is too large")
+	}
+	if err := w.writeFunc(w.batch, zb); err != nil {
+		return fmt.Errorf("failed to write slot %d (size %d): %w", w.batch, len(zb), err)
+	}
+	w.db.CVEDB = make(map[string]*share.ScanVulnerability)
+	w.batch++
+	return nil
+}
+
+// Flush writes any remaining buffered entries to Consul. Must be called after all Add calls.
+func (w *incrementalDBWriter) Flush() error {
+	if len(w.db.CVEDB) > 0 {
+		return w.flush()
+	}
+	return nil
+}
+
+// Cleanup removes all Consul slots written so far. Called on error to roll back partial writes.
+func (w *incrementalDBWriter) Cleanup() {
+	keys, err := cluster.GetStoreKeys(w.store)
+	if err != nil {
+		log.WithField("error", err).Warn("Failed to get store keys for cleanup")
+		return
+	}
+	for _, key := range keys {
+		if err := cluster.Delete(key); err != nil {
+			log.WithError(err).Warn("failed to cleanup")
+		}
+	}
+}
+
+// getSlotMax returns the effective number of Consul KV slots for the CVE database,
+// reading the CVEDB_SLOT_MAX environment variable if set and valid.
+func getSlotMax() int {
+	if s := os.Getenv("CVEDB_SLOT_MAX"); s != "" {
+		if v, err := strconv.Atoi(s); err != nil || v <= 0 {
+			log.WithError(err).WithField("env", s).Warn("invalid CVEDB_SLOT_MAX, using default")
+		} else {
+			log.WithField("env", s).Info("CVEDB_SLOT_MAX is overridden")
+			return v
+		}
+	}
+	return defaultSlotMax
+}
+
+// getCVEDBPageSize returns the effective number of CVE entries per page request to the scanner,
+// reading the CVEDB_PAGE_SIZE environment variable if set and valid.
+func getCVEDBPageSize() uint32 {
+	if s := os.Getenv("CVEDB_PAGE_SIZE"); s != "" {
+		if v, err := strconv.ParseUint(s, 10, 32); err != nil || v == 0 {
+			log.WithError(err).WithField("env", s).Warn("invalid CVEDB_PAGE_SIZE, using default")
+		} else {
+			log.WithField("env", s).Info("CVEDB_PAGE_SIZE is overridden")
+			return uint32(v)
+		}
+	}
+	return defaultCVEDBPageSize
 }
 
 // Previously, to minimize data size, only the basic info is returned by scanner and saved in the kv store.
@@ -130,6 +261,84 @@ func (ss *ScanService) registerFailureCleanup(newDBStore string) {
 	}
 }
 
+// finalizeDBCommit writes the CVE database version marker and scanner record to the cluster KV
+// store. It assumes that all Consul DB slots have already been written to newStore by the caller
+// (e.g. incrementalDBWriter). Old DB stores are removed after the commit.
+func (ss *ScanService) finalizeDBCommit(data *share.ScannerRegisterData, newStore string, totalEntries int) error {
+	newScanner := share.CLUSScanner{
+		ID:                           data.ID,
+		CVEDBVersion:                 data.CVEDBVersion,
+		CVEDBCreateTime:              data.CVEDBCreateTime,
+		JoinedAt:                     time.Now().UTC(),
+		RPCServer:                    data.RPCServer,
+		RPCServerPort:                uint16(data.RPCServerPort),
+		BuiltIn:                      data.RPCServer == "127.0.0.1",
+		CVEDBEntries:                 totalEntries,
+		MaxConcurrentScansPerScanner: rpc.ScannerAcquisitionMgr.GetMaxConcurrentScansPerScanner(),
+		ScanCredit:                   rpc.ScannerAcquisitionMgr.GetMaxConcurrentScansPerScanner(),
+	}
+	if newScanner.BuiltIn {
+		newScanner.ID = Ctrler.ID
+	}
+
+	clusHelper := kv.GetClusterHelper()
+	lock, err := clusHelper.AcquireLock(share.CLUSLockScannerKey, time.Second*20)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to acquire cluster lock")
+		return err
+	}
+	defer clusHelper.ReleaseLock(lock)
+
+	// Snapshot existing store directories before committing; these are the old version stores to
+	// clean up after the transaction. Fetched now so the new store is excluded automatically
+	// (it was already written before this call).
+	oldStores, err := cluster.GetStoreKeys(share.CLUSScannerDBStore)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Warn("Failed to get old scanner DB stores")
+	}
+
+	txn := cluster.Transact()
+	defer txn.Close()
+
+	dbVerScanner := share.CLUSScanner{
+		ID:              share.CLUSScannerDBVersionID,
+		CVEDBVersion:    data.CVEDBVersion,
+		CVEDBCreateTime: data.CVEDBCreateTime,
+		CVEDBEntries:    totalEntries,
+	}
+	if err := clusHelper.PutScannerTxn(txn, &dbVerScanner); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("PutScannerTxn")
+	}
+	if err := clusHelper.PutScannerTxn(txn, &newScanner); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("PutScannerTxn")
+	}
+	if ok, err := txn.Apply(); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to write scanner to the cluster")
+		return err
+	} else if !ok {
+		return errors.New("Atomic write failed")
+	}
+
+	log.WithFields(log.Fields{"cvedb": newStore, "entries": totalEntries}).Info("CVE database written")
+
+	if len(oldStores) > 0 {
+		txn.Reset()
+		for _, store := range oldStores {
+			if !strings.HasPrefix(store, newStore) {
+				txn.DeleteTree(store)
+			}
+		}
+		if _, err := txn.Apply(); err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("txn.Apply")
+		}
+	}
+
+	if err := clusHelper.CreateScannerStats(newScanner.ID); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("CreateScannerStats")
+	}
+	return nil
+}
+
 func (ss *ScanService) ScannerRegisterStream(stream share.ControllerScanService_ScannerRegisterStreamServer) error {
 	var data *share.ScannerRegisterData
 
@@ -150,27 +359,172 @@ func (ss *ScanService) ScannerRegisterStream(stream share.ControllerScanService_
 			}
 		} else {
 			log.WithFields(log.Fields{"entries": len(r.CVEDB)}).Info("Stream receive")
-			for k, v := range r.CVEDB {
-				data.CVEDB[k] = v
-			}
+			maps.Copy(data.CVEDB, r.CVEDB)
 		}
 	}
 
 	if data == nil {
 		return status.Error(codes.Aborted, "empty scanner registration stream")
 	}
+
+	clusHelper := kv.GetClusterHelper()
+	lock, err := acquireCVEDBUploadLock(clusHelper)
+	if err != nil {
+		return err
+	}
+	defer clusHelper.ReleaseLock(lock)
+
 	if err := ss.scannerRegister(data); err != nil {
 		return err
 	}
 	return stream.SendAndClose(&share.RPCVoid{})
 }
 
-func (ss *ScanService) ScannerRegister(ctx context.Context, data *share.ScannerRegisterData) (*share.RPCVoid, error) {
-	if err := ss.scannerRegister(data); err == nil {
-		return &share.RPCVoid{}, nil
-	} else {
-		return nil, err
+const (
+	cvedbUploadLockWait   = 3 * time.Minute
+	cvedbUploadSessionTTL = "300s"
+)
+
+func acquireCVEDBUploadLock(clusHelper kv.ClusterHelper) (cluster.LockInterface, error) {
+	lock, err := clusHelper.AcquireLock(share.CLUSLockScannerDBUploadKey, cvedbUploadLockWait, cluster.LockOptions{SessionTTL: cvedbUploadSessionTTL})
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to acquire CVEDB upload lock")
 	}
+	return lock, err
+}
+
+// ScannerRegisterV3 implements bidirectional streaming scanner registration.
+// The scanner sends version info first; the controller checks if its CVE database is
+// already current. If so, it registers the scanner immediately without requiring a
+// database upload. If not, it requests the database from the scanner.
+// A cluster-wide lock serializes all uploads so only one CVEDB transfer occurs at a time.
+func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_ScannerRegisterV3Server) error {
+	req, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+
+	clusHelper := kv.GetClusterHelper()
+
+	lock, err := acquireCVEDBUploadLock(clusHelper)
+	if err != nil {
+		return err
+	}
+	defer clusHelper.ReleaseLock(lock)
+
+	// Check under lock whether the controller's CVE database is already current.
+	s, err := clusHelper.GetScanner(share.CLUSScannerDBVersionID, access.NewReaderAccessControl())
+	upToDate := false
+	if err == nil && s != nil {
+		upToDate = s.CVEDBVersion == req.CVEDBVersion
+	}
+
+	if upToDate {
+		log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion}).Info("CVEDB up-to-date, registering scanner without upload")
+		data := &share.ScannerRegisterData{
+			CVEDBVersion:    req.CVEDBVersion,
+			CVEDBCreateTime: req.CVEDBCreateTime,
+			RPCServer:       req.RPCServer,
+			RPCServerPort:   req.RPCServerPort,
+			ID:              req.ID,
+		}
+		newStore := fmt.Sprintf("%s%s/", share.CLUSScannerDBStore, req.CVEDBVersion)
+		if err := ss.finalizeDBCommit(data, newStore, int(s.CVEDBEntries)); err != nil {
+			return stream.Send(&share.ScannerRegisterV3Response{
+				Action:  share.ScannerRegisterV3Response_ERROR,
+				Message: err.Error(),
+			})
+		}
+		return stream.Send(&share.ScannerRegisterV3Response{
+			Action: share.ScannerRegisterV3Response_REGISTERED,
+		})
+	}
+
+	pageSize := getCVEDBPageSize()
+
+	newStore := fmt.Sprintf("%s%s/", share.CLUSScannerDBStore, req.CVEDBVersion)
+	writeFunc := func(i int, zb []byte) error {
+		return cluster.PutBinary(fmt.Sprintf("%s%d", newStore, i), zb)
+	}
+	writer := newIncrementalDBWriter(req.CVEDBVersion, req.CVEDBCreateTime, newStore, req.CVEDBTotal, writeFunc)
+	needCleanup := true
+	defer func() {
+		if needCleanup {
+			writer.Cleanup()
+		}
+	}()
+
+	log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion, "pageSize": pageSize}).Info("Requesting CVEDB from scanner")
+
+	sendError := func(msg string) error {
+		return stream.Send(&share.ScannerRegisterV3Response{
+			Action:  share.ScannerRegisterV3Response_ERROR,
+			Message: msg,
+		})
+	}
+
+	// Request the first page.
+	if err := stream.Send(&share.ScannerRegisterV3Response{
+		Action:        share.ScannerRegisterV3Response_SEND_CVEDB,
+		CVEDBPageSize: pageSize,
+	}); err != nil {
+		return err
+	}
+
+	// Pull pages from the scanner. For each page the scanner sends CVE entries in one or more
+	// messages and signals the end of the page with CVEDBPageDone=true (or CVEDBLast=true for the
+	// final page). Older scanners that do not know about CVEDBPageDone will simply send all data
+	// and set CVEDBLast=true at the end; the inner loop handles that transparently.
+	allReceived := false
+	for !allReceived {
+		pageDone := false
+		for !pageDone && !allReceived {
+			r, err := stream.Recv()
+			if err != nil {
+				return err
+			}
+			for k, v := range r.CVEDB {
+				if err := writer.Add(k, v); err != nil {
+					return sendError(err.Error())
+				}
+			}
+			if r.CVEDBLast {
+				allReceived = true
+			} else if r.CVEDBPageDone {
+				pageDone = true
+			}
+		}
+		// Request the next page unless we just received the last one.
+		if !allReceived {
+			if err := stream.Send(&share.ScannerRegisterV3Response{
+				Action:        share.ScannerRegisterV3Response_SEND_CVEDB,
+				CVEDBPageSize: pageSize,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := writer.Flush(); err != nil {
+		return sendError(err.Error())
+	}
+
+	log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion, "entries": writer.Total}).Info("CVEDB received, registering scanner")
+
+	data := &share.ScannerRegisterData{
+		CVEDBVersion:    req.CVEDBVersion,
+		CVEDBCreateTime: req.CVEDBCreateTime,
+		RPCServer:       req.RPCServer,
+		RPCServerPort:   req.RPCServerPort,
+		ID:              req.ID,
+	}
+	if err := ss.finalizeDBCommit(data, newStore, writer.Total); err != nil {
+		return sendError(err.Error())
+	}
+	needCleanup = false
+	return stream.Send(&share.ScannerRegisterV3Response{
+		Action: share.ScannerRegisterV3Response_REGISTERED,
+	})
 }
 
 // HealthCheck checks if the scanner is in the list of controller Consul key-value pairs and if the controller is alive
@@ -360,8 +714,9 @@ func (ss *ScanService) SubmitScanResult(ctx context.Context, result *share.ScanR
 
 func (s *ScanService) GetCaps(ctx context.Context, v *share.RPCVoid) (*share.ControllerCaps, error) {
 	return &share.ControllerCaps{
-		CriticalVul:     true,
-		ScannerSettings: true,
+		CriticalVul:              true,
+		ScannerSettings:          true,
+		SupportScannerRegisterV3: true,
 	}, nil
 }
 
