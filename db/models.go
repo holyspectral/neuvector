@@ -205,6 +205,17 @@ var funcFillVulPackages func(*sync.Mutex, map[string]map[string]utils.Set, []byt
 var funcGetImageCVECount func(string, string) (int, int, int, error) // funcGetImageCVECount
 var memdbMutex sync.RWMutex
 
+// deleteDBAndWAL removes a SQLite database file and its WAL auxiliary files (-shm, -wal).
+// Non-existence is silently ignored; other errors are logged at debug level.
+func deleteDBAndWAL(path string) {
+	for _, suffix := range []string{"", "-shm", "-wal"} {
+		f := path + suffix
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			log.WithFields(log.Fields{"err": err, "file": f}).Debug("delete existing db file")
+		}
+	}
+}
+
 func CreateVulAssetDb(useLocal bool) error {
 	dbFile := dbFile_Vulassets
 	if useLocal {
@@ -214,12 +225,7 @@ func CreateVulAssetDb(useLocal bool) error {
 	// Delete the database file and its SQLite WAL auxiliary files so that stale
 	// WAL data (e.g. from a previous run or from source control) cannot corrupt
 	// the freshly created database.
-	for _, suffix := range []string{"", "-shm", "-wal"} {
-		f := dbFile + suffix
-		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
-			log.WithFields(log.Fields{"err": err, "file": f}).Debug("delete existing db file")
-		}
-	}
+	deleteDBAndWAL(dbFile)
 
 	// create file based db
 	db, err := sql.Open("sqlite3", dbFile)
@@ -284,12 +290,7 @@ func CreateCVEDb() error {
 	// Delete the database file and its SQLite WAL auxiliary files so that stale
 	// WAL data (e.g. from a previous run or from source control) cannot corrupt
 	// the freshly created database.
-	for _, suffix := range []string{"", "-shm", "-wal"} {
-		f := dbFile + suffix
-		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
-			log.WithFields(log.Fields{"err": err, "file": f}).Debug("delete existing cve db file")
-		}
-	}
+	deleteDBAndWAL(dbFile)
 
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
