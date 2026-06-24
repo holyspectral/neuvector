@@ -2052,10 +2052,6 @@ func scanReport2ScanLog(id string, objType share.ScanObjectType, report *share.C
 				for _, v := range lc.Vuls {
 					scanUtils.FillVul(nvdb.GlobalCVECache(), v)
 				}
-				lc.Vuls = make(map[string]*share.ScanVulnerability)
-				for _, v := range lc.Vuls {
-					lc.Vuls[v.Name] = v
-				}
 			}
 			clog.Layers[i] = lc
 		}

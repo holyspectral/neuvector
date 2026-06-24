@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	log "github.com/sirupsen/logrus"
 
@@ -32,25 +31,25 @@ func (l CVEDBMapLookup) Get(name string) (*share.ScanVulnerability, bool) {
 	return v, ok
 }
 
-// cveDBMeta stores CVEDB version and create-time metadata set by ScannerUpdateHandler.
-// Two separate atomics avoid the overhead of a mutex for this read-heavy pair.
-var cvedbVersionPtr unsafe.Pointer    // *string
-var cvedbCreateTimePtr unsafe.Pointer // *string
+// cvedbMeta holds both CVEDB fields so they can be stored and loaded as a single atomic unit,
+// preventing a concurrent reader from observing a new version paired with an old createTime.
+type cvedbMeta struct {
+	version    string
+	createTime string
+}
+
+var cvedbMetaPtr atomic.Pointer[cvedbMeta]
 
 // SetCVEDBMeta records the current CVEDB version and create time. Called once per CVEDB
 // update from ScannerUpdateHandler after the data has been written to SQLite.
 func SetCVEDBMeta(version, createTime string) {
-	atomic.StorePointer(&cvedbVersionPtr, unsafe.Pointer(&version))
-	atomic.StorePointer(&cvedbCreateTimePtr, unsafe.Pointer(&createTime))
+	cvedbMetaPtr.Store(&cvedbMeta{version: version, createTime: createTime})
 }
 
 // GetCVEDBMeta returns the current CVEDB version and create time.
 func GetCVEDBMeta() (version, createTime string) {
-	if p := atomic.LoadPointer(&cvedbVersionPtr); p != nil {
-		version = *(*string)(p)
-	}
-	if p := atomic.LoadPointer(&cvedbCreateTimePtr); p != nil {
-		createTime = *(*string)(p)
+	if m := cvedbMetaPtr.Load(); m != nil {
+		return m.version, m.createTime
 	}
 	return
 }
