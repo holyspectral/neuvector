@@ -73,11 +73,14 @@ func newIncrementalDBWriter(version, createTime, store string, cvedbTotal uint32
 	}
 }
 
-// Add processes one CVE entry, expanding colon-prefixed names into two entries (with and without
-// the prefix) matching the same logic as preprocessDB.
-func (w *incrementalDBWriter) Add(name string, cve *share.ScanVulnerability) error {
+// expandCVEEntry inserts cve into dest under key name.  When name contains a colon (e.g.
+// "ubuntu:CVE-2021-1234") a second entry is inserted under the bare suffix ("CVE-2021-1234")
+// with only the NVD-level metadata copied, so that OS-neutral lookups still work.
+// This is the single authoritative implementation of the expansion logic; both preprocessDB
+// and incrementalDBWriter.Add delegate here.
+func expandCVEEntry(dest map[string]*share.ScanVulnerability, name string, cve *share.ScanVulnerability) {
 	if _, after, found := strings.Cut(name, ":"); found {
-		if err := w.addOne(after, &share.ScanVulnerability{
+		dest[after] = &share.ScanVulnerability{
 			Name:             after,
 			Description:      cve.Description,
 			Link:             cve.Link,
@@ -87,11 +90,22 @@ func (w *incrementalDBWriter) Add(name string, cve *share.ScanVulnerability) err
 			VectorsV3:        cve.VectorsV3,
 			PublishedDate:    cve.PublishedDate,
 			LastModifiedDate: cve.LastModifiedDate,
-		}); err != nil {
+		}
+	}
+	dest[name] = cve
+}
+
+// Add processes one CVE entry, expanding colon-prefixed names into two entries (with and without
+// the prefix) via expandCVEEntry, then streams them to the incremental writer.
+func (w *incrementalDBWriter) Add(name string, cve *share.ScanVulnerability) error {
+	expanded := make(map[string]*share.ScanVulnerability, 2)
+	expandCVEEntry(expanded, name, cve)
+	for k, v := range expanded {
+		if err := w.addOne(k, v); err != nil {
 			return err
 		}
 	}
-	return w.addOne(name, cve)
+	return nil
 }
 
 func (w *incrementalDBWriter) addOne(name string, cve *share.ScanVulnerability) error {
@@ -133,18 +147,25 @@ func (w *incrementalDBWriter) Flush() error {
 	return nil
 }
 
-// Cleanup removes all Consul slots written so far. Called on error to roll back partial writes.
-func (w *incrementalDBWriter) Cleanup() {
-	keys, err := cluster.GetStoreKeys(w.store)
+// deleteStoreKeys removes all Consul KV keys under the given store prefix.
+// It is the shared implementation for both incrementalDBWriter.Cleanup and
+// ScanService.registerFailureCleanup.
+func deleteStoreKeys(store string) {
+	keys, err := cluster.GetStoreKeys(store)
 	if err != nil {
-		log.WithField("error", err).Warn("Failed to get store keys for cleanup")
+		log.WithFields(log.Fields{"error": err}).Warn("Failed to get store keys for cleanup")
 		return
 	}
 	for _, key := range keys {
 		if err := cluster.Delete(key); err != nil {
-			log.WithError(err).Warn("failed to cleanup")
+			log.WithFields(log.Fields{"error": err}).Warn("failed to cleanup")
 		}
 	}
+}
+
+// Cleanup removes all Consul slots written so far. Called on error to roll back partial writes.
+func (w *incrementalDBWriter) Cleanup() {
+	deleteStoreKeys(w.store)
 }
 
 // getSlotMax returns the effective number of Consul KV slots for the CVE database,
@@ -179,23 +200,9 @@ func getCVEDBPageSize() uint32 {
 // This is problematic, because if a cve of an OS is gone, previously scanned result will be missing metadata.
 // So, we build a meta data map with the CVE name as key. These data are from NVD anyway.
 func (ss *ScanService) preprocessDB(data *share.ScannerRegisterData) map[string]*share.ScanVulnerability {
-	cvedb := make(map[string]*share.ScanVulnerability)
+	cvedb := make(map[string]*share.ScanVulnerability, len(data.CVEDB)*2)
 	for name, cve := range data.CVEDB {
-		if s := strings.Index(name, ":"); s != -1 {
-			n := name[s+1:]
-			cvedb[n] = &share.ScanVulnerability{
-				Name:             n,
-				Description:      cve.Description,
-				Link:             cve.Link,
-				Score:            cve.Score,
-				Vectors:          cve.Vectors,
-				ScoreV3:          cve.ScoreV3,
-				VectorsV3:        cve.VectorsV3,
-				PublishedDate:    cve.PublishedDate,
-				LastModifiedDate: cve.LastModifiedDate,
-			}
-		}
-		cvedb[name] = cve
+		expandCVEEntry(cvedb, name, cve)
 	}
 	return cvedb
 }
@@ -249,17 +256,7 @@ func (ss *ScanService) prepareDBSlots(data *share.ScannerRegisterData, cvedb map
 }
 
 func (ss *ScanService) registerFailureCleanup(newDBStore string) {
-	// Remove new keys that have been written
-	newKeys, err := cluster.GetStoreKeys(newDBStore)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Warn("Failed to get store keys for cleanup")
-		return
-	}
-	for _, key := range newKeys {
-		if err := cluster.Delete(key); err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Delete")
-		}
-	}
+	deleteStoreKeys(newDBStore)
 }
 
 // finalizeDBCommit writes the CVE database version marker and scanner record to the cluster KV
@@ -309,9 +306,11 @@ func (ss *ScanService) finalizeDBCommit(data *share.ScannerRegisterData, newStor
 	}
 	if err := clusHelper.PutScannerTxn(txn, &dbVerScanner); err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("PutScannerTxn")
+		return err
 	}
 	if err := clusHelper.PutScannerTxn(txn, &newScanner); err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("PutScannerTxn")
+		return err
 	}
 	if ok, err := txn.Apply(); err != nil {
 		log.WithFields(log.Fields{"error": err}).Error("Failed to write scanner to the cluster")
@@ -341,6 +340,13 @@ func (ss *ScanService) finalizeDBCommit(data *share.ScannerRegisterData, newStor
 }
 
 func (ss *ScanService) ScannerRegisterStream(stream share.ControllerScanService_ScannerRegisterStreamServer) error {
+	clusHelper := kv.GetClusterHelper()
+	lock, err := acquireCVEDBUploadLock(clusHelper)
+	if err != nil {
+		return err
+	}
+	defer clusHelper.ReleaseLock(lock)
+
 	var data *share.ScannerRegisterData
 
 	for {
@@ -367,13 +373,6 @@ func (ss *ScanService) ScannerRegisterStream(stream share.ControllerScanService_
 	if data == nil {
 		return status.Error(codes.Aborted, "empty scanner registration stream")
 	}
-
-	clusHelper := kv.GetClusterHelper()
-	lock, err := acquireCVEDBUploadLock(clusHelper)
-	if err != nil {
-		return err
-	}
-	defer clusHelper.ReleaseLock(lock)
 
 	if err := ss.scannerRegister(data); err != nil {
 		return err
@@ -423,6 +422,16 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 
 	if upToDate {
 		log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion}).Info("CVEDB up-to-date, registering scanner without upload")
+		totalEntries := int(s.CVEDBEntries)
+		if totalEntries == 0 {
+			// CVEDBEntries was not written by older code; fetch the real count from SQLite
+			// to avoid storing 0 and causing every future registration to trigger a re-upload.
+			if count, err := nvdb.GetCVECount(); err != nil {
+				log.WithFields(log.Fields{"error": err}).Warn("Failed to get CVE count from SQLite, using 0")
+			} else {
+				totalEntries = count
+			}
+		}
 		data := &share.ScannerRegisterData{
 			CVEDBVersion:    req.CVEDBVersion,
 			CVEDBCreateTime: req.CVEDBCreateTime,
@@ -431,7 +440,7 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 			ID:              req.ID,
 		}
 		newStore := fmt.Sprintf("%s%s/", share.CLUSScannerDBStore, req.CVEDBVersion)
-		if err := ss.finalizeDBCommit(data, newStore, int(s.CVEDBEntries)); err != nil {
+		if err := ss.finalizeDBCommit(data, newStore, totalEntries); err != nil {
 			return stream.Send(&share.ScannerRegisterV3Response{
 				Action:  share.ScannerRegisterV3Response_ERROR,
 				Message: err.Error(),
