@@ -497,41 +497,21 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 		return err
 	}
 
-	// Pull pages from the scanner. For each page the scanner sends CVE entries in one or more
-	// messages and signals the end of the page with CVEDBPageDone=true (or CVEDBLast=true for the
-	// final page). Older scanners that do not know about CVEDBPageDone will simply send all data
-	// and set CVEDBLast=true at the end; the inner loop handles that transparently.
-	allReceived := false
-	for !allReceived {
-		pageDone := false
-		for !pageDone && !allReceived {
-			r, err := stream.Recv()
-			if err != nil {
-				return err
-			}
-			log.WithFields(log.Fields{"total": len(r.CVEDB)}).Info("received cvedb")
+	// Receive all CVE batches pushed by the scanner until CVEDBLast=true.
+	for {
+		r, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		log.WithFields(log.Fields{"total": len(r.CVEDB)}).Info("received cvedb batch")
 
-			for k, v := range r.CVEDB {
-				if err := writer.Add(k, v); err != nil {
-					return sendError(err)
-				}
-			}
-			if r.CVEDBLast {
-				allReceived = true
-			} else if r.CVEDBPageDone {
-				pageDone = true
+		for k, v := range r.CVEDB {
+			if err := writer.Add(k, v); err != nil {
+				return sendError(err)
 			}
 		}
-		// Request the next page unless we just received the last one.
-		if !allReceived {
-			log.WithFields(log.Fields{"pageSize": pageSize}).Debug("asking more cvedb")
-
-			if err := stream.Send(&share.ScannerRegisterV3Response{
-				Action:        share.ScannerRegisterV3Response_SEND_CVEDB,
-				CVEDBPageSize: pageSize,
-			}); err != nil {
-				return err
-			}
+		if r.CVEDBLast {
+			break
 		}
 	}
 
