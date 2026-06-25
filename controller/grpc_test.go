@@ -41,56 +41,69 @@ func simpleCVEs(n int) map[string]*share.ScanVulnerability {
 }
 
 func TestIncrementalDBWriter(t *testing.T) {
-	// Tests use CVEDB_SLOT_MAX=1 so that slotSize = cvedbTotal / 1 = cvedbTotal,
-	// giving precise control over when slots are flushed with small test datasets.
+	const testVersion = "1.0"
+	const testCreateTime = "2024-01-01"
+
+	// Compute entry and base sizes used by threshold-dependent cases.
+	// All simpleCVE entries share the same size since names are fixed-width ("CVE-2021-XXXX").
+	sampleName := "CVE-2021-0000"
+	entrySize, err := cveEntryJSONSize(sampleName, &share.ScanVulnerability{Name: sampleName})
+	require.NoError(t, err)
+	emptyBase, err := json.Marshal(share.CLUSScannerDB{
+		CVEDBVersion:    testVersion,
+		CVEDBCreateTime: testCreateTime,
+		CVEDB:           make(map[string]*share.ScanVulnerability),
+	})
+	require.NoError(t, err)
+	// twoPerSlot is a threshold that fits exactly 2 simpleCVE entries per slot:
+	// after 2 entries currentSize == threshold (not over), but adding a 3rd pushes it over.
+	twoPerSlot := len(emptyBase) + 2*entrySize
+
 	cases := []struct {
 		name         string
-		cvedbTotal   uint32
 		entries      map[string]*share.ScanVulnerability
-		kvSizeMax    int
+		slotSizeMax  int // 0 = use default cvedbSlotSizeMax
+		kvSizeMax    int // 0 = use default cluster.KVValueSizeMax
 		writeFuncErr error
 		wantSlots    int
 		wantTotal    int
 		wantErr      bool
 	}{
 		{
-			name:       "empty input produces no slots",
-			cvedbTotal: 400,
-			entries:    map[string]*share.ScanVulnerability{},
-			wantSlots:  0,
-			wantTotal:  0,
+			name:      "empty input produces no slots",
+			entries:   map[string]*share.ScanVulnerability{},
+			wantSlots: 0,
+			wantTotal: 0,
 		},
 		{
-			name:       "entries below slot size produce one slot",
-			cvedbTotal: 400,
-			entries:    simpleCVEs(3),
-			wantSlots:  1,
-			wantTotal:  3,
+			name:      "entries below threshold produce one slot",
+			entries:   simpleCVEs(3),
+			wantSlots: 1,
+			wantTotal: 3,
 		},
 		{
-			name:       "entries exactly at slot boundary produce one slot",
-			cvedbTotal: 3,
-			entries:    simpleCVEs(3),
-			wantSlots:  1,
-			wantTotal:  3,
+			name:        "entries exactly at threshold produce one slot",
+			entries:     simpleCVEs(2),
+			slotSizeMax: twoPerSlot,
+			wantSlots:   1,
+			wantTotal:   2,
 		},
 		{
-			name:       "entries one over slot boundary produce two slots",
-			cvedbTotal: 3,
-			entries:    simpleCVEs(4),
-			wantSlots:  2,
-			wantTotal:  4,
+			name:        "entries one over threshold produce two slots",
+			entries:     simpleCVEs(3),
+			slotSizeMax: twoPerSlot,
+			wantSlots:   2,
+			wantTotal:   3,
 		},
 		{
-			name:       "slot size of 2 with 5 entries produces 3 slots",
-			cvedbTotal: 2,
-			entries:    simpleCVEs(5),
-			wantSlots:  3,
-			wantTotal:  5,
+			name:        "five entries with two-per-slot threshold produce three slots",
+			entries:     simpleCVEs(5),
+			slotSizeMax: twoPerSlot,
+			wantSlots:   3,
+			wantTotal:   5,
 		},
 		{
-			name:       "colon-prefixed CVE expands to two entries",
-			cvedbTotal: 400,
+			name: "colon-prefixed CVE expands to two entries",
 			entries: map[string]*share.ScanVulnerability{
 				"ubuntu:CVE-2021-001": {Description: "heap overflow"},
 			},
@@ -98,50 +111,33 @@ func TestIncrementalDBWriter(t *testing.T) {
 			wantTotal: 2,
 		},
 		{
-			name:       "colon-prefix expansion respects slot boundary",
-			cvedbTotal: 2,
-			// 2 plain CVEs + 1 colon CVE (expands to 2) = 4 entries → 2 slots of size 2
-			entries: func() map[string]*share.ScanVulnerability {
-				m := simpleCVEs(2)
-				m["ubuntu:CVE-2021-999"] = &share.ScanVulnerability{Description: "test"}
-				return m
-			}(),
-			wantSlots: 2,
-			wantTotal: 4,
-		},
-		{
-			name:       "duplicate CVE name is counted once",
-			cvedbTotal: 400,
-			// Add the same CVE twice via two Add calls (simulated by putting it in once with
-			// a colon prefix whose expansion collides with an existing plain key).
+			name: "duplicate CVE name is counted once",
+			// ubuntu:CVE-2021-001 expands to CVE-2021-001 (dup, skipped) + ubuntu:CVE-2021-001;
+			// plain CVE-2021-001 is also skipped as dup → 2 unique entries total.
 			entries: map[string]*share.ScanVulnerability{
 				"CVE-2021-001":        {Description: "first"},
-				"ubuntu:CVE-2021-001": {Description: "second"}, // expansion → CVE-2021-001 (dup)
+				"ubuntu:CVE-2021-001": {Description: "second"},
 			},
-			// ubuntu:CVE-2021-001 expands to CVE-2021-001 (dup, skipped) + ubuntu:CVE-2021-001
-			// plain CVE-2021-001 is also skipped as dup → total: 2 unique entries
 			wantSlots: 1,
 			wantTotal: 2,
 		},
 		{
-			name:       "compressed slot exceeding KV limit returns error",
-			cvedbTotal: 400,
-			entries:    simpleCVEs(1),
-			kvSizeMax:  1,
-			wantErr:    true,
+			name:      "compressed slot exceeding KV limit returns error",
+			entries:   simpleCVEs(1),
+			kvSizeMax: 1,
+			wantErr:   true,
 		},
 		{
 			name:         "write function error is propagated",
-			cvedbTotal:   1,
 			entries:      simpleCVEs(1),
 			writeFuncErr: errors.New("consul unavailable"),
 			wantErr:      true,
 		},
 		{
-			name:       "metadata is preserved in every slot",
-			cvedbTotal: 2,
-			entries:    simpleCVEs(4),
-			// 4 entries / slotSize 2 → 2 slots; both must carry correct version and createTime
+			name:        "metadata is preserved in every slot",
+			entries:     simpleCVEs(4),
+			slotSizeMax: twoPerSlot,
+			// 4 entries / 2-per-slot → 2 slots; both must carry correct version and createTime.
 			wantSlots: 2,
 			wantTotal: 4,
 		},
@@ -149,8 +145,11 @@ func TestIncrementalDBWriter(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			// CVEDB_SLOT_MAX=1 makes slotSize = cvedbTotal / 1 = cvedbTotal
-			t.Setenv("CVEDB_SLOT_MAX", "1")
+			if c.slotSizeMax > 0 {
+				orig := cvedbSlotSizeMax
+				cvedbSlotSizeMax = c.slotSizeMax
+				defer func() { cvedbSlotSizeMax = orig }()
+			}
 			if c.kvSizeMax > 0 {
 				orig := cluster.KVValueSizeMax
 				cluster.KVValueSizeMax = c.kvSizeMax
@@ -165,7 +164,7 @@ func TestIncrementalDBWriter(t *testing.T) {
 				batches = append(batches, data)
 				return nil
 			}
-			w := newIncrementalDBWriter("1.0", "2024-01-01", "scan/database/test/", c.cvedbTotal, writeFunc)
+			w := newIncrementalDBWriter(testVersion, testCreateTime, "scan/database/test/", writeFunc)
 
 			var addErr error
 			for name, cve := range c.entries {
@@ -188,8 +187,8 @@ func TestIncrementalDBWriter(t *testing.T) {
 			total := 0
 			for _, zb := range batches {
 				db := decodeBatch(t, zb)
-				assert.Equal(t, "1.0", db.CVEDBVersion, "CVEDBVersion in slot")
-				assert.Equal(t, "2024-01-01", db.CVEDBCreateTime, "CVEDBCreateTime in slot")
+				assert.Equal(t, testVersion, db.CVEDBVersion, "CVEDBVersion in slot")
+				assert.Equal(t, testCreateTime, db.CVEDBCreateTime, "CVEDBCreateTime in slot")
 				total += len(db.CVEDB)
 			}
 			assert.Equal(t, c.wantTotal, total, "total CVEs across all slots")

@@ -38,38 +38,43 @@ import (
 // const scanImageDataTimeout = time.Second * 45
 const repoScanTimeout = time.Minute * 20
 const (
-	defaultSlotMax       = 512
-	defaultCVEDBPageSize = 2000 // CVE entries per page request to the scanner
+	defaultCVEDBPageSize = 5000 // CVE entries per page request to the scanner
 	dbSlotsBase          = 256
 	dbSlotsMax           = 512
 )
 
+var cvedbSlotSizeMax = 400 * 1024 // pre-compression JSON byte threshold per Consul slot
+
 type ScanService struct {
 }
 
-// incrementalDBWriter writes CVE entries to Consul KV slots as they arrive, one fixed-size
-// slot at a time. This avoids buffering the entire CVE database in memory before writing.
+// incrementalDBWriter writes CVE entries to Consul KV slots as they arrive, flushing when
+// the accumulated pre-compression JSON size would exceed cvedbSlotSizeMax.
 type incrementalDBWriter struct {
-	store     string
-	slotSize  int
-	db        share.CLUSScannerDB
-	handled   map[string]bool
-	batch     int
-	Total     int                     // total unique CVE entries written (including colon-prefix expansions)
-	writeFunc func(int, []byte) error // abstracted slot write; injected for testability
+	store       string
+	baseSize    int // JSON size of an empty CLUSScannerDB (version + createTime overhead)
+	currentSize int // accumulated JSON size of buffered entries in the current slot
+	db          share.CLUSScannerDB
+	handled     map[string]bool
+	batch       int
+	Total       int                     // total unique CVE entries written (including colon-prefix expansions)
+	writeFunc   func(int, []byte) error // abstracted slot write; injected for testability
 }
 
-func newIncrementalDBWriter(version, createTime, store string, cvedbTotal uint32, writeFunc func(int, []byte) error) *incrementalDBWriter {
+func newIncrementalDBWriter(version, createTime, store string, writeFunc func(int, []byte) error) *incrementalDBWriter {
+	db := share.CLUSScannerDB{
+		CVEDBVersion:    version,
+		CVEDBCreateTime: createTime,
+		CVEDB:           make(map[string]*share.ScanVulnerability),
+	}
+	base, _ := json.Marshal(db)
 	return &incrementalDBWriter{
-		store:     store,
-		slotSize:  max(1, int(cvedbTotal)/getSlotMax()),
-		writeFunc: writeFunc,
-		db: share.CLUSScannerDB{
-			CVEDBVersion:    version,
-			CVEDBCreateTime: createTime,
-			CVEDB:           make(map[string]*share.ScanVulnerability),
-		},
-		handled: make(map[string]bool),
+		store:       store,
+		baseSize:    len(base),
+		currentSize: len(base),
+		writeFunc:   writeFunc,
+		db:          db,
+		handled:     make(map[string]bool),
 	}
 }
 
@@ -108,16 +113,39 @@ func (w *incrementalDBWriter) Add(name string, cve *share.ScanVulnerability) err
 	return nil
 }
 
+// cveEntryJSONSize returns the byte length of one map entry "name":<json_value>, in the CVEDB JSON object.
+func cveEntryJSONSize(name string, cve *share.ScanVulnerability) (int, error) {
+	b, err := json.Marshal(cve)
+	if err != nil {
+		return 0, err
+	}
+	// "name":<value>, — 2 quotes around name + 1 colon + value + 1 comma
+	return len(name) + 4 + len(b), nil
+}
+
+// exceedsSlotSize reports whether adding delta bytes to the current slot would exceed the threshold.
+// An empty slot is never considered over the limit to prevent infinite flush loops on oversized entries.
+func (w *incrementalDBWriter) exceedsSlotSize(delta int) bool {
+	return len(w.db.CVEDB) > 0 && w.currentSize+delta > cvedbSlotSizeMax
+}
+
 func (w *incrementalDBWriter) addOne(name string, cve *share.ScanVulnerability) error {
 	if w.handled[name] {
 		return nil
 	}
+	delta, err := cveEntryJSONSize(name, cve)
+	if err != nil {
+		return fmt.Errorf("failed to estimate size for %s: %w", name, err)
+	}
+	if w.exceedsSlotSize(delta) {
+		if err := w.flush(); err != nil {
+			return err
+		}
+	}
 	w.handled[name] = true
 	w.db.CVEDB[name] = cve
+	w.currentSize += delta
 	w.Total++
-	if len(w.db.CVEDB) >= w.slotSize {
-		return w.flush()
-	}
 	return nil
 }
 
@@ -127,7 +155,7 @@ func (w *incrementalDBWriter) flush() error {
 		return fmt.Errorf("failed to marshal db slot %d: %w", w.batch, err)
 	}
 	zb := utils.GzipBytes(value)
-	log.WithFields(log.Fields{"slot": w.batch, "size": len(zb)}).Debug()
+	log.WithFields(log.Fields{"slot": w.batch, "before": len(value), "after": len(zb), "cveNum": len(w.db.CVEDB)}).Debug()
 	if len(zb) >= cluster.KVValueSizeMax {
 		return errors.New("database slot is too large")
 	}
@@ -135,6 +163,7 @@ func (w *incrementalDBWriter) flush() error {
 		return fmt.Errorf("failed to write slot %d (size %d): %w", w.batch, len(zb), err)
 	}
 	w.db.CVEDB = make(map[string]*share.ScanVulnerability)
+	w.currentSize = w.baseSize
 	w.batch++
 	return nil
 }
@@ -166,20 +195,6 @@ func deleteStoreKeys(store string) {
 // Cleanup removes all Consul slots written so far. Called on error to roll back partial writes.
 func (w *incrementalDBWriter) Cleanup() {
 	deleteStoreKeys(w.store)
-}
-
-// getSlotMax returns the effective number of Consul KV slots for the CVE database,
-// reading the CVEDB_SLOT_MAX environment variable if set and valid.
-func getSlotMax() int {
-	if s := os.Getenv("CVEDB_SLOT_MAX"); s != "" {
-		if v, err := strconv.Atoi(s); err != nil || v <= 0 {
-			log.WithError(err).WithField("env", s).Warn("invalid CVEDB_SLOT_MAX, using default")
-		} else {
-			log.WithField("env", s).Info("CVEDB_SLOT_MAX is overridden")
-			return v
-		}
-	}
-	return defaultSlotMax
 }
 
 // getCVEDBPageSize returns the effective number of CVE entries per page request to the scanner,
@@ -393,7 +408,6 @@ func acquireCVEDBUploadLock(clusHelper kv.ClusterHelper) (cluster.LockInterface,
 	return lock, err
 }
 
-
 // ScannerRegisterV3 implements bidirectional streaming scanner registration.
 // The scanner sends version info first; the controller checks if its CVE database is
 // already current. If so, it registers the scanner immediately without requiring a
@@ -457,7 +471,7 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 	writeFunc := func(i int, zb []byte) error {
 		return cluster.PutBinary(fmt.Sprintf("%s%d", newStore, i), zb)
 	}
-	writer := newIncrementalDBWriter(req.CVEDBVersion, req.CVEDBCreateTime, newStore, req.CVEDBTotal, writeFunc)
+	writer := newIncrementalDBWriter(req.CVEDBVersion, req.CVEDBCreateTime, newStore, writeFunc)
 	needCleanup := true
 	defer func() {
 		if needCleanup {
@@ -467,10 +481,11 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 
 	log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion, "pageSize": pageSize}).Info("Requesting CVEDB from scanner")
 
-	sendError := func(msg string) error {
+	sendError := func(err error) error {
+		log.WithError(err).Error("failed to handle scanner registration request")
 		return stream.Send(&share.ScannerRegisterV3Response{
 			Action:  share.ScannerRegisterV3Response_ERROR,
-			Message: msg,
+			Message: err.Error(),
 		})
 	}
 
@@ -494,9 +509,11 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 			if err != nil {
 				return err
 			}
+			log.WithFields(log.Fields{"total": len(r.CVEDB)}).Info("received cvedb")
+
 			for k, v := range r.CVEDB {
 				if err := writer.Add(k, v); err != nil {
-					return sendError(err.Error())
+					return sendError(err)
 				}
 			}
 			if r.CVEDBLast {
@@ -507,6 +524,8 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 		}
 		// Request the next page unless we just received the last one.
 		if !allReceived {
+			log.WithFields(log.Fields{"pageSize": pageSize}).Debug("asking more cvedb")
+
 			if err := stream.Send(&share.ScannerRegisterV3Response{
 				Action:        share.ScannerRegisterV3Response_SEND_CVEDB,
 				CVEDBPageSize: pageSize,
@@ -517,7 +536,7 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 	}
 
 	if err := writer.Flush(); err != nil {
-		return sendError(err.Error())
+		return sendError(err)
 	}
 
 	log.WithFields(log.Fields{"scanner": req.ID, "version": req.CVEDBVersion, "entries": writer.Total}).Info("CVEDB received, registering scanner")
@@ -530,7 +549,7 @@ func (ss *ScanService) ScannerRegisterV3(stream share.ControllerScanService_Scan
 		ID:              req.ID,
 	}
 	if err := ss.finalizeDBCommit(data, newStore, writer.Total); err != nil {
-		return sendError(err.Error())
+		return sendError(err)
 	}
 	needCleanup = false
 	return stream.Send(&share.ScannerRegisterV3Response{
