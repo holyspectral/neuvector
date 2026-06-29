@@ -441,7 +441,9 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 		switch config {
 		case share.CFGEndpointUser:
 			var user share.CLUSUser
-			_ = nvJsonUnmarshal(key, value, &user)
+			if err := nvJsonUnmarshal(key, value, &user); err != nil {
+				log.WithError(err).Warn("failed to unmarshal user during upgrade")
+			}
 			if upd, wrtForUpgrade := upgradeUser(&user); upd {
 				return &user, wrtForUpgrade, false, nil, nil
 			}
@@ -461,20 +463,26 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 			}
 		case share.CFGEndpointGroup:
 			var cfg share.CLUSGroup
-			_ = nvJsonUnmarshal(key, value, &cfg)
+			if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+				log.WithError(err).Warn("failed to unmarshal group during upgrade")
+			}
 			if upd, wrtForUpgrade := upgradeGroup(&cfg); upd {
 				return &cfg, wrtForUpgrade, false, nil, nil
 			}
 		case share.CFGEndpointPolicy:
 			if share.CLUSIsPolicyRuleKey(key) {
 				var cfg share.CLUSPolicyRule
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal policy rule during upgrade")
+				}
 				if upd, wrtForUpgrade := upgradePolicyRule(&cfg); upd {
 					return &cfg, wrtForUpgrade, false, nil, nil
 				}
 			} else if share.CLUSIsPolicyZipRuleListKey(key) {
 				var cfg []*share.CLUSRuleHead
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal policy rule head during upgrade")
+				}
 				if upd, wrtForUpgrade := upgradePolicyRuleHead(cfg); upd {
 					return &cfg, wrtForUpgrade, false, nil, nil
 				}
@@ -489,25 +497,33 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 			}
 		case share.CFGEndpointProcessProfile:
 			var cfg share.CLUSProcessProfile
-			_ = nvJsonUnmarshal(key, value, &cfg)
+			if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+				log.WithError(err).Warn("failed to unmarshal process profile during upgrade")
+			}
 			if upd, wrtForUpgrade := upgradeProcessProfile(&cfg); upd {
 				return &cfg, wrtForUpgrade, false, nil, nil
 			}
 		case share.CFGEndpointFileMonitor:
 			var cfg share.CLUSFileMonitorProfile
-			_ = nvJsonUnmarshal(key, value, &cfg)
+			if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+				log.WithError(err).Warn("failed to unmarshal file monitor profile during upgrade")
+			}
 			if upd, wrtForUpgrade := upgradeFileMonitorProfile(&cfg); upd {
 				return &cfg, wrtForUpgrade, false, nil, nil
 			}
 		case share.CFGEndpointDlpGroup:
 			var cfg share.CLUSDlpGroup
-			_ = nvJsonUnmarshal(key, value, &cfg)
+			if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+				log.WithError(err).Warn("failed to unmarshal DLP group during upgrade")
+			}
 			if upd, wrtForUpgrade := upgradeDlpGroup(&cfg); upd {
 				return &cfg, wrtForUpgrade, false, nil, nil
 			}
 		case share.CFGEndpointDlpRule:
 			var cfg share.CLUSDlpSensor
-			_ = nvJsonUnmarshal(key, value, &cfg)
+			if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+				log.WithError(err).Warn("failed to unmarshal DLP sensor during upgrade")
+			}
 			if upd, wrtForUpgrade := upgradeDlpSensor(&cfg); upd {
 				return &cfg, wrtForUpgrade, false, nil, nil
 			}
@@ -517,7 +533,9 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 				token := share.CLUSPolicyKey2AdmCfgSubkey(key)
 				if token == share.CLUSAdmissionCfgState {
 					var state share.CLUSAdmissionState
-					_ = nvJsonUnmarshal(key, value, &state)
+					if err := nvJsonUnmarshal(key, value, &state); err != nil {
+						log.WithError(err).Warn("failed to unmarshal admission state during upgrade")
+					}
 					if upd, wrtForUpgrade := upgradeAdmCtrlState(config, &state); upd {
 						return &state, wrtForUpgrade, false, nil, nil
 					}
@@ -526,13 +544,17 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 						switch token {
 						case share.CLUSAdmissionCfgRule:
 							var rule share.CLUSAdmissionRule
-							_ = nvJsonUnmarshal(key, value, &rule)
+							if err := nvJsonUnmarshal(key, value, &rule); err != nil {
+								log.WithError(err).Warn("failed to unmarshal admission rule during upgrade")
+							}
 							if upd, wrtForUpgrade := upgradeAdmCtrlRule(&rule); upd {
 								return &rule, wrtForUpgrade, false, nil, nil
 							}
 						case share.CLUSAdmissionCfgRuleList:
 							var cfg []*share.CLUSRuleHead
-							_ = nvJsonUnmarshal(key, value, &cfg)
+							if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+								log.WithError(err).Warn("failed to unmarshal admission rule list during upgrade")
+							}
 							if upd, wrtForUpgrade := upgradeRuleHead(cfg); upd {
 								return &cfg, wrtForUpgrade, false, nil, nil
 							}
@@ -546,7 +568,9 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 								}
 							} else if dec.ReEncryptRequired {
 								if dataReEncrypted, err2 := enc.Marshal(&cert); err2 == nil {
-									_ = nvJsonUnmarshal(key, dataReEncrypted, &cert)
+									if err3 := nvJsonUnmarshal(key, dataReEncrypted, &cert); err3 != nil {
+										log.WithError(err3).Warn("failed to unmarshal cert after re-encrypt")
+									}
 									return &cert, false, true, nil, nil
 								} else {
 									log.WithFields(log.Fields{"error": err2, "key": key}).Error("re-encrypt object failed")
@@ -558,7 +582,9 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 				}
 			} else if config == share.CFGEndpointCrd && scope == resource.NvSecurityRuleKind {
 				var cfg share.CLUSCrdSecurityRule
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				if upd, wrtForUpgrade := upgradeCrdSecurityRule(&cfg); upd {
 					return &cfg, wrtForUpgrade, false, nil, nil
 				}
@@ -566,13 +592,17 @@ func doUpgrade(key string, value []byte) (interface{}, bool, bool, utils.Set, er
 		case share.CFGEndpointResponseRule:
 			if share.CLUSIsPolicyRuleKey(key) {
 				var cfg share.CLUSResponseRule
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				if upd, wrtForUpgrade := upgradeResponseRule(&cfg); upd {
 					return &cfg, wrtForUpgrade, false, nil, nil
 				}
 			} else if share.CLUSIsPolicyRuleListKey(key) {
 				var cfg []*share.CLUSRuleHead
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				if upd, wrtForUpgrade := upgradeRuleHead(cfg); upd {
 					return &cfg, wrtForUpgrade, false, nil, nil
 				}
@@ -666,14 +696,21 @@ func UpgradeAndConvert(key string, value []byte) ([]byte, error, bool) {
 			return value, nil, false
 		}
 	}
-	v, wrtForUpgrade, wrtForReEncrypt, failToDecryptFields, _ = doUpgrade(key, value)
+	var doUpgradeErr error
+	v, wrtForUpgrade, wrtForReEncrypt, failToDecryptFields, doUpgradeErr = doUpgrade(key, value)
+	if doUpgradeErr != nil {
+		log.WithError(doUpgradeErr).Warn("failed to upgrade cluster key value")
+	}
 	// v being nil means no need to upgrade/convert the obj represented by value at all
 	wrt := wrtForUpgrade || wrtForReEncrypt
 	// wrt means need to write v to kv or not (sensitive fields in v are still encrypted)
 
 	if v != nil && wrt {
-		var err error
-		newv, _ := json.Marshal(v)
+		newv, err := json.Marshal(v)
+		if err != nil {
+			log.WithError(err).Warn("failed to marshal value during upgrade write")
+			return nil, err, false
+		}
 		// currently we only zip nw policy rulelist & longer-than-512k-crd-keys
 		if policyListKey || needToZip(key, newv) {
 			new_zb := utils.GzipBytes(newv)
@@ -717,7 +754,9 @@ func UpgradeAndConvert(key string, value []byte) ([]byte, error, bool) {
 			if share.CLUSKeyLength(key) == 4 {
 				if v == nil {
 					var r share.CLUSAwsResource
-					_ = nvJsonUnmarshal(key, value, &r)
+					if err := nvJsonUnmarshal(key, value, &r); err != nil {
+						log.WithError(err).Warn("failed to unmarshal value during upgrade")
+					}
 					v = &r
 				}
 				needToUncloak = true
@@ -730,21 +769,27 @@ func UpgradeAndConvert(key string, value []byte) ([]byte, error, bool) {
 		case share.CFGEndpointSystem:
 			if v == nil {
 				var cfg share.CLUSSystemConfig
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				v = &cfg
 			}
 			needToUncloak = true
 		case share.CFGEndpointServer:
 			if v == nil {
 				var cfg share.CLUSServer
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				v = &cfg
 			}
 			needToUncloak = true
 		case share.CFGEndpointRegistry:
 			if v == nil {
 				var cfg share.CLUSRegistryConfig
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				v = &cfg
 			}
 			needToUncloak = true
@@ -752,7 +797,9 @@ func UpgradeAndConvert(key string, value []byte) ([]byte, error, bool) {
 			if v == nil {
 				// Currently the only data structure
 				var cfg share.CLUSAwsProjectCfg
-				_ = nvJsonUnmarshal(key, value, &cfg)
+				if err := nvJsonUnmarshal(key, value, &cfg); err != nil {
+					log.WithError(err).Warn("failed to unmarshal value during upgrade")
+				}
 				v = &cfg
 			}
 			needToUncloak = true
@@ -897,7 +944,9 @@ func getControlVersion() *share.CLUSCtrlVersion {
 		log.WithError(err).Warn("Failed to get control version")
 	}
 	if value != nil {
-		_ = nvJsonUnmarshal(key, value, &ver)
+		if err := nvJsonUnmarshal(key, value, &ver); err != nil {
+			log.WithError(err).Warn("failed to unmarshal value during upgrade")
+		}
 		return &ver
 	}
 
@@ -906,7 +955,10 @@ func getControlVersion() *share.CLUSCtrlVersion {
 
 func putControlVersion(ver *share.CLUSCtrlVersion) error {
 	key := share.CLUSCtrlVerKey
-	value, _ := json.Marshal(ver)
+	value, err := json.Marshal(ver)
+	if err != nil {
+		return fmt.Errorf("failed to marshal control version: %w", err)
+	}
 	return cluster.Put(key, value)
 }
 
@@ -954,7 +1006,9 @@ func (m clusterHelper) UpgradeClusterKV(version string) (verUpdated bool) {
 		KVVersion:   latestKVVersion(),
 	}
 	if ver != newVer {
-		_ = putControlVersion(newVer)
+		if err := putControlVersion(newVer); err != nil {
+			log.WithError(err).Warn("failed to write control version")
+		}
 		if err := cfgHelper.writeBackupVersion(); err != nil {
 			log.WithError(err).Warn("Failed to write backup version")
 		}
@@ -1001,7 +1055,9 @@ func (m clusterHelper) UpgradeClusterImport(importVer *share.CLUSCtrlVersion) {
 		KVVersion:   latestKVVersion(),
 	}
 	if cur_ver == nil || cur_ver.CtrlVersion != newVer.CtrlVersion || cur_ver.KVVersion != newVer.KVVersion {
-		_ = putControlVersion(newVer)
+		if err := putControlVersion(newVer); err != nil {
+			log.WithError(err).Warn("failed to write control version")
+		}
 		if err := cfgHelper.writeBackupVersion(); err != nil {
 			log.WithError(err).Warn("Failed to write backup version")
 		}
@@ -1208,7 +1264,10 @@ func filterRoleGroupsMapping(roleGroups map[string][]string, caseSensitive bool)
 }
 
 func upgradeDomainRoles() {
-	keys, _ := cluster.GetStoreKeys(share.CLUSConfigServerStore)
+	keys, err := cluster.GetStoreKeys(share.CLUSConfigServerStore)
+	if err != nil {
+		log.WithError(err).Warn("failed to get server store keys")
+	}
 	for _, key := range keys {
 		if value, err := cluster.Get(key); err == nil {
 			server := share.CLUSServer{}
@@ -1228,8 +1287,12 @@ func upgradeDomainRoles() {
 				}
 				if len(*roleGroups) > 0 {
 					if updated = filterRoleGroupsMapping(*roleGroups, caseSensitive); updated {
-						value, _ := json.Marshal(&server)
-						if err = cluster.Put(key, value); err != nil {
+						marshaledSrv, marshalErr := json.Marshal(&server)
+						if marshalErr != nil {
+							log.WithError(marshalErr).Warn("failed to marshal server during role upgrade")
+							continue
+						}
+						if err = cluster.Put(key, marshaledSrv); err != nil {
 							log.WithFields(log.Fields{"server": server.Name, "error": err}).Error("Failed to upgrade server for custom roles")
 						}
 					}
@@ -1534,7 +1597,10 @@ func renameCustomReservedRoles() {
 	accAdmin := access.NewAdminAccessControl()
 	reservedRoleNames := access.GetReservedRoleNames()
 	roleNameMapping := make(map[string]string, reservedRoleNames.Cardinality())
-	keys, _ := cluster.GetStoreKeys(share.CLUSConfigUserRoleStore)
+	keys, err := cluster.GetStoreKeys(share.CLUSConfigUserRoleStore)
+	if err != nil {
+		log.WithError(err).Warn("failed to get user role store keys")
+	}
 	for _, key := range keys {
 		roleName := key[len(share.CLUSConfigUserRoleStore):]
 		// a pre-existing custom role with reserved name is found
@@ -1562,14 +1628,21 @@ func renameCustomReservedRoles() {
 		return
 	}
 
-	keys, _ = cluster.GetStoreKeys(share.CLUSConfigUserStore)
+	keys, err = cluster.GetStoreKeys(share.CLUSConfigUserStore)
+	if err != nil {
+		log.WithError(err).Warn("failed to get user store keys")
+	}
 	for _, key := range keys {
 		if value, err := cluster.Get(key); err == nil {
 			user := share.CLUSUser{}
 			if err = nvJsonUnmarshal(key, value, &user); err == nil {
 				if updated := reassignMappedUserRoles(&user, roleNameMapping); updated {
-					value, _ := json.Marshal(&user)
-					if err = cluster.Put(key, value); err != nil {
+					marshaledUser, marshalErr := json.Marshal(&user)
+					if marshalErr != nil {
+						log.WithError(marshalErr).Warn("failed to marshal user during role remapping")
+						continue
+					}
+					if err = cluster.Put(key, marshaledUser); err != nil {
 						log.WithFields(log.Fields{"user": user.Fullname, "error": err}).Error("Failed to upgrade user roles mapping")
 					} else {
 						log.WithFields(log.Fields{"user": user.Fullname}).Info("Remapped user roles")
@@ -1579,14 +1652,21 @@ func renameCustomReservedRoles() {
 		}
 	}
 
-	keys, _ = cluster.GetStoreKeys(share.CLUSConfigServerStore)
+	keys, err = cluster.GetStoreKeys(share.CLUSConfigServerStore)
+	if err != nil {
+		log.WithError(err).Warn("failed to get server store keys")
+	}
 	for _, key := range keys {
 		if value, err := cluster.Get(key); err == nil {
 			server := share.CLUSServer{}
 			if err = nvJsonUnmarshal(key, value, &server); err == nil {
 				if updated := reassignMappedServerRoles(&server, roleNameMapping); updated {
-					value, _ := json.Marshal(&server)
-					if err = cluster.Put(key, value); err != nil {
+					marshaledSrv, marshalErr := json.Marshal(&server)
+					if marshalErr != nil {
+						log.WithError(marshalErr).Warn("failed to marshal server during role mapping upgrade")
+						continue
+					}
+					if err = cluster.Put(key, marshaledSrv); err != nil {
 						log.WithFields(log.Fields{"server": server.Name, "error": err}).Error("Failed to upgrade server for custom roles mapping")
 					} else {
 						log.WithFields(log.Fields{"server": server.Name}).Info("Remapped server roles")
@@ -1642,7 +1722,10 @@ func upgradeServerGroupRoles() {
 	var updated bool
 
 	acc := access.NewAdminAccessControl()
-	keys, _ := cluster.GetStoreKeys(share.CLUSConfigServerStore)
+	keys, err := cluster.GetStoreKeys(share.CLUSConfigServerStore)
+	if err != nil {
+		log.WithError(err).Warn("failed to get server store keys")
+	}
 	for _, key := range keys {
 		updated = false
 		name := key[len(share.CLUSConfigServerStore):]
@@ -1758,7 +1841,9 @@ func upgradeDlpGroup(cfg *share.CLUSDlpGroup) (bool, bool) {
 		key := share.CLUSGroupKey(cfg.Name)
 		if value, err := cluster.Get(key); err == nil {
 			var group share.CLUSGroup
-			_ = nvJsonUnmarshal(key, value, &group)
+			if err := nvJsonUnmarshal(key, value, &group); err != nil {
+				log.WithError(err).Warn("failed to unmarshal value during upgrade")
+			}
 			cfg.CfgType = group.CfgType
 			return true, true
 		}
@@ -1814,8 +1899,11 @@ func initFedScanRevKey() {
 			var regConfigRev uint64
 			var scannedRepoRev uint64
 			scannedRegRevs := make(map[string]uint64)
-			keys, _ := cluster.GetStoreKeys(share.CLUSScanDataStore)
-			for _, key := range keys {
+			scanKeys, scanKeysErr := cluster.GetStoreKeys(share.CLUSScanDataStore)
+			if scanKeysErr != nil {
+				log.WithError(scanKeysErr).Warn("failed to get scan data store keys")
+			}
+			for _, key := range scanKeys {
 				regName := share.CLUSKeyNthToken(key, 3)
 				if !strings.HasPrefix(regName, api.FederalGroupPrefix) {
 					continue

@@ -712,6 +712,7 @@ func ConfigK8sAdmissionControl(k8sResInfo *ValidatingWebhookConfigInfo, ctrlStat
 			svcInfo, svcErr := GetValidateWebhookSvcInfo(whInfo.ClientConfig.ServiceName)
 			if svcErr != nil {
 				log.WithError(svcErr).Warn("failed to get validate webhook service info")
+				continue
 			}
 			whInfo.ClientConfig.Port = svcInfo.SvcNodePort
 		}
