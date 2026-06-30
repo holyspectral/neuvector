@@ -518,7 +518,9 @@ func (h *nvCrdHandler) crdDeleteAdmCtrlRules() {
 
 	for _, ruleType := range []string{api.ValidatingExceptRuleType, api.ValidatingDenyRuleType} {
 		arhs, err := clusHelper.GetAdmissionRuleList(admission.NvAdmValidateType, ruleType)
-		if err != nil {
+		if errors.Is(err, cluster.ErrKeyNotFound) {
+			continue
+		} else if err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("GetAdmissionRuleList")
 			hasError = true
 			break

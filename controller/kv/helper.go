@@ -3033,14 +3033,21 @@ func (m clusterHelper) PutAdmissionStateRev(svcName string, state *share.CLUSAdm
 func (m clusterHelper) GetAdmissionRuleList(admType, ruleType string) ([]*share.CLUSRuleHead, error) {
 	crhs := make([]*share.CLUSRuleHead, 0)
 	key := share.CLUSAdmissionRuleListKey(getAdmCtrlPolicyName(ruleType), admType, ruleType)
-	if value, _, err := m.get(key); value != nil {
-		if err := nvJsonUnmarshal(key, value, &crhs); err != nil {
-			log.WithError(err).Warn("failed to unmarshal cluster value")
+	value, _, err := m.get(key)
+	if err != nil {
+		if !errors.Is(err, cluster.ErrKeyNotFound) {
+			log.WithError(err).Warn("failed to get admission rule list")
 		}
-		return crhs, nil
-	} else {
 		return crhs, err
 	}
+	if value == nil {
+		return crhs, cluster.ErrKeyNotFound
+	}
+	if err := nvJsonUnmarshal(key, value, &crhs); err != nil {
+		log.WithError(err).Warn("failed to unmarshal cluster value")
+		return []*share.CLUSRuleHead{}, err
+	}
+	return crhs, nil
 }
 
 func (m clusterHelper) GetAdmissionRule(admType, ruleType string, id uint32) *share.CLUSAdmissionRule {

@@ -160,12 +160,17 @@ func initCache() {
 			ruleTypes := [2]string{api.ValidatingExceptRuleType, api.ValidatingDenyRuleType}
 		Exit:
 			for _, ruleType := range ruleTypes {
-				if arhs, err := clusHelper.GetAdmissionRuleList(admission.NvAdmValidateType, ruleType); err == nil {
-					for _, arh := range arhs {
-						if arh.CfgType == share.GroundCfg {
-							checkAllowNsRuleCfgType = share.GroundCfg
-							continue Exit
-						}
+				arhs, err := clusHelper.GetAdmissionRuleList(admission.NvAdmValidateType, ruleType)
+				if err != nil {
+					if !errors.Is(err, cluster.ErrKeyNotFound) {
+						log.WithFields(log.Fields{"ruleType": ruleType, "err": err}).Warn("failed to get admission rule list")
+					}
+					continue
+				}
+				for _, arh := range arhs {
+					if arh.CfgType == share.GroundCfg {
+						checkAllowNsRuleCfgType = share.GroundCfg
+						continue Exit
 					}
 				}
 			}
@@ -179,10 +184,12 @@ func initCache() {
 	ruleCaches := [4]*share.CLUSAdmissionRules{&admValidateExceptCache, &admValidateDenyCache, &admFedValidateExceptionCache, &admFedValidateDenyCache}
 	for idx, ruleType := range ruleTypes {
 		arhs, err := clusHelper.GetAdmissionRuleList(admission.NvAdmValidateType, ruleType)
-		if err != nil && err.Error() == cluster.ErrKeyNotFound.Error() {
+		if errors.Is(err, cluster.ErrKeyNotFound) {
 			if putErr := clusHelper.PutAdmissionRuleList(admission.NvAdmValidateType, ruleType, arhs); putErr != nil {
 				log.WithFields(log.Fields{"ruleType": ruleType, "err": putErr}).Warn("failed to init admission rule list")
 			}
+		} else if err != nil {
+			log.WithFields(log.Fields{"ruleType": ruleType, "err": err}).Error("failed to get admission rule list")
 		}
 		ruleCaches[idx].RuleMap = make(map[uint32]*share.CLUSAdmissionRule, len(arhs)) // key is ruleID
 		ruleCaches[idx].RuleHeads = make([]*share.CLUSRuleHead, 0, len(arhs))
