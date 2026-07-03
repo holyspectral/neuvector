@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/gob"
 	"encoding/json"
@@ -355,7 +356,8 @@ func getAssetvulSchema(uniqueAssetId bool) []string {
 }
 
 func formatSessionTempTableName(queryToken string) string {
-	return fmt.Sprintf("tmp_session_%s", queryToken)
+	hash := sha256.Sum256([]byte(queryToken))
+	return fmt.Sprintf("%x", hash)
 }
 
 func getQueryParamInteger(r *http.Request, name string, defaultValue int) int {
