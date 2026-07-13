@@ -18,6 +18,9 @@ jobs:
   updatecli:
     name: Run Updatecli
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: ["main", "release/v5.4", "release/v5.5", "release/v5.6"]
     permissions:
       contents: write # for updatecli to update the repository
       pull-requests: write # for updatecli to create a PR
@@ -25,6 +28,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
+          ref: ${{ matrix.branch }}
           persist-credentials: false
 
       - name: Install Updatecli in the runner

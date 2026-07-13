@@ -64,7 +64,6 @@ scms:
       repository: "neuvector"
       token: "{{ requiredEnv .github.token }}"
       username: "{{ requiredEnv .github.user }}"
-      branch: "{{ .github.branch }}"
       commitmessage:
         type: "chore"
         scope: deps
