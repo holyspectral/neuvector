@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net"
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/neuvector/neuvector/share"
 	"github.com/neuvector/neuvector/share/container"
@@ -74,9 +76,35 @@ type ResourceDriver interface {
 
 var baseDriver *base
 
+var (
+	enableCustomSvcName bool
+	svcNameGateOnce     sync.Once
+)
+
+// initServiceNameGate reads NV_ENABLE_CUSTOM_SVC_NAME once. The io.neuvector.service.name
+// label is honored only when this env var is present and truthy; disabled by default so
+// that a workload cannot force itself into an arbitrary (possibly unprotected) group.
+func initServiceNameGate() {
+	svcNameGateOnce.Do(func() {
+		if v, ok := utils.NewEnvironParser(os.Environ()).Value(share.ENV_EN_CUSTOM_SVC_NAME); ok {
+			switch strings.ToLower(strings.TrimSpace(v)) {
+			case "1", "true", "yes", "on", "enable", "enabled":
+				enableCustomSvcName = true
+			}
+		}
+	})
+}
+
+// CustomServiceNameEnabled reports whether the io.neuvector.service.name label is honored.
+func CustomServiceNameEnabled() bool {
+	return enableCustomSvcName
+}
+
 func GetDriver(platform, flavor, network string, ver1, ver2 string,
 	sys *system.SystemTools, rt container.Runtime,
 ) Driver {
+	initServiceNameGate()
+
 	baseDriver = &base{noop: noop{platform: platform, flavor: flavor, network: network}}
 
 	switch platform {
