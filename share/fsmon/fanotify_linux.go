@@ -578,7 +578,7 @@ func (fn *FaNotify) handleEvents() error {
 		perm := (fmask & (unix.FAN_OPEN_PERM | unix.FAN_ACCESS_PERM)) > 0
 
 		// log.WithFields(log.Fields{"pid": pid, "fmask": fmt.Sprintf("0x%08x", fmask), "fd": fd}).Debug("FMON:")
-		resp, mask, nvPod, ifile, pInfo := fn.calculateResponse(pid, fd, fmask, perm)
+		resp, mask, nvPod, ifile, pInfo, appExcluded := fn.calculateResponse(pid, fd, fmask, perm)
 		if perm {
 			if resp {
 				err = fn.fa.ResponseAllow(ev)
@@ -605,6 +605,12 @@ func (fn *FaNotify) handleEvents() error {
 			continue // nothing to justify
 		}
 
+		// Process matches the applications exclusion: skip reporting and learning.
+		// Runs after the perm response, so a block_access allow still proceeds.
+		if appExcluded {
+			continue
+		}
+
 		change := (fmask & unix.FAN_CLOSE_WRITE) > 0
 		// log.WithFields(log.Fields{"ifile": ifile, "pInfo": pInfo, "Resp": resp, "Change": change, "Perm": perm}).Debug("FMON:")
 
@@ -622,22 +628,22 @@ func (fn *FaNotify) handleEvents() error {
 	}
 }
 
-func (fn *FaNotify) calculateResponse(pid, fd int, fmask uint64, perm bool) (bool, uint32, bool, *IFile, *ProcInfo) {
+func (fn *FaNotify) calculateResponse(pid, fd int, fmask uint64, perm bool) (bool, uint32, bool, *IFile, *ProcInfo, bool) {
 	// allowed all to avoid blocked calls
 	if !fn.bEnabled {
-		return true, 0, false, nil, nil
+		return true, 0, false, nil, nil, false
 	}
 
 	// skip agent's read
 	if pid == fn.agentPid {
-		return true, 0, true, nil, nil
+		return true, 0, true, nil, nil, false
 	}
 
 	// get file path
 	linkPath, err := os.Readlink(fmt.Sprintf(procSelfFd, fd))
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("FMON: Read link fail")
-		return true, 0, false, nil, nil
+		return true, 0, false, nil, nil, false
 	}
 
 	// log.WithFields(log.Fields{"path": linkPath}).Debug("FMON:")
@@ -646,25 +652,28 @@ func (fn *FaNotify) calculateResponse(pid, fd int, fmask uint64, perm bool) (boo
 	if r == nil {
 		// "docker cp agent" case ???
 		log.WithFields(log.Fields{"rootPid": pInfo.RootPid, "path": linkPath, "pid": pid}).Debug("FMON: not found")
-		return true, 0, false, nil, nil
+		return true, 0, false, nil, nil, false
 	}
 
 	// skip our containers, host runc, system containers
 	if (pInfo.RootPid == 1 || !r.capBlock) && perm {
-		return true, 0, false, nil, pInfo
+		return true, 0, false, nil, pInfo, false
 	}
 
 	ifile, _, mask := fn.lookupFile(r, linkPath, pInfo)
 	if ifile == nil {
-		return true, mask, false, nil, pInfo
+		return true, mask, false, nil, pInfo, false
 	}
 
-	// permition decision
+	// Evaluate the applications list once (single lock): allow is the block-access
+	// permission decision, appExcluded is a real match of a non-empty list.
+	allow, appExcluded := fn.matchAppRule(r, ifile, pInfo, linkPath)
 	resp := true
-	if ifile.protect { // always verify app for block-access
-		resp = fn.lookupRule(r, ifile, pInfo, linkPath)
-		// log.WithFields(log.Fields{"resp": resp}).Debug("FMON:")
+	if ifile.protect { // block-access: deny non-listed apps
+		resp = allow
 	}
+	// appExcluded suppresses reporting in all modes. Discover already skips excluded
+	// apps in addLearnedRules, so suppressing here only drops the redundant modify report.
 
 	if (fmask & unix.FAN_MODIFY) > 0 {
 		mask |= syscall.IN_MODIFY
@@ -685,29 +694,46 @@ func (fn *FaNotify) calculateResponse(pid, fd int, fmask uint64, perm bool) (boo
 		pInfo.Deny = true
 		log.WithFields(log.Fields{"path": linkPath, "app": pInfo.Path}).Debug("FMON: denied")
 	}
-	return resp, mask, false, ifile, pInfo
+	return resp, mask, false, ifile, pInfo, appExcluded
 }
 
-func (fn *FaNotify) lookupRule(r *rootFd, ifile *IFile, pInfo *ProcInfo, linkPath string) bool {
+// appMatched reports whether pInfo matches a non-empty apps set by full path, base name,
+// or process name. It sets InProfile on a match. Called by matchAppRule so all modes
+// match the applications list identically.
+func appMatched(apps utils.Set, pInfo *ProcInfo) bool {
+	if pInfo == nil || pInfo.Path == "" || apps == nil || apps.Cardinality() == 0 {
+		return false
+	}
+	if apps.Contains(pInfo.Path) || apps.Contains(filepath.Base(pInfo.Path)) ||
+		(pInfo.Name != "" && apps.Contains(pInfo.Name)) {
+		pInfo.InProfile = true
+		return true
+	}
+	return false
+}
+
+// matchAppRule evaluates this filter's applications list under a single lock.
+//   - allow: block-access permission decision. Default-allow when there are no rules
+//     or the process is unknown; deny (false) when the filter has an entry the process
+//     does not match. Only consulted for block_access filters.
+//   - excluded: true only on a real match of a non-empty list. Drives reporting
+//     suppression in all modes; false for filters with no applications configured.
+func (fn *FaNotify) matchAppRule(r *rootFd, ifile *IFile, pInfo *ProcInfo, linkPath string) (allow bool, excluded bool) {
 	fn.mux.Lock()
 	defer fn.mux.Unlock()
 
-	// if the process name or path empty, cannot check permision
-	if r.rules == nil || pInfo.Path == "" {
-		log.WithFields(log.Fields{"path": linkPath, "procPath": pInfo.Path}).Debug("FMON: no rule")
-		return true
+	// no configured rules or unknown process: default allow, no exclusion
+	if r.rules == nil || pInfo == nil || pInfo.Path == "" {
+		log.WithFields(log.Fields{"path": linkPath}).Debug("FMON: no rule")
+		return true, false
 	}
 
-	if apps, ok := r.rules[ifile.filter.path]; ok {
-		if apps.Contains(pInfo.Path) || apps.Contains(filepath.Base(pInfo.Path)) ||
-			(pInfo.Name != "" && apps.Contains(pInfo.Name)) {
-			pInfo.InProfile = true
-			return true
-		} else {
-			return false
-		}
+	apps, ok := r.rules[ifile.filter.path]
+	if !ok {
+		return false, false
 	}
-	return false
+	matched := appMatched(apps, pInfo)
+	return matched, matched
 }
 
 func (fn *FaNotify) lookupFile(r *rootFd, linkPath string, pInfo *ProcInfo) (*IFile, bool, uint32) {
