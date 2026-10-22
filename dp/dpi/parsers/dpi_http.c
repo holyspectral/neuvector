@@ -583,29 +583,48 @@ static void http_header_xforwarded_proto(http_ctx_t *ctx, uint8_t *ptr, int len)
     consume_tokens(ptr, len, http_header_xforwarded_proto_token, ctx);
 }
 
-static int http_header_xforwarded_for_token(void *param, uint8_t *ptr, int len, int token_idx)
+static void http_header_xforwarded_for(http_ctx_t *ctx, uint8_t *ptr, int len)
 {
-    http_ctx_t *ctx = param;
     dpi_packet_t *p = ctx->p;
     dpi_session_t *s = p->session;
+    uint8_t *start, *end;
     char *ip_str;
     int ip_str_len;
-    register uint8_t *l = ptr, *end = ptr + len;
 
-    while (l < end) {
-        if (unlikely(*l == ',')) {
-            break;
-        }
-        l ++;
+    DEBUG_LOG_FUNC_ENTRY(DBG_PARSER, ctx->p);
+
+    // X-Forwarded-For is "client, proxy1, proxy2, ...": each proxy appends the
+    // peer it received from on the RIGHT. The left-most entry is set by the
+    // (untrusted) client and is trivially spoofed, so matching policy against it
+    // is both a trust problem and the source of false "implicit deny" events.
+    // Use the LAST (right-most) entry instead - the address observed by the proxy
+    // closest to us (e.g. the ingress/mesh hop), which is not client-controllable.
+    end = ptr + len;
+    // trim trailing whitespace
+    while (end > ptr && (end[-1] == ' ' || end[-1] == '\t' ||
+                         end[-1] == '\r' || end[-1] == '\n')) {
+        end--;
     }
-    ip_str_len = l-ptr;
+    // walk back to the start of the last comma-separated token
+    start = end;
+    while (start > ptr && start[-1] != ',') {
+        start--;
+    }
+    // trim leading whitespace of the last token
+    while (start < end && (*start == ' ' || *start == '\t')) {
+        start++;
+    }
+    ip_str_len = end - start;
+    if (ip_str_len <= 0) {
+        return;
+    }
 
     //preallocated memory
     ip_str = (char *) calloc(ip_str_len + 1, sizeof(char));
     if (ip_str == NULL) {
-        return CONSUME_TOKEN_SKIP_LINE;
+        return;
     }
-    strncpy(ip_str, (char *)ptr, ip_str_len);
+    memcpy(ip_str, start, ip_str_len);
     //ip_str is null terminated
     ip_str[ip_str_len] = '\0';
     s->xff_client_ip = inet_addr(ip_str);
@@ -614,22 +633,14 @@ static int http_header_xforwarded_for_token(void *param, uint8_t *ptr, int len, 
         s->xff_client_ip = 0;
         //memory freed
         free(ip_str);
-        return CONSUME_TOKEN_SKIP_LINE;
+        return;
     }
     s->flags |= DPI_SESS_FLAG_XFF;
 
-    DEBUG_LOG(DBG_PARSER, p, "X-Forwarded-For: %s, ip=0x%08x, sess flags=0x%04x\n",ip_str, s->xff_client_ip, s->flags);
+    DEBUG_LOG(DBG_PARSER, p, "X-Forwarded-For (last): %s, ip=0x%08x, sess flags=0x%04x\n",ip_str, s->xff_client_ip, s->flags);
 
     //memory freed
     free(ip_str);
-    return CONSUME_TOKEN_SKIP_LINE;
-}
-
-static void http_header_xforwarded_for(http_ctx_t *ctx, uint8_t *ptr, int len)
-{
-    DEBUG_LOG_FUNC_ENTRY(DBG_PARSER, ctx->p);
-
-    consume_tokens(ptr, len, http_header_xforwarded_for_token, ctx);
 }
 
 static int http_header_host_token(void *param, uint8_t *ptr, int len, int token_idx)
