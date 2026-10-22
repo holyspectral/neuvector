@@ -2349,12 +2349,17 @@ func (m clusterHelper) DeleteRegistryImageSummaryAndReport(name, id, fedRole str
 	defer txn.Close()
 
 	txn.Delete(share.CLUSRegistryImageStateKey(name, id))
-	txn.Delete(share.CLUSRegistryImageDataKey(name, id))
 
 	if ok, err := txn.Apply(); err != nil {
 		return err
 	} else if !ok {
 		return common.ErrAtomicWriteFail
+	}
+
+	// The report may be chunked under the data key; delete the base key and all
+	// of its generation/chunk sub-keys.
+	if err := deleteReport(share.CLUSRegistryImageDataKey(name, id)); err != nil {
+		log.WithError(err).Warn("failed to delete registry image report")
 	}
 
 	if fedRole == api.FedRoleMaster {
@@ -2376,29 +2381,29 @@ func (m clusterHelper) DeleteRegistryImageSummaryAndReport(name, id, fedRole str
 }
 
 func (m clusterHelper) PutRegistryImageSummaryAndReport(name, id, fedRole string, sum *share.CLUSRegistryImageSummary, report *share.CLUSScanReport) error {
-	txn := cluster.Transact()
-	defer txn.Close()
-
-	key := share.CLUSRegistryImageDataKey(name, id)
+	dataKey := share.CLUSRegistryImageDataKey(name, id)
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	if err := enc.Encode(report); err != nil {
 		return fmt.Errorf("failed to encode scan report: %w", err)
 	}
 	zbRpt := utils.GzipBytes(buf.Bytes())
-	txn.PutBinary(key, zbRpt)
 
-	key = share.CLUSRegistryImageStateKey(name, id)
+	// The report can exceed Consul's per-value limit, so store it via putReport
+	// (single value, or chunked under a generation with an atomic manifest Put).
+	// Write the report before the summary: a reader that later sees the
+	// "scan finished" summary will then always find a complete, committed report.
+	if err := putReport(dataKey, zbRpt); err != nil {
+		return fmt.Errorf("failed to store scan report: %w", err)
+	}
+
+	stateKey := share.CLUSRegistryImageStateKey(name, id)
 	vSum, err := json.Marshal(sum)
 	if err != nil {
 		return err
 	}
-	txn.Put(key, vSum)
-
-	if ok, err := txn.Apply(); err != nil {
+	if err := cluster.Put(stateKey, vSum); err != nil {
 		return err
-	} else if !ok {
-		return common.ErrAtomicWriteFail
 	}
 
 	if fedRole == api.FedRoleMaster {
@@ -2630,7 +2635,10 @@ func (m clusterHelper) GetScanState(key string) *share.CLUSScanState {
 }
 
 func (m clusterHelper) GetScanReport(key string) *share.CLUSScanReport {
-	value, _, err := m.get(key)
+	// Resolve the report via getReport, which handles the single-value layout, the
+	// generation/manifest layout, and legacy pre-redesign data. Chunks hold raw
+	// gzipped bytes (scan-data keys are not auto-unzipped by m.get).
+	value, err := getReport(key)
 	if err != nil {
 		log.WithError(err).Warn("failed to get scan report")
 	}

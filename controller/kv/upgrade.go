@@ -1914,7 +1914,14 @@ func initFedScanRevKey() {
 				regName := share.CLUSKeyNthToken(key, 3)
 				if !strings.HasPrefix(regName, api.FederalGroupPrefix) {
 					continue
-				} else if currName == "" {
+				}
+				// Skip report chunk keys (scan/data/image/<reg>/<id>/<n>); count
+				// only the base image key so revisions reflect the image count,
+				// not the number of chunks a large report is split into.
+				if len(strings.Split(key, "/")) > 5 {
+					continue
+				}
+				if currName == "" {
 					currName = regName
 					if currName != common.RegistryFedRepoScanName {
 						regConfigRev += 1

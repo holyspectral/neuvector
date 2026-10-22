@@ -181,8 +181,10 @@ func restoreToCluster(reg, fedRole string) string {
 		vReport, vErr := os.ReadFile(rptFile)
 		if vErr == nil {
 			// 3-1. must restore scan/data/image/{reg}/{id} key first !
+			// vReport is the on-disk gzipped report; it may exceed Consul's
+			// per-value limit, so restore it via putReport (matches PutRegistryImageSummaryAndReport).
 			vKey := share.CLUSRegistryImageDataKey(reg, sum.ImageID)
-			if err := cluster.PutBinary(vKey, vReport); err != nil {
+			if err := putReport(vKey, vReport); err != nil {
 				log.WithFields(log.Fields{"error": err}).Error("Failed to restore report to cluster")
 			} else {
 				// 3-2. then restore scan/state/image/{reg}/{id} key
@@ -194,7 +196,8 @@ func restoreToCluster(reg, fedRole string) string {
 					continue
 				}
 				if sErr = cluster.Put(sKey, vSummary); sErr != nil {
-					if err := cluster.Delete(vKey); err != nil {
+					// Roll back the report; it may be chunked, so delete the whole tree.
+					if err := deleteReport(vKey); err != nil {
 						log.WithError(err).Warn("failed to delete registry image data key during restore")
 					}
 					log.WithFields(log.Fields{"error": sErr}).Error("Failed to restore summary to cluster")
